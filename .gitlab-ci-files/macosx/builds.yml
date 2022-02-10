@@ -15,7 +15,12 @@
     LINPHONESDK_OPENSSL_ROOT_DIR_ARM64: "/opt/homebrew/opt/openssl@1.1"
 
   script:
-    - !reference [.set-max-jobs-unix, script]
+    - export CCACHE_MAXSIZE=10G
+    - export CCACHE_DEBUG=1
+    - echo $CCACHE_MAXSIZE
+    - echo $CCACHE_DEBUG
+    - ccache -p
+    - export CMAKE_BUILD_PARALLEL_LEVEL=8
     - echo $MACOS_DEPLOY_URL
     - echo $XCODE_OPTIONS
     - ccache -s
@@ -93,6 +98,13 @@ macosx-ninja:
 
 macosx-m1-ninja:
 
+  variables:
+    CMAKE_GENERATOR: Ninja
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_LDAP=ON
+  extends: .macosx-m1-desktop
+
+macosx-m1-ninja-test:
+  tags: [ "macmini-m1-xcode12-test" ]
   variables:
     CMAKE_GENERATOR: Ninja
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_LDAP=ON
