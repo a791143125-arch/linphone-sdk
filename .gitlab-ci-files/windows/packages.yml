@@ -1,10 +1,10 @@
-vs2017-nuget-windows-package:
+vs2019-nuget-windows-package:
   stage: package
   tags: [ "windows-powershell-rack" ]
   needs:
-    - vs2017-win32store-scheduled-windows
-    - vs2017-uwp-scheduled-windows
-    - vs2017-win32-scheduled-windows
+    - vs2019-win32store-scheduled-windows
+    - vs2019-uwp-scheduled-windows
+    - vs2019-win32-scheduled-windows
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_RUN_WINDOWS != null
     - if: $CI_PIPELINE_SOURCE == "schedule" && $WINDOWS_PACKAGE != null
