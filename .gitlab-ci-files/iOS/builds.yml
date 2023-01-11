@@ -117,13 +117,13 @@ ios-ninja-novideo:
   extends: ios-ninja
 
 
-ios-ninja-smallsdk:
+ios-ninja-minimal-size:
   rules:
     - if: $NIGHTLY_MASTER
     - if: $NIGHTLY_RELEASE
 
   variables:
-    CMAKE_OPTIONS: -DENABLE_VIDEO=NO -DENABLE_ADVANCED_IM=NO -DENABLE_DB_STORAGE=NO -DENABLE_FLEXIAPI=NO
+    CMAKE_OPTIONS: $MINIMAL_SIZE_CMAKE_OPTIONS
   extends: ios-ninja
 
 
