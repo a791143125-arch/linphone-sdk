@@ -1,10 +1,10 @@
-vs2017-nuget-windows-package:
+vs2019-nuget-windows-package:
   stage: package
   tags: [ "windows-powershell" ]
   needs:
-    - vs2017-win32store-scheduled-windows
-    - vs2017-uwp-scheduled-windows
-    - vs2017-win32-scheduled-windows
+    - vs2019-win32store-scheduled-windows
+    - vs2019-uwp-scheduled-windows
+    - vs2019-win32-scheduled-windows
   rules:
     - if: $DEPLOY_RUN_WINDOWS
     - if: $NIGHTLY_MASTER
