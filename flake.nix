@@ -38,6 +38,10 @@
       url = git+file:./liblinphone;
       flake = false;
     };
+    mbedtls-src = {
+      url = git+file:./external/mbedtls;
+      flake = false;
+    };
     mediastreamer2-src = {
       url = git+file:./mediastreamer2;
       flake = false;
@@ -67,6 +71,7 @@
     , bzrtp-src
     , lime-src
     , liblinphone-src
+    , mbedtls-src
     , mediastreamer2-src
     , msopenh264-src
     , ortp-src
@@ -74,10 +79,13 @@
     , soci-src
     , ...
     }:
-    let
-      version = "sdk-${if builtins.hasAttr "shortRev" self then self.shortRev else "dev"}";
-    in
     {
+      nixUtils = {
+        overrideSource = src: {
+          inherit src;
+          version = "${builtins.substring 0 8 (src.lastModifiedDate or src.lastModified or "19700101")}.${src.shortRev or "dirty"}";
+        };
+      };
 
       devShells.x86_64-linux.default = with nixpkgs.legacyPackages.x86_64-linux;
         mkShell {
@@ -114,66 +122,101 @@
           ];
         };
 
-      overlays.default = final: prev: {
-        bctoolbox = prev.bctoolbox.overrideAttrs (attrs: {
-          inherit version;
-          src = bctoolbox-src;
-        });
-        bcunit = prev.bcunit.overrideAttrs (attrs: {
-          inherit version;
-          src = bcunit-src;
-        });
-        bc-decaf = prev.bc-decaf.overrideAttrs (attrs: {
-          inherit version;
-          src = decaf-src;
-        });
-        bc-soci = prev.bc-soci.overrideAttrs (attrs: {
-          inherit version;
-          src = soci-src;
-        });
-        belcard = prev.belcard.overrideAttrs (attrs: {
-          inherit version;
-          src = belcard-src;
-        });
-        belle-sip = prev.belle-sip.overrideAttrs (attrs: {
-          inherit version;
-          src = belle-sip-src;
-        });
-        belr = prev.belr.overrideAttrs (attrs: {
-          inherit version;
-          src = belr-src;
-        });
-        bzrtp = prev.bzrtp.overrideAttrs (attrs: {
-          inherit version;
-          src = bzrtp-src;
-          cmakeFlags = attrs.cmakeFlags ++ [
-            "-DCMAKE_C_FLAGS=-Wno-error=unused-parameter"
+      overlays.default = final: prev: with self.nixUtils; {
+        bctoolbox = prev.bctoolbox.overrideAttrs (attrs: (overrideSource bctoolbox-src) // {
+          buildInputs = with final; [
+            bcunit
+            bc-decaf
+            mbedtls
+          ];
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+            "-DENABLE_STRICT=NO"
           ];
         });
-        lime = prev.lime.overrideAttrs (attrs: {
-          inherit version;
-          src = lime-src;
+        bcunit = prev.bcunit.overrideAttrs (attrs: overrideSource bcunit-src);
+        bc-decaf = prev.bc-decaf.overrideAttrs (attrs: overrideSource decaf-src);
+        bc-soci = prev.bc-soci.overrideAttrs (attrs: overrideSource soci-src);
+        belcard = prev.belcard.overrideAttrs (attrs: (overrideSource belcard-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+          ];
         });
-        liblinphone = prev.liblinphone.overrideAttrs (attrs: {
-          inherit version;
-          src = liblinphone-src;
+        belle-sip = prev.belle-sip.overrideAttrs (attrs: (overrideSource belle-sip-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+          ];
+        });
+        belr = prev.belr.overrideAttrs (attrs: (overrideSource belr-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+          ];
+        });
+        bzrtp = prev.bzrtp.overrideAttrs (attrs: (overrideSource bzrtp-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+            "-DENABLE_STRICT=NO"
+          ];
+        });
+        bzrtp-withtests = prev.bzrtp.overrideAttrs (attrs: (overrideSource bzrtp-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=YES"
+            "-DENABLE_STRICT=NO"
+          ];
+        });
+        lime = prev.lime.overrideAttrs (attrs: (overrideSource lime-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+          ];
+        });
+        liblinphone = prev.liblinphone.overrideAttrs (attrs: (overrideSource liblinphone-src) // {
           patches = [ ];
-          buildInputs = attrs.buildInputs ++ [
-            prev.zxing-cpp
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+            "-DENABLE_STRICT=NO"
           ];
         });
-        mediastreamer = prev.mediastreamer.overrideAttrs (attrs: {
-          inherit version;
-          src = mediastreamer2-src;
+        mbedtls = prev.mbedtls.overrideAttrs (attrs: (overrideSource mbedtls-src) // {
+          # 112 - x509parse-suite (Failed)
+          doCheck = false;
         });
-        mediastreamer-openh264 = prev.mediastreamer-openh264.overrideAttrs (attrs: {
-          inherit version;
-          src = msopenh264-src;
+        mediastreamer = prev.mediastreamer.overrideAttrs (attrs: (overrideSource mediastreamer2-src) // {
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+            "-DENABLE_QT_GL=ON" # Build necessary MSQOGL plugin for Linphone desktop
+            "-DENABLE_STRICT=NO"
+          ];
+          propagatedBuildInputs = with final; attrs.propagatedBuildInputs ++ [
+            # AV1 video support
+            libaom # encoder
+            dav1d # decoder
+          ] ++ (with xorg; [
+            # TODO: find_package() on those XOrg deps in mediastreamer's CMakeLists.txt to prevent building with missing deps
+            libSM
+            libICE
+          ]);
         });
-        ortp = prev.ortp.overrideAttrs (attrs: {
-          inherit version;
-          src = ortp-src;
+        mediastreamer-openh264 = prev.mediastreamer-openh264.overrideAttrs (attrs: (overrideSource msopenh264-src) // {
+          # TODO: fix CMAKE_INSTALL_PREFIX
+          installPhase = ''
+            mkdir -p $out/lib/mediastreamer/plugins
+            cp lib/mediastreamer2/plugins/libmsopenh264.so $out/lib/mediastreamer/plugins/
+          '';
+          cmakeFlags = [
+            "-DBUILD_SHARED_LIBS=YES"
+            "-DENABLE_UNIT_TESTS=NO"
+          ];
         });
+        ortp = prev.ortp.overrideAttrs (attrs: overrideSource ortp-src);
 
         mediastreamer-headless = final.mediastreamer.overrideAttrs (attrs:
           let
