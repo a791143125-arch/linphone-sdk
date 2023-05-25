@@ -181,6 +181,7 @@ vs2017-ninja-win64-windows:
 vs2017-ninja-win64-windows-pqc:
   extends: vs2017-ninja-win64-windows
   rules:
+    - !reference [.rules-merge-request-manual, rules]
     - if: $NIGHTLY_MASTER
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_PQCRYPTO=ON
@@ -225,6 +226,7 @@ vs2017-uwp-scheduled-windows:
 vs2017-uwp-scheduled-windows-pqc:
   extends: vs2017-uwp-scheduled-windows
   rules:
+    - !reference [.rules-merge-request-manual, rules]
     - if: $NIGHTLY_MASTER
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_LDAP=NO -DENABLE_PQCRYPTO=YES -DENABLE_EXAMPLE_PLUGIN=ON
@@ -248,6 +250,7 @@ vs2017-win32-scheduled-windows:
 vs2017-win32-scheduled-windows-pqc:
   extends: vs2017-win32-scheduled-windows
   rules:
+    - !reference [.rules-merge-request-manual, rules]
     - if: $NIGHTLY_MASTER
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_LDAP=NO -DENABLE_DOC=YES -DENABLE_PQCRYPTO=YES
@@ -267,6 +270,7 @@ vs2017-win32store-scheduled-windows:
 win32-vs2017-novideo-windows:
   extends: vs2017-win32-scheduled-windows
   rules:
+    - !reference [.rules-merge-request-manual, rules]
     - if: $NIGHTLY_MASTER
     - if: $NIGHTLY_RELEASE
     - if: $DEPLOY_RUN_WINDOWS
