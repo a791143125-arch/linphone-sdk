@@ -19,7 +19,7 @@ debian11-image-docker-rebuild:
     GIT_STRATEGY: fetch
     GIT_SUBMODULE_STRATEGY: none
   script:
-    - docker pull debian:buster
+    - docker pull debian:bullseye
     - cd docker-files
     - docker build -f ./bc-dev-debian11 -t gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:latestupdated --rm --no-cache .
     - docker login gitlab.linphone.org:4567
