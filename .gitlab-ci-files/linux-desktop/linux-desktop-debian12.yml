@@ -53,6 +53,8 @@ debian12-ninja-gcc:
 
   tags: [ "docker" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian12:$DEBIAN_12_IMAGE_VERSION
+  rules:
+    - !reference [.rules-merge-request-manual, rules]
   variables:
     CMAKE_GENERATOR: Ninja
     CC: gcc

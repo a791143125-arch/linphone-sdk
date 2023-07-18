@@ -10,7 +10,7 @@
     CMAKE_OPTIONS: -DENABLE_LDAP=ON
     CMAKE_PRESET: raspberrypi-0-1
   rules:
-    - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $SKIP_LINUX == null
+    #    - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $SKIP_LINUX == null
     - if: ($CI_PIPELINE_SOURCE == "schedule") && $SKIP_LINUX == null
   script:
     # rootfs is not created here but mounted as a volume

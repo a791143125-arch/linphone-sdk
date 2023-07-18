@@ -40,7 +40,7 @@
   variables:
     CMAKE_OPTIONS: -DENABLE_LDAP=ON
   rules:
-    - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $SKIP_LINUX == null
+    #    - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $SKIP_LINUX == null
     - if: ($CI_PIPELINE_SOURCE == "schedule") && $SKIP_LINUX == null
   script:
     - export CC=$CC
