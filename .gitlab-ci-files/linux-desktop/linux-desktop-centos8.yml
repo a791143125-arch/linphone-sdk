@@ -53,6 +53,8 @@ centos8-ninja-gcc:
 
   tags: [ "docker" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-centos8:$CENTOS_8_IMAGE_VERSION
+  rules:
+    - if: $NIGHTLY_MASTER
   variables:
     CMAKE_GENERATOR: Ninja
     CC: gcc

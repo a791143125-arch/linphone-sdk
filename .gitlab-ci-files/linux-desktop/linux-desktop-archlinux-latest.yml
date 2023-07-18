@@ -79,7 +79,7 @@ arch-latest-ninja-clang:
   tags: [ "docker" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-archlinux:$ARCHLINUX_IMAGE_VERSION
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_LINUX == null
+    #    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_LINUX == null
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_LINUX == null
   variables:
     CMAKE_GENERATOR: Ninja
