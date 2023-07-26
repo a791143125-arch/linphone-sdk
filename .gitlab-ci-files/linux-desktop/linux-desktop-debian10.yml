@@ -16,7 +16,7 @@
 
 debian10-makefile-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian10:$DEBIAN_10_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -31,7 +31,7 @@ debian10-makefile-gcc:
 
 debian10-makefile-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian10:$DEBIAN_10_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -51,7 +51,7 @@ debian10-makefile-clang:
 
 debian10-ninja-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian10:$DEBIAN_10_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja
@@ -91,7 +91,7 @@ debian10-ninja-gcc-pqc:
 
 debian10-ninja-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   rules:
     - if: $NIGHTLY_MASTER
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian10:$DEBIAN_10_IMAGE_VERSION

@@ -16,7 +16,7 @@
 
 #debian9-makefile-gcc:
 #
-#  tags: [ "docker" ]
+#  tags: [ "peio-aorus-docker-linux" ]
 #  image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian9:$DEBIAN_9_IMAGE_VERSION
 # rules:
 #   - if: $NIGHTLY_MASTER
@@ -31,7 +31,7 @@
 
 debian9-makefile-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian9:$DEBIAN_9_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -57,7 +57,7 @@ debian9-makefile-clang-pqc:
 
 debian9-ninja-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian9:$DEBIAN_9_IMAGE_VERSION
   variables:
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
@@ -100,7 +100,7 @@ debian9-ninja-gcc-smallsdk:
 
 #job-debian9-ninja-clang:
 
-#  tags: [ "docker" ]
+#  tags: [ "peio-aorus-docker-linux" ]
 #  rules:
 #   - if: $NIGHTLY_MASTER
 #  image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian9:$DEBIAN_9_IMAGE_VERSION

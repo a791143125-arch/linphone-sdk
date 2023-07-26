@@ -16,7 +16,7 @@
 
 debian11-makefile-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:$DEBIAN_11_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -30,7 +30,7 @@ debian11-makefile-gcc:
 
 debian11-makefile-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:$DEBIAN_11_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -49,7 +49,7 @@ debian11-makefile-clang:
 
 debian11-ninja-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:$DEBIAN_11_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja
@@ -85,7 +85,7 @@ debian11-ninja-clang:
 
   rules:
     - if: $NIGHTLY_MASTER
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:$DEBIAN_11_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja

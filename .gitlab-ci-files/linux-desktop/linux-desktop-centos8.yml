@@ -16,7 +16,7 @@
 
 centos8-makefile-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-centos8:$CENTOS_8_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -31,7 +31,7 @@ centos8-makefile-gcc:
 
 centos8-makefile-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-centos8:$CENTOS_8_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -51,7 +51,7 @@ centos8-makefile-clang:
 
 centos8-ninja-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-centos8:$CENTOS_8_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja
@@ -62,7 +62,7 @@ centos8-ninja-gcc:
 
 centos8-ninja-gcc-novideo:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   rules:
     - if: $NIGHTLY_MASTER
   variables:
@@ -71,7 +71,7 @@ centos8-ninja-gcc-novideo:
 
 centos8-ninja-gcc-pqc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   rules:
     - if: $NIGHTLY_MASTER
   variables:
@@ -80,7 +80,7 @@ centos8-ninja-gcc-pqc:
 
 centos8-ninja-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   rules:
     - if: $NIGHTLY_MASTER
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-centos8:$CENTOS_8_IMAGE_VERSION

@@ -16,7 +16,7 @@
 
 arch-latest-makefile-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-archlinux:$ARCHLINUX_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -29,7 +29,7 @@ arch-latest-makefile-gcc:
 
 arch-latest-makefile-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-archlinux:$ARCHLINUX_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -47,7 +47,7 @@ arch-latest-makefile-clang:
 
 arch-latest-ninja-gcc:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-archlinux:$ARCHLINUX_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -58,7 +58,7 @@ arch-latest-ninja-gcc:
   extends: .linux-desktop
 
 arch-latest-ninja-gcc-novideo:
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   rules:
     - if: $NIGHTLY_MASTER
   variables:
@@ -66,7 +66,7 @@ arch-latest-ninja-gcc-novideo:
   extends: arch-latest-ninja-gcc
 
 arch-latest-ninja-gcc-pqc:
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   rules:
     - if: $NIGHTLY_MASTER
   variables:
@@ -76,7 +76,7 @@ arch-latest-ninja-gcc-pqc:
 
 arch-latest-ninja-clang:
 
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-archlinux:$ARCHLINUX_IMAGE_VERSION
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_LINUX == null

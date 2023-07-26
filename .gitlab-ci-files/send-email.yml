@@ -4,7 +4,7 @@
 
 send-email-test-report:
   stage: email-notif
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
 
   needs:
     - libl-centos7-mr-test-upload

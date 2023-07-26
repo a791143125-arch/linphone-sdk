@@ -32,7 +32,7 @@
 #################################################
 
 ubuntu1804-makefile-clang:
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-18-04-lts:$UBUNTU_1804_IMAGE_VERSION
   rules:
     - if: $NIGHTLY_MASTER
@@ -56,7 +56,7 @@ ubuntu1804-makefile-clang-pqc:
 #################################################
 
 ubuntu1804-ninja-gcc:
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-18-04-lts:$UBUNTU_1804_IMAGE_VERSION
   variables:
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
