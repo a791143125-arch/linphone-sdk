@@ -1,7 +1,7 @@
-.windows-vs2017:
+windows-test-long-paths:
   extends: .job-prepare
   stage: build
-  tags: [ "windows-powershell" ]
+  tags: [ "windows-powershell-peio-hp" ]
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null
@@ -12,15 +12,68 @@
     MINGW_TYPE: mingw32
     CMAKE_GENERATOR: "Visual Studio 15 2017"
   script:
+    - mkdir -p test/test/test/test/test/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/test
+    #- Remove-Item -Recurse -Force test/test/test/test/test/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/testtest/test/test/test
+
+.windows-vs2017:
+  extends: .job-prepare
+  cache:
+    - key: windows-master
+      paths:
+        - ccache/
+  stage: build
+  tags: [ "windows-powershell-peio-hp" ]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON
+    LINPHONESDK_PLATFORM: Desktop
+    OUTPUT_ZIP_FOLDER: win32
+    MINGW_TYPE: mingw32
+    CMAKE_GENERATOR: "Visual Studio 15 2017"
+    #We can't use CMAKE_GENERATOR as it could be Ninja
+    VISUAL_STUDIO_VERSION: "15 2017"
+
+    #Misleading name, means no compression at all
+    CACHE_COMPRESSION_LEVEL: "fastest"
+    CCACHE_DIRECTORY_NAME: "ccache"
+    FF_USE_FASTZIP: 1
+
+    # Will work after the update to Gitlab 14
+    # Buggy for windows, doesn't show command launched
+    #FF_SCRIPT_SECTIONS: 1
+
+  before_script:
+    - New-Item -ItemType Directory -Path ccache -Force
+    - echo "max_size = 30G" > ccache/ccache.conf
+    - echo "log_file = ${PWD}/ccache/ccache.log" >> ccache/ccache.conf
+    - echo $CCACHE_SIZE
+    - echo ${PWD}/ccache
+    - set CCACHE_BASEDIR=${PWD}
+    - set CCACHE_DIR=${PWD}/ccache
+    - ccache -s --verbose
+
+    # We clean the cache stats because it is our only way to see the cache stats per job run (one cleaner way would be to store in a file a do the delta by hand)
+    - ccache -z
+    - ccache -s --verbose
+  script:
     - Set-Variable -Name "PATH_TEMP" -Value ($(Get-ChildItem -Path Env:\PATH).value)
     - echo $env:Path
     #Remove MinGW of MSYS from PATH and add MINGW_TYPE for MSYS2
     # We double the "\" to escape paths as -replace uses regular expressions
-    - $PATH_TEMP = $PATH_TEMP -replace "C:\\MinGW\\bin;" -replace "C:\\Strawberry\\c\\bin;" -replace "C:\\Program Files\\NASM"
+    - $PATH_TEMP = $PATH_TEMP -replace "C:\\MinGW\\bin;" -replace "C:\\Strawberry\\c\\bin;"
+    #- $PATH_TEMP = $PATH_TEMP -replace "C:\\MinGW\\bin;" -replace "C:\\Strawberry\\c\\bin;" -replace "C:\\Program Files\\NASM"
     - echo $PATH_TEMP
     - $env:Path = ($PATH_TEMP + ";C:\msys64\mingw64\bin;C:\msys64;C:\msys64\usr\bin;C:\msys64\mingw32\bin")
 
-    - If ($MINGW_TYPE -eq "mingw64") {Import-BatchEnvironment "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"} Else {Import-BatchEnvironment "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"}
+    - |
+      If ($VISUAL_STUDIO_VERSION -eq "15 2017") { If ($MINGW_TYPE -eq "mingw64") {Import-BatchEnvironment "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"; echo "debug vs2019 mingw64"} Else {Import-BatchEnvironment "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"; echo "debug vs2017 mingw32" }
+      } ElseIf ($VISUAL_STUDIO_VERSION -eq "16 2019") { If ($MINGW_TYPE -eq "mingw64") {Import-BatchEnvironment "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"; echo "debug vs2019 mingw64"} Else {Import-BatchEnvironment "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\VsDevCmd.bat"; echo "debug vs2019 mingw32" }
+      If ($MINGW_TYPE -eq "mingw64") {$env:Path = ($env:Path + ";C:\Qt\" + $env:QT_WIN_VER + "\msvc2019_64\bin")} Else {$env:Path = ($env:Path + ";C:\Qt\" + $env:QT_WIN_VER + "\msvc2019\bin")}
+      } ElseIf ($VISUAL_STUDIO_VERSION -eq "17 2022") { If ($MINGW_TYPE -eq "mingw64") {Import-BatchEnvironment "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"; echo "debug vs2022 mingw64"} Else {Import-BatchEnvironment "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"; echo "debug vs2019 mingw32" }
+      If ($MINGW_TYPE -eq "mingw64") {$env:Path = ($env:Path + ";C:\Qt\" + $env:QT_WIN_VER + "\msvc2022_64\bin")} Else {$env:Path = ($env:Path + ";C:\Qt\" + $env:QT_WIN_VER + "\msvc2022\bin")}
+      }
 
     - echo $env:Path
 
@@ -31,7 +84,7 @@
     #we launch the msvc-cl wrapper located in python scripts folder
     #this wrapper relays only needed calls to the real compiler
     #cache stats display
-    - C:\PROGRA~1\Python37\Scripts\cl -s
+    #- C:\PROGRA~1\Python37\Scripts\cl -s
     - Write-Output $CMAKE_ARCHITECTURE
     - Write-Output $SCHEDULE_CMAKE_OPTIONS
     - Write-Output $MAKEFILE_JOBS
@@ -66,7 +119,26 @@
 
     - echo $LastExitCode
 
-    - Invoke-Expression "& cmake .. -G '$CMAKE_GENERATOR' -DLINPHONESDK_PLATFORM=$LINPHONESDK_PLATFORM -DENABLE_CSHARP_WRAPPER=YES -DCMAKE_BUILD_TYPE=RelWithDebInfo $NINJA_BUILD_PARALLEL_LEVEL $NINJA_EXPLICIT_COMPILER_SET $DEFAULT_CMAKE_OPTIONS $CMAKE_OPTIONS $CMAKE_ARCHITECTURE $SCHEDULE_CMAKE_OPTIONS"
+    - echo $PATH
+    - python --version
+
+    #Debug missing environment for pystache
+    - which python
+    #- which six
+    - which pystache; echo test
+    - pystache --help; echo test
+    - python -c "import pystache"; Set-Variable -Name "PYTHON_RETURN_CODE_PYSTACHE" -Value $?
+    - echo $PYTHON_RETURN_CODE_PYSTACHE
+
+    - echo ${PWD}\cl.exe
+
+    - Invoke-Expression "echo ${PWD}\cl.exe"
+
+    - echo $MAKE_SYMBOLIC_LINK_FOR_CCACHE
+
+    - if ($MAKE_SYMBOLIC_LINK_FOR_CCACHE) { Invoke-Expression "$MAKE_SYMBOLIC_LINK_FOR_CCACHE" } else { Write-Output "MAKE_SYMBOLIC_LINK_FOR_CCACHE is null" }
+
+    - Invoke-Expression "& cmake .. -G '$CMAKE_GENERATOR' --debug-find -DLINPHONESDK_PLATFORM=$LINPHONESDK_PLATFORM -DENABLE_CSHARP_WRAPPER=YES -DCMAKE_BUILD_TYPE=RelWithDebInfo $NINJA_BUILD_PARALLEL_LEVEL $NINJA_EXPLICIT_COMPILER_SET $DEFAULT_CMAKE_OPTIONS $CMAKE_OPTIONS $CMAKE_ARCHITECTURE $SCHEDULE_CMAKE_OPTIONS"
 
     - echo $LastExitCode
 
@@ -102,11 +174,14 @@
 
     - if ($LAUNCH_SEARCH_STATUS_SCRIPT) { Invoke-Expression "$LAUNCH_SEARCH_STATUS_SCRIPT" -ErrorAction stop } else { Write-Output "LAUNCH_SEARCH_STATUS_SCRIPT is null" }
 
-    - C:\PROGRA~1\Python37\Scripts\cl -s
+    #- C:\PROGRA~1\Python37\Scripts\cl -s
     - cd linphone-sdk
     - mkdir $OUTPUT_ZIP_FOLDER
     - Copy-Item -Path "*.zip" -Destination "$CI_PROJECT_DIR/build-desktop/linphone-sdk/$OUTPUT_ZIP_FOLDER" -Recurse
 
+  after_script:
+    - set CCACHE_DIR=${PWD}/ccache
+    - ccache -s --verbose
 ################
   artifacts:
     paths:
@@ -120,8 +195,8 @@
 .windows-vs2017-ninja:
   extends: .windows-vs2017
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null
+    #- if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null && $WINDOWS_VS2017 != null
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON
     MINGW_TYPE: mingw32
@@ -139,6 +214,25 @@
     SET_EXIT_CODE_BASED_ON_SEARCH_STATUS: Write-Output -NoEnumerate "If (`$(echo `$$isFound) -eq `"True`") {throw `"There was an error in the build`"} else {exit 0}" >> invertSearch.ps1
     SHOW_SEARCH_STATUS_SCRIPT: Get-Content invertSearch.ps1
     LAUNCH_SEARCH_STATUS_SCRIPT: .\invertSearch.ps1
+    VISUAL_STUDIO_VERSION: "15 2017"
+    MAKE_SYMBOLIC_LINK_FOR_CCACHE: New-Item -Path "cl.exe" -ItemType SymbolicLink -Value C:\ProgramData\chocolatey\bin\ccache.exe -Force
+    CMAKE_VS_GLOBALS: "CLToolExe=cl.exe\r\nCLToolPath=${PWD}"
+
+.windows-vs2019-ninja:
+  extends: .windows-vs2017-ninja
+  rules:
+    #- if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null && $WINDOWS_VS2019 != null
+  variables:
+    VISUAL_STUDIO_VERSION: "16 2019"
+
+.windows-vs2022-ninja:
+  extends: .windows-vs2017-ninja
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_WINDOWS == null && $DEPLOY_RUN_WINDOWS == null && $WINDOWS_VS2022 != null
+  variables:
+    VISUAL_STUDIO_VERSION: "17 2022"
 
 .windows-vs2017-msvc:
   extends: .windows-vs2017
@@ -152,6 +246,18 @@
     PARALLEL_OPTIONS: "-- /maxcpucount /nodeReuse:true /p:TrackFileAccess=false"
     EXITS_ON_ERROR_MSVC: 'if (-not ($$LastExitCode -eq 0)) {throw "Error: Build failed"}'
 
+.windows-vs2019-msvc:
+  extends: .windows-vs2017-msvc
+  variables:
+    CMAKE_GENERATOR: "Visual Studio 16 2019"
+    VISUAL_STUDIO_VERSION: "16 2019"
+
+.windows-vs2022-msvc:
+  extends: .windows-vs2017-msvc
+  variables:
+    CMAKE_GENERATOR: "Visual Studio 17 2022"
+    VISUAL_STUDIO_VERSION: "17 2022"
+
 .windows-vs2017-scheduled:
   extends: .windows-vs2017-msvc
 
@@ -159,6 +265,33 @@
     - if: $NIGHTLY_MASTER
     - if: $NIGHTLY_RELEASE
     - if: $ENABLE_WINDOWS_TESTS
+    - if: $WINDOWS_VS2017
+
+  before_script:
+    #cache disabled on scheduled builds since we dot not need the fastest build
+    - Set-Variable -Name "CLCACHE_DISABLE" -Value 1
+
+.windows-vs2019-scheduled:
+  extends: .windows-vs2019-msvc
+
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $NIGHTLY_RELEASE
+    - if: $ENABLE_WINDOWS_TESTS
+    - if: $WINDOWS_VS2019
+
+  before_script:
+    #cache disabled on scheduled builds since we dot not need the fastest build
+    - Set-Variable -Name "CLCACHE_DISABLE" -Value 1
+
+.windows-vs2022-scheduled:
+  extends: .windows-vs2022-msvc
+
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $NIGHTLY_RELEASE
+    - if: $ENABLE_WINDOWS_TESTS
+    - if: $WINDOWS_VS2022
 
   before_script:
     #cache disabled on scheduled builds since we dot not need the fastest build
@@ -177,15 +310,68 @@ vs2017-ninja-win64-windows:
     MINGW_TYPE: mingw64
     OUTPUT_ZIP_FOLDER: win64
 
+vs2019-ninja-win64-windows:
+  extends: .windows-vs2019-ninja
+  variables:
+    CMAKE_C_COMPILER : cl.exe
+    CMAKE_CXX_COMPILER : cl.exe
+    CMAKE_RC_COMPILER : rc.exe
+    MINGW_TYPE: mingw64
+    OUTPUT_ZIP_FOLDER: win64
+
+vs2022-ninja-win64-windows:
+  extends: .windows-vs2022-ninja
+  variables:
+    CMAKE_C_COMPILER : cl.exe
+    CMAKE_CXX_COMPILER : cl.exe
+    CMAKE_RC_COMPILER : rc.exe
+    MINGW_TYPE: mingw64
+    OUTPUT_ZIP_FOLDER: win64
+
 vs2017-ninja-win64-windows-pqc:
   extends: vs2017-ninja-win64-windows
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_PQCRYPTO=ON
 
 vs2017-ninja-win32-windows:
   extends: .windows-vs2017-ninja
+  rules:
+    - if: $ENABLE_WINDOWS_TESTS_WIN32_NINJA
+  variables:
+    CMAKE_C_COMPILER : cl.exe
+    CMAKE_CXX_COMPILER : cl.exe
+    CMAKE_RC_COMPILER : rc.exe
+
+vs2019-ninja-win64-windows-pqc:
+  extends: vs2019-ninja-win64-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_PQCRYPTO=ON
+
+vs2019-ninja-win32-windows:
+  extends: .windows-vs2019-ninja
+  rules:
+    - if: $ENABLE_WINDOWS_TESTS_WIN32_NINJA
+  variables:
+    CMAKE_C_COMPILER : cl.exe
+    CMAKE_CXX_COMPILER : cl.exe
+    CMAKE_RC_COMPILER : rc.exe
+
+vs2022-ninja-win64-windows-pqc:
+  extends: vs2022-ninja-win64-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_PQCRYPTO=ON
+
+vs2022-ninja-win32-windows:
+  extends: .windows-vs2022-ninja
   rules:
     - if: $ENABLE_WINDOWS_TESTS_WIN32_NINJA
   variables:
@@ -203,6 +389,7 @@ vs2017-uwp-scheduled-windows:
   rules:
     - if: $NIGHTLY_MASTER
     - if: $NIGHTLY_RELEASE
+    - if: $WINDOWS_VS2017
     - if: $DEPLOY_RUN_WINDOWS
     - &nuget_deploy_rule
       if: $DEPLOY_RUN_NUGET
@@ -225,6 +412,71 @@ vs2017-uwp-scheduled-windows-pqc:
   extends: vs2017-uwp-scheduled-windows
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_LDAP=NO -DENABLE_PQCRYPTO=YES
+
+vs2019-uwp-scheduled-windows:
+  extends: .windows-vs2019-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $NIGHTLY_RELEASE
+    - if: $WINDOWS_VS2019
+    - if: $DEPLOY_RUN_WINDOWS
+    - &nuget_deploy_rule
+      if: $DEPLOY_RUN_NUGET
+    - if: $ENABLE_WINDOWS_UWP_TESTS
+    - if: $ENABLE_WINDOWS_TESTS
+    - &nuget_dev_rule
+      if:  $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - .gitlab-ci-files/job-windows.yml
+        - .gitlab-ci-files/job-packages.yml
+        - cmake/NuGet/Windows/**/*
+  variables:
+    LINPHONESDK_PLATFORM: UWP
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES
+    OUTPUT_ZIP_FOLDER: uwp
+    MINGW_TYPE: mingw64
+    CMAKE_GENERATOR: "Visual Studio 16 2019"
+
+vs2019-uwp-scheduled-windows-pqc:
+  extends: vs2019-uwp-scheduled-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_LDAP=NO -DENABLE_PQCRYPTO=YES
+
+vs2022-uwp-scheduled-windows:
+  extends: .windows-vs2022-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $NIGHTLY_RELEASE
+    - if: $WINDOWS_VS2022
+    - if: $DEPLOY_RUN_WINDOWS
+    - &nuget_deploy_rule
+      if: $DEPLOY_RUN_NUGET
+    - if: $ENABLE_WINDOWS_UWP_TESTS
+    - if: $ENABLE_WINDOWS_TESTS
+    - &nuget_dev_rule
+      if:  $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - .gitlab-ci-files/job-windows.yml
+        - .gitlab-ci-files/job-packages.yml
+        - cmake/NuGet/Windows/**/*
+  variables:
+    LINPHONESDK_PLATFORM: UWP
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES
+    OUTPUT_ZIP_FOLDER: uwp
+    MINGW_TYPE: mingw64
+    CMAKE_GENERATOR: "Visual Studio 17 2022"
+
+vs2022-uwp-scheduled-windows-pqc:
+  extends: vs2022-uwp-scheduled-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_LDAP=NO -DENABLE_PQCRYPTO=YES
 
@@ -232,6 +484,7 @@ vs2017-win32-scheduled-windows:
   extends: .windows-vs2017-scheduled
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
     - if: $NIGHTLY_RELEASE
     - if: $DEPLOY_RUN_WINDOWS
     - *nuget_deploy_rule
@@ -243,10 +496,44 @@ vs2017-win32-scheduled-windows:
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
     GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
 
+vs2019-win32-scheduled-windows:
+  extends: .windows-vs2019-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+    - if: $NIGHTLY_RELEASE
+    - if: $DEPLOY_RUN_WINDOWS
+    - *nuget_deploy_rule
+    - *nuget_dev_rule
+  variables:
+    CMAKE_ARCHITECTURE : -A Win32
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_DOC=YES
+    OUTPUT_ZIP_FOLDER: win32
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
+
+vs2022-win32-scheduled-windows:
+  extends: .windows-vs2022-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
+    - if: $NIGHTLY_RELEASE
+    - if: $DEPLOY_RUN_WINDOWS
+    - *nuget_deploy_rule
+    - *nuget_dev_rule
+  variables:
+    CMAKE_ARCHITECTURE : -A Win32
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_DOC=YES
+    OUTPUT_ZIP_FOLDER: win32
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
+
+
 vs2017-win64-scheduled-windows:
   extends: .windows-vs2017-scheduled
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
     - if: $NIGHTLY_RELEASE
     - if: $UPLOAD_CS_DOC
     - if: $DEPLOY_RUN_WINDOWS
@@ -260,10 +547,63 @@ vs2017-win64-scheduled-windows:
     GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
     CMAKE_GENERATOR: "Visual Studio 15 2017 Win64"
 
+vs2019-win64-scheduled-windows:
+  extends: .windows-vs2019-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+    - if: $NIGHTLY_RELEASE
+    - if: $UPLOAD_CS_DOC
+    - if: $DEPLOY_RUN_WINDOWS
+    - *nuget_deploy_rule
+    - *nuget_dev_rule
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_DOC=YES
+    MINGW_TYPE: mingw64
+    OUTPUT_ZIP_FOLDER: win64
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
+    CMAKE_GENERATOR: "Visual Studio 16 2019"
+
+vs2022-win64-scheduled-windows:
+  extends: .windows-vs2022-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
+    - if: $NIGHTLY_RELEASE
+    - if: $UPLOAD_CS_DOC
+    - if: $DEPLOY_RUN_WINDOWS
+    - *nuget_deploy_rule
+    - *nuget_dev_rule
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_DOC=YES
+    MINGW_TYPE: mingw64
+    OUTPUT_ZIP_FOLDER: win64
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
+    CMAKE_GENERATOR: "Visual Studio 17 2022"
+
 vs2017-win32-scheduled-windows-pqc:
   extends: vs2017-win32-scheduled-windows
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_LDAP=NO -DENABLE_DOC=YES -DENABLE_PQCRYPTO=YES
+
+vs2019-win32-scheduled-windows-pqc:
+  extends: vs2019-win32-scheduled-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+  variables:
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_LDAP=NO -DENABLE_DOC=YES -DENABLE_PQCRYPTO=YES
+
+vs2022-win32-scheduled-windows-pqc:
+  extends: vs2022-win32-scheduled-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
   variables:
     CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES -DENABLE_LDAP=NO -DENABLE_DOC=YES -DENABLE_PQCRYPTO=YES
 
@@ -271,6 +611,33 @@ vs2017-win32store-scheduled-windows:
   extends: .windows-vs2017-scheduled
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
+    - if: $NIGHTLY_RELEASE
+    - if: $DEPLOY_RUN_WINDOWS
+    - *nuget_deploy_rule
+    - *nuget_dev_rule
+  variables:
+    CMAKE_OPTIONS: -DCMAKE_TOOLCHAIN_FILE=../cmake-builder/toolchains/toolchain-windows-store.cmake  -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES
+    OUTPUT_ZIP_FOLDER: win32store
+
+vs2019-win32store-scheduled-windows:
+  extends: .windows-vs2019-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+    - if: $NIGHTLY_RELEASE
+    - if: $DEPLOY_RUN_WINDOWS
+    - *nuget_deploy_rule
+    - *nuget_dev_rule
+  variables:
+    CMAKE_OPTIONS: -DCMAKE_TOOLCHAIN_FILE=../cmake-builder/toolchains/toolchain-windows-store.cmake  -DENABLE_UNIT_TESTS=YES -DENABLE_FFMPEG=YES -DENABLE_OPENH264=YES -DENABLE_NON_FREE_CODECS=YES
+    OUTPUT_ZIP_FOLDER: win32store
+
+vs2022-win32store-scheduled-windows:
+  extends: .windows-vs2022-scheduled
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
     - if: $NIGHTLY_RELEASE
     - if: $DEPLOY_RUN_WINDOWS
     - *nuget_deploy_rule
@@ -283,6 +650,29 @@ win32-vs2017-novideo-windows:
   extends: vs2017-win32-scheduled-windows
   rules:
     - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2017
+    - if: $NIGHTLY_RELEASE
+    - if: $DEPLOY_RUN_WINDOWS
+
+  variables:
+    CMAKE_OPTIONS: -DENABLE_VIDEO=NO
+
+win32-vs2019-novideo-windows:
+  extends: vs2019-win32-scheduled-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2019
+    - if: $NIGHTLY_RELEASE
+    - if: $DEPLOY_RUN_WINDOWS
+
+  variables:
+    CMAKE_OPTIONS: -DENABLE_VIDEO=NO
+
+win32-vs2022-novideo-windows:
+  extends: vs2022-win32-scheduled-windows
+  rules:
+    - if: $NIGHTLY_MASTER
+    - if: $WINDOWS_VS2022
     - if: $NIGHTLY_RELEASE
     - if: $DEPLOY_RUN_WINDOWS
 
