@@ -1,17 +1,17 @@
 ################################################################################
 #
 #  Copyright (c) 2010-2021 Belledonne Communications SARL.
-# 
+#
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
@@ -91,6 +91,12 @@ ExternalProject_Add(sdk
 	CMAKE_CACHE_ARGS ${_inherited_cmake_args}
 	INSTALL_COMMAND ${_install_command}
 )
+
+string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+
 ExternalProject_Add_Step(sdk force_build
 	COMMENT "Forcing build for 'desktop'"
 	DEPENDEES configure
@@ -126,7 +132,7 @@ if(WIN32 AND ENABLE_CSHARP_WRAPPER)
 			INSTALL_COMMAND ${CMAKE_COMMAND} -E echo ""
 		)
 	endif()
-	
+
 	ExternalProject_Add_Step(${last_target} compress
 		COMMENT "Generating the SDK (zip file)"
 		DEPENDEES install
@@ -134,8 +140,8 @@ if(WIN32 AND ENABLE_CSHARP_WRAPPER)
 		"-P" "${LINPHONESDK_DIR}/cmake/Windows/GenerateSDK.cmake"
 		ALWAYS 1
 	)
-else()	
-	
+else()
+
 	if(APPLE)
 		add_custom_command(TARGET sdk
 			COMMENT "Clean the SDK zip file"
@@ -143,7 +149,7 @@ else()
 			"-P" "${LINPHONESDK_DIR}/cmake/macos/CleanSDK.cmake"
 		)
 	endif()
-	
+
 	if(APPLE)
 		set(LINPHONESDK_MACOS_BASE_URL "https://www.linphone.org/releases/macosx/sdk" CACHE STRING "URL of the repository where the macos SDK zip files are located")
 		add_custom_command(TARGET sdk
@@ -153,11 +159,11 @@ else()
 		)
 	elseif(WIN32)
 		set(LINPHONESDK_WINDOWS_BASE_URL "https://www.linphone.org/releases/windows/sdk" CACHE STRING "URL of the repository where the Windows SDK zip files are located")
-		
+
 		add_custom_command(TARGET sdk
 			COMMENT "Generating the SDK (zip file)"
 			COMMAND "${CMAKE_COMMAND}" "-DLINPHONESDK_PLATFORM=${PLATFORM_NAME}" "-DLINPHONESDK_DIR=${LINPHONESDK_DIR}" "-DLINPHONESDK_BUILD_DIR=${CMAKE_BINARY_DIR}/linphone-sdk" "-DLINPHONESDK_VERSION=${LINPHONESDK_VERSION}" "-DLINPHONESDK_STATE=${LINPHONESDK_STATE}" "-DLINPHONESDK_WINDOWS_BASE_URL=${LINPHONESDK_WINDOWS_BASE_URL}" "-DLINPHONESDK_ENABLED_FEATURES_FILENAME=${CMAKE_BINARY_DIR}/enabled_features.txt" "-DCMAKE_INSTALL_PREFIX=${_desktop_install_prefix}" "-DENABLE_EMBEDDED_OPENH264=${ENABLE_EMBEDDED_OPENH264}"
 			"-P" "${LINPHONESDK_DIR}/cmake/Windows/GenerateSDK.cmake"
 		)
 	endif()
-endif()	
+endif()
