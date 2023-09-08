@@ -44,6 +44,7 @@ rocky8-ninja-gcc:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_LINUX == null
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_LINUX == null
   variables:
+    CMAKE_SANITIZER_OPTIONS: -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=On -DOPTIMIZE_SANITIZED_BUILD=On
     CMAKE_GENERATOR: Ninja
     CC: gcc
     CXX: g++
