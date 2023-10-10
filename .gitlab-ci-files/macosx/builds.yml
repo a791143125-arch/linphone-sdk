@@ -1,7 +1,7 @@
 .macosx-desktop:
   extends: .job-prepare
   stage: build
-  tags: [ "macos-xcode13" ]
+  tags: [ "macos-xcode15" ]
 
   rules:
     - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $DOCKER_UPDATE == null && $SKIP_MACOSX == null
@@ -18,21 +18,12 @@
     # We clean the cache stats because it is our only way to see the cache stats per job run (one cleaner way would be to store in a file a do the delta by hand)
     - ccache -z
     - ccache -s --verbose
+    - ccache -p
 
   after_script:
     #Mandatory, as variable export is not kept between before_script/script and after script
     - export CCACHE_DIR=~/Library/Preferences/ccache-linphone-sdk-master
     - ccache -s --verbose
-
-  before_script:
-    - ccache -s
-
-    # We clean the cache stats because it is our only way to see the cache stats per job run (one cleaner way would be to store in a file a do the delta by hand)
-    - ccache -z
-    - ccache -s
-
-  after_script:
-    - ccache -s
 
   script:
     - !reference [.set-max-jobs-unix, script]
@@ -63,7 +54,7 @@
     expire_in: 1 week
 
 .macosx-m1-multiarch-desktop:
-  tags: [ "macosx-min-xcode12.2" ]
+  tags: [ "macos-xcode15" ]
   variables:
     LINPHONESDK_MACOS_ARCHS: "arm64, x86_64"
   extends: .macosx-desktop
@@ -133,6 +124,7 @@ macosx-ninja-novideo:
 
 
 macosx-xcode:
+  tags: [ "macos-xcode14" ]
   extends: .macosx-desktop
   variables:
     CMAKE_GENERATOR: Xcode

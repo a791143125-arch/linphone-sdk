@@ -64,8 +64,8 @@
 
 ios-xcode-upload-xcode12:
   extends: .ios-xcode-podspec-upload
-  tags: [ "macosx-min-xcode12.2-upload" ]
+  tags: [ "macos-xcode14" ]
 
 ios-xcode-novideo-upload-xcode12:
   extends: .ios-xcode-novideo-upload
-  tags: [ "macosx-min-xcode12.2-upload" ]
+  tags: [ "macos-xcode14" ]

@@ -1,6 +1,6 @@
 macosx-upload:
   stage: deploy
-  tags: [ "macos-xcode13" ]
+  tags: [ "macos-xcode14" ]
 
   rules:
     - if: $DEPLOY_RUN_MACOSX

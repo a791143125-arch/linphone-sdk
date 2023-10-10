@@ -51,6 +51,7 @@
     # We clean the cache stats because it is our only way to see the cache stats per job run (one cleaner way would be to store in a file a do the delta by hand)
     - ccache -z
     - ccache -s --verbose || ccache -s
+    - ccache -p
 
     ##
     ## Set max number of jobs

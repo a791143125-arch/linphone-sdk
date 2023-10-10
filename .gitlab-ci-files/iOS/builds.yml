@@ -2,7 +2,7 @@
 
   extends: .job-prepare
   stage: build
-  tags: [ "macosx-min-xcode12.2" ]
+  tags: [ "macos-xcode15" ]
 
   before_script:
     - export CCACHE_BASEDIR=${PWD}
@@ -12,6 +12,7 @@
     # We clean the cache stats because it is our only way to see the cache stats per job run (one cleaner way would be to store in a file a do the delta by hand)
     - ccache -z
     - ccache -s --verbose
+    - ccache -p
 
   after_script:
     #Mandatory to specify it to show accurate stats, as variable export is not kept between before_script/script and after script
@@ -144,6 +145,7 @@ ios-ninja-pqc:
 # XCode
 #################################################
 ios-xcode:
+  tags: [ "macos-xcode14" ]
   rules:
     - !reference [.rules-merge-request-manual, rules]
     - if: $NIGHTLY_MASTER
