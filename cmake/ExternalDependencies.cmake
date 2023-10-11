@@ -1,8 +1,8 @@
-############################################################################
+# ###########################################################################
 # ExternalDependencies.cmake
 # Copyright (C) 2010-2023  Belledonne Communications, Grenoble France
 #
-############################################################################
+# ###########################################################################
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -18,17 +18,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
-############################################################################
+# ###########################################################################
 
 include(ExternalProject)
 include(GNUInstallDirs)
 
-
-############################################################################
+# ###########################################################################
 # Define options to choose between building or finding external
 # dependencies on the system
-############################################################################
-
+# ###########################################################################
 cmake_dependent_option(BUILD_AOM "Build aom library source code from submodule instead of searching it in system libraries" ON "ENABLE_AV1" OFF)
 
 cmake_dependent_option(BUILD_BV16 "Build bv16 library source code from submodule instead of searching it in system libraries." ON "ENABLE_BV16" OFF)
@@ -105,29 +103,31 @@ cmake_dependent_option(BUILD_ZLIB_SHARED_LIBS "Choose to build shared or static 
 cmake_dependent_option(BUILD_ZXINGCPP "Build zxing-cpp library source code from submodule instead of searching it in system libraries." ON "ENABLE_QRCODE" OFF)
 cmake_dependent_option(BUILD_ZXINGCPP_SHARED_LIBS "Choose to build shared or static zxing-cpp library." ${BUILD_SHARED_LIBS} "BUILD_ZXINGCPP" OFF)
 
-
-############################################################################
+# ###########################################################################
 # Define utility functions
-############################################################################
-
+# ###########################################################################
 function(convert_to_string INPUT_LIST OUTPUT_STRING)
 	set(VALUE "")
+
 	foreach(INPUT ${INPUT_LIST})
 		set(VALUE "${VALUE} \"${INPUT}\"")
 	endforeach()
+
 	set("${OUTPUT_STRING}" "${VALUE}" PARENT_SCOPE)
 endfunction()
 
 function(generate_autotools_configuration)
 	if(MSVC)
 		set(GENERATOR "MSYS Makefiles")
+
 		if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		    set(MAKE_PROGRAM "make")
-		    set(MINGW_SHELL_TYPE "mingw64")
+			set(MAKE_PROGRAM "make")
+			set(MINGW_SHELL_TYPE "mingw64")
 		else()
-		    set(MAKE_PROGRAM "mingw32-make")
-		    set(MINGW_SHELL_TYPE "mingw32")
+			set(MAKE_PROGRAM "mingw32-make")
+			set(MINGW_SHELL_TYPE "mingw32")
 		endif()
+
 		# On some environnements, MSVC compilers are still used. Force them to gcc and let cmake find them in PATH
 		set(AUTOTOOLS_COMMAND ${CMAKE_COMMAND} -G "${GENERATOR}"
 			"-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}.exe"
@@ -139,19 +139,23 @@ function(generate_autotools_configuration)
 		set(GENERATOR "${CMAKE_GENERATOR}")
 		set(AUTOTOOLS_COMMAND ${CMAKE_COMMAND} -G "${GENERATOR}")
 	endif()
-	
+
 	if(CMAKE_TOOLCHAIN_FILE)
 		list(APPEND AUTOTOOLS_COMMAND "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 	endif()
+
 	if(CMAKE_OSX_ARCHITECTURES)
 		list(APPEND AUTOTOOLS_COMMAND "-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}")
 	endif()
+
 	if(CMAKE_C_COMPILER_LAUNCHER)
 		list(APPEND AUTOTOOLS_COMMAND "-DCMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER}")
 	endif()
+
 	if(CMAKE_CXX_COMPILER_LAUNCHER)
 		list(APPEND AUTOTOOLS_COMMAND "-DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER}")
 	endif()
+
 	list(APPEND AUTOTOOLS_COMMAND
 		"-DAUTOTOOLS_AS_FLAGS=${AUTOTOOLS_AS_FLAGS}"
 		"-DAUTOTOOLS_C_FLAGS=${AUTOTOOLS_C_FLAGS}"
@@ -172,17 +176,21 @@ function(get_relative_source_path SOURCE_PATH BUILD_PATH RELATIVE_PATH_VAR)
 	set(IDX 1)
 	string(LENGTH "${SOURCE_PATH}" SOURCE_PATH_LENGTH)
 	string(LENGTH "${BUILD_PATH}" BUILD_PATH_LENGTH)
+
 	while(COMMON AND NOT_FINISHED)
 		string(SUBSTRING "${SOURCE_PATH}" 0 ${IDX} COMMON_SOURCE_PATH)
 		string(SUBSTRING "${BUILD_PATH}" 0 ${IDX} COMMON_BUILD_PATH)
 		math(EXPR IDX "${IDX}+1")
+
 		if(NOT COMMON_SOURCE_PATH STREQUAL COMMON_BUILD_PATH)
 			set(COMMON FALSE)
 		endif()
-		if((IDX EQUAL SOURCE_PATH_LENGTH) OR (IDX EQUAL BUILD_PATH_LENGTH))
+
+		if((IDX EQUAL SOURCE_PATH_LENGTH) OR(IDX EQUAL BUILD_PATH_LENGTH))
 			set(NOT_FINISHED FALSE)
 		endif()
 	endwhile()
+
 	math(EXPR IDX "${IDX}-2")
 	math(EXPR RELATIVE_SOURCE_PATH_LENGTH "${SOURCE_PATH_LENGTH}-${IDX}")
 	math(EXPR RELATIVE_BUILD_PATH_LENGTH "${BUILD_PATH_LENGTH}-${IDX}")
@@ -190,6 +198,7 @@ function(get_relative_source_path SOURCE_PATH BUILD_PATH RELATIVE_PATH_VAR)
 	string(SUBSTRING "${BUILD_PATH}" ${IDX} ${RELATIVE_BUILD_PATH_LENGTH} RELATIVE_BUILD_PATH)
 	set(UPDIRS "")
 	string(FIND "${RELATIVE_BUILD_PATH}" "/" IDX)
+
 	while(IDX GREATER -1)
 		string(CONCAT UPDIRS "${UPDIRS}" "../")
 		math(EXPR IDX "${IDX}+1")
@@ -197,49 +206,50 @@ function(get_relative_source_path SOURCE_PATH BUILD_PATH RELATIVE_PATH_VAR)
 		string(SUBSTRING "${RELATIVE_BUILD_PATH}" ${IDX} ${RELATIVE_BUILD_PATH_LENGTH} RELATIVE_BUILD_PATH)
 		string(FIND "${RELATIVE_BUILD_PATH}" "/" IDX)
 	endwhile()
+
 	if(RELATIVE_BUILD_PATH)
 		string(CONCAT UPDIRS "${UPDIRS}" "../")
 	endif()
+
 	set("${RELATIVE_PATH_VAR}" "${UPDIRS}/${RELATIVE_SOURCE_PATH}" PARENT_SCOPE)
 endfunction()
 
-
-############################################################################
+# ###########################################################################
 # Prepare the build system for the inclusion of external projects
-############################################################################
-
+# ###########################################################################
 if(BUILD_FFMPEG OR BUILD_LIBVPX OR BUILD_OPENH264)
 	generate_autotools_configuration()
 endif()
 
-
-############################################################################
+# ###########################################################################
 # Add external dependencies as subdirectories or external projects
 #
 # This process uses functions to prevent polluting the top level CMake
 # scope with variables that are only meant to be defined for the external
 # projects
-############################################################################
-
+# ###########################################################################
 if(ANDROID)
 	function(add_cpufeatures)
 		add_subdirectory("cmake/Android/cpufeatures")
 		add_dependencies(sdk cpufeatures)
 	endfunction()
+
 	add_cpufeatures()
 
-	function(add_support)
-		add_subdirectory("cmake/Android/support")
-		add_dependencies(sdk support)
-	endfunction()
-	add_support()
+	if(CMAKE_ANDROID_NDK_VERSION VERSION_LESS 26)
+		function(add_support)
+			add_subdirectory("cmake/Android/support")
+			add_dependencies(sdk support)
+		endfunction()
+
+		add_support()
+	endif()
 endif()
 
 if(BUILD_AOM)
 	function(add_aom)
 		# Use an ExternalProject here instead of adding the subdirectory because aom has a weird way of defining options
 		# and some of them are set in cache with a default value not corresponding to reality that conflicts with other projects.
-
 		if(CCACHE_PROGRAM)
 			set(ENABLE_CCACHE ON)
 		else()
@@ -251,6 +261,7 @@ if(BUILD_AOM)
 		else()
 			set(AOM_LOCATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libaom.a")
 		endif()
+
 		set(AOM_BYPRODUCTS ${AOM_LOCATION})
 
 		ExternalProject_Add(libaom
@@ -272,6 +283,7 @@ if(BUILD_AOM)
 		set_target_properties(aom PROPERTIES IMPORTED_LOCATION ${AOM_LOCATION} INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
 		add_dependencies(aom libaom)
 	endfunction()
+
 	add_aom()
 endif()
 
@@ -282,12 +294,14 @@ if(BUILD_BV16)
 		add_subdirectory("external/bv16-floatingpoint")
 		add_dependencies(sdk bv16)
 	endfunction()
+
 	add_bv16()
 endif()
 
 if(BUILD_CODEC2)
 	function(add_codec2)
 		set(BUILD_SHARED_LIBS ${BUILD_CODEC2_SHARED_LIBS})
+
 		if(ANDROID)
 			set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math")
 		endif()
@@ -296,6 +310,7 @@ if(BUILD_CODEC2)
 		add_subdirectory("external/codec2")
 		add_dependencies(sdk codec2)
 	endfunction()
+
 	add_codec2()
 endif()
 
@@ -308,6 +323,7 @@ if(BUILD_DAV1D)
 		set(EP_PROGRAM_PATH "$PATH")
 
 		set(EP_ADDITIONAL_OPTIONS "-Denable_tools=false -Denable_tests=false")
+
 		if(NOT BUILD_DAV1D_SHARED_LIBS)
 			set(EP_ADDITIONAL_OPTIONS "${EP_ADDITIONAL_OPTIONS} --default-library=static")
 		endif()
@@ -349,6 +365,7 @@ if(BUILD_DAV1D)
 					endif()
 
 					string(REGEX MATCH "^(arm*|aarch64)" ARM_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+
 					if(ARM_ARCH AND NOT ${XCODE_VERSION} VERSION_LESS 7)
 						set(EP_ADDITIONAL_FLAGS ", '-fembed-bitcode'")
 					endif()
@@ -396,6 +413,7 @@ if(BUILD_DAV1D)
 		set_target_properties(libdav1d PROPERTIES IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/${EP_LIBRARY_NAME}" INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
 		add_dependencies(libdav1d dav1d)
 	endfunction()
+
 	add_dav1d()
 endif()
 
@@ -408,16 +426,19 @@ if(BUILD_DECAF)
 			set(ENABLE_SHARED OFF)
 			set(ENABLE_STATIC ON)
 		endif()
+
 		set(ENABLE_STRICT OFF)
 
 		set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Prevent project from overriding the options we just set here
 		add_subdirectory("external/decaf")
+
 		if(ENABLE_SHARED)
 			add_dependencies(sdk decaf)
 		else()
 			add_dependencies(sdk decaf-static)
 		endif()
 	endfunction()
+
 	add_decaf()
 endif()
 
@@ -452,6 +473,7 @@ if(BUILD_FFMPEG)
 			"--disable-everything"
 			"--enable-decoder=mjpeg"
 			"--enable-encoder=mjpeg"
+
 			# Disable video acceleration support for compatibility with older Mac OS X versions (vda, vaapi, vdpau).
 			"--disable-vda"
 			"--disable-vaapi"
@@ -462,31 +484,40 @@ if(BUILD_FFMPEG)
 			"--extra-cxxflags=\$CXXFLAGS"
 			"--extra-ldflags=\$LDFLAGS"
 		)
+
 		if(NOT WIN32)
 			list(APPEND EP_CONFIGURE_OPTIONS "--cc=\$CC")
 		else()
 			list(APPEND EP_CONFIGURE_OPTIONS "--cc=gcc")
 		endif()
+
 		if(ENABLE_H263 OR IOS)
 			list(APPEND EP_CONFIGURE_OPTIONS "--enable-decoder=h263" "--enable-encoder=h263")
 		endif()
+
 		if(ENABLE_H263P OR IOS)
 			list(APPEND EP_CONFIGURE_OPTIONS "--enable-encoder=h263p")
 		endif()
+
 		if(ENABLE_MPEG4 OR IOS)
 			list(APPEND EP_CONFIGURE_OPTIONS "--enable-decoder=mpeg4" "--enable-encoder=mpeg4")
 		endif()
+
 		set(EP_LINKING_TYPE "--disable-static" "--enable-shared")
 		set(EP_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+
 		if(WIN32)
 			set(EP_TARGET_OS "mingw32")
 			set(EP_ARCH "i386")
+
 			if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
 				set(EP_ARCH "x86_64")
 			endif()
+
 			list(APPEND EP_CFLAGS "-include windows.h")
 			list(APPEND EP_LDFLAGS "-static-libgcc")
 			list(APPEND EP_CONFIGURE_OPTIONS "--enable-runtime-cpudetect")
+
 			if(CMAKE_BUILD_PARALLEL_LEVEL)
 				list(APPEND EP_MAKE_OPTIONS "-j${CMAKE_BUILD_PARALLEL_LEVEL}")
 			endif()
@@ -503,30 +534,36 @@ if(BUILD_FFMPEG)
 						"--sysroot=${CMAKE_OSX_SYSROOT}"
 					)
 					list(APPEND EP_MAKE_OPTIONS "RANLIB=\"\$RANLIB\"")
+
 					if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 						set(EP_ARCH "arm64")
 					else()
 						set(EP_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
 					endif()
+
 					if(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7")
 						list(APPEND EP_CONFIGURE_OPTIONS "--enable-neon" "--cpu=cortex-a8" "--disable-armv5te" "--enable-armv6" "--enable-armv6t2")
 					endif()
 				else()
 					set(EP_TARGET_OS "macos")
+
 					if(CMAKE_OSX_DEPLOYMENT_TARGET)
 						set(FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 					else()
 						set(FLAGS "")
 					endif()
+
 					list(APPEND EP_CFLAGS "--target=${CMAKE_C_COMPILER_TARGET} ${FLAGS}")
 					list(APPEND EP_CPPFLAGS "--target=${CMAKE_C_COMPILER_TARGET} ${FLAGS}")
 					list(APPEND EP_CXXFLAGS "--target=${CMAKE_C_COMPILER_TARGET} ${FLAGS}")
 					list(APPEND EP_LDFLAGS "--target=${CMAKE_C_COMPILER_TARGET} ${FLAGS}")
+
 					if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
 						set(EP_TARGET_OS "macos11")
-						list(APPEND EP_CONFIGURE_OPTIONS "--disable-asm") #because of gas-preprocessor error
+						list(APPEND EP_CONFIGURE_OPTIONS "--disable-asm") # because of gas-preprocessor error
 						list(APPEND EP_CONFIGURE_OPTIONS "--cc=$CC")
 					endif()
+
 					list(APPEND EP_CONFIGURE_OPTIONS
 						"--enable-runtime-cpudetect"
 						"--sysroot=${CMAKE_OSX_SYSROOT}"
@@ -545,11 +582,13 @@ if(BUILD_FFMPEG)
 				set(EP_TARGET_OS "linux")
 				set(EP_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
 				list(APPEND EP_MAKE_OPTIONS "RANLIB=\"\$RANLIB\"")
+
 				if(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7-a")
 					list(APPEND EP_CONFIGURE_OPTIONS "--enable-neon" "--cpu=cortex-a8" "--disable-armv5te" "--enable-armv6" "--enable-armv6t2")
 				else()
 					list(APPEND EP_CONFIGURE_OPTIONS "--disable-mmx" "--disable-sse2" "--disable-ssse3" "--disable-asm")
 				endif()
+
 				if(CMAKE_C_COMPILER_TARGET) # When building with clang
 					list(APPEND EP_CONFIGURE_OPTIONS "--extra-cflags=--target=${CMAKE_C_COMPILER_TARGET} --gcc-toolchain=${_ANDROID_TOOL_C_COMPILER_EXTERNAL_TOOLCHAIN}")
 					list(APPEND EP_CONFIGURE_OPTIONS "--extra-ldflags=--target=${CMAKE_C_COMPILER_TARGET} --gcc-toolchain=${_ANDROID_TOOL_C_COMPILER_EXTERNAL_TOOLCHAIN}")
@@ -557,6 +596,7 @@ if(BUILD_FFMPEG)
 			else()
 				set(EP_TARGET_OS "linux")
 				list(APPEND EP_CONFIGURE_OPTIONS "--enable-runtime-cpudetect")
+
 				if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7")
 					list(APPEND EP_CONFIGURE_OPTIONS "--cpu=cortex-a8" "--enable-fft")
 					list(APPEND EP_CFLAGS "-mfpu=neon")
@@ -603,6 +643,7 @@ if(BUILD_FFMPEG)
 			set(SWRESAMPLE_IMPORTED_LOCATION "${CMAKE_INSTALL_FULL_LIBDIR}/libswresample.so")
 			set(SWSCALE_IMPORTED_LOCATION "${CMAKE_INSTALL_FULL_LIBDIR}/libswscale.so")
 		endif()
+
 		set(FFMPEG_BYPRODUCTS
 			"${AVCODEC_IMPORTED_LOCATION}" "${AVUTIL_IMPORTED_LOCATION}"
 			"${SWRESAMPLE_IMPORTED_LOCATION}" "${SWSCALE_IMPORTED_LOCATION}"
@@ -633,6 +674,7 @@ if(BUILD_FFMPEG)
 		add_dependencies(swresample ffmpeg)
 		add_dependencies(swscale ffmpeg)
 	endfunction()
+
 	add_ffmpeg()
 endif()
 
@@ -643,6 +685,7 @@ if(BUILD_GSM)
 		add_subdirectory("external/gsm")
 		add_dependencies(sdk gsm)
 	endfunction()
+
 	add_gsm()
 endif()
 
@@ -657,17 +700,20 @@ if(BUILD_JSONCPP)
 			set(BUILD_STATIC_LIBS ON)
 			set(BUILD_OBJECT_LIBS OFF)
 		endif()
+
 		set(JSONCPP_WITH_TESTS OFF)
 		set(JSONCPP_WITH_POST_BUILD_UNITTEST OFF)
 		set(JSONCPP_WITH_PKGCONFIG_SUPPORT OFF)
 
 		add_subdirectory("external/jsoncpp")
+
 		if(BUILD_JSONCPP_SHARED_LIBS)
 			add_dependencies(sdk jsoncpp_lib)
 		else()
 			add_dependencies(sdk jsoncpp_static)
 		endif()
 	endfunction()
+
 	add_jsoncpp()
 endif()
 
@@ -678,9 +724,11 @@ if(BUILD_LIBJPEGTURBO)
 		else()
 			set(BUILD_SHARED_LIBS OFF)
 		endif()
+
 		add_subdirectory("external/libjpeg-turbo")
 		add_dependencies(sdk turbojpeg)
 	endfunction()
+
 	add_libjpegturbo()
 endif()
 
@@ -694,6 +742,7 @@ if(BUILD_LIBOQS)
 		add_subdirectory("external/liboqs")
 		add_dependencies(sdk oqs)
 	endfunction()
+
 	add_liboqs()
 endif()
 
@@ -708,6 +757,7 @@ if(BUILD_LIBVPX)
 		set(EP_INSTALL_TARGET "install")
 		set(EP_CONFIGURE_OPTIONS)
 		set(EP_CROSS_COMPILATION_OPTIONS)
+
 		# BUILD_ROOT is set by Xcode, but we still need the current build root.
 		# See https://gitlab.linphone.org/BC/public/external/libvpx/blob/v1.7.0-linphone/build/make/Makefile
 		set(EP_MAKE_OPTIONS "BUILD_ROOT=.")
@@ -733,9 +783,11 @@ if(BUILD_LIBVPX)
 			"--as=yasm"
 		)
 		string(FIND "${CMAKE_C_COMPILER_LAUNCHER}" "ccache" CCACHE_ENABLED)
+
 		if(NOT "${CCACHE_ENABLED}" STREQUAL "-1")
 			list(APPEND EP_CONFIGURE_OPTIONS "--enable-ccache")
 		endif()
+
 		if(WIN32)
 			if(MSVC)
 				if(CMAKE_GENERATOR MATCHES "^Visual Studio")
@@ -744,7 +796,7 @@ if(BUILD_LIBVPX)
 				else()
 					if("${MSVC_TOOLSET_VERSION}" STREQUAL "142")
 						set(VS_VERSION "16")
-					elseif( "${MSVC_TOOLSET_VERSION}" STREQUAL "141")
+					elseif("${MSVC_TOOLSET_VERSION}" STREQUAL "141")
 						set(VS_VERSION "15")
 					elseif("${MSVC_TOOLSET_VERSION}" STREQUAL "140")
 						set(VS_VERSION "14")
@@ -752,13 +804,15 @@ if(BUILD_LIBVPX)
 						set(VS_VERSION "15")
 					endif()
 				endif()
+
 				if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-			    set(EP_TARGET "x86_64-win64-vs${VS_VERSION}")
+					set(EP_TARGET "x86_64-win64-vs${VS_VERSION}")
 					set(EP_INSTALL_SUBDIR "x64")
 				else()
-			    set(EP_TARGET "x86-win32-vs${VS_VERSION}")
+					set(EP_TARGET "x86-win32-vs${VS_VERSION}")
 					set(EP_INSTALL_SUBDIR "Win32")
 				endif()
+
 				message(STATUS "Build VPX with configuration: ${EP_TARGET}")
 				execute_process(COMMAND "cmd.exe" "/c" "${PROJECT_SOURCE_DIR}/cmake/Windows/windows_env.bat" "${VS_VERSION}"
 					WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
@@ -770,12 +824,13 @@ if(BUILD_LIBVPX)
 				file(READ "${PROJECT_BINARY_DIR}/windowsenv_libpath.txt" EP_ENV_LIBPATH)
 				string(REPLACE "\n" "" EP_ENV_LIBPATH "${EP_ENV_LIBPATH}")
 			else()
-		    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+				if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 					set(EP_TARGET "x86_64-win64-gcc")
-		    else()
+				else()
 					set(EP_TARGET "x86-win32-gcc")
-		    endif()
+				endif()
 			endif()
+
 			set(EP_LINKING_TYPE "--enable-static" "--disable-shared" "--enable-pic")
 		elseif(APPLE)
 			if(IOS)
@@ -793,6 +848,7 @@ if(BUILD_LIBVPX)
 				string(REPLACE "." ";" VERSION_LIST ${CMAKE_OSX_DEPLOYMENT_TARGET})
 				list(GET VERSION_LIST 0 _VERSION_MAJOR)
 				list(GET VERSION_LIST 1 _VERSION_MINOR)
+
 				if(_VERSION_MAJOR STREQUAL "10")
 					math(EXPR _DARWIN_VERSION "4+${_VERSION_MINOR}")
 					set(DARWIN "darwin${_DARWIN_VERSION}")
@@ -800,6 +856,7 @@ if(BUILD_LIBVPX)
 					message(STATUS "CMAKE_OSX_DEPLOYMENT_TARGET is not found. Build on Darwin10 by default.")
 					set(DARWIN "darwin10")
 				endif()
+
 				if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
 					set(EP_TARGET "x86_64-${DARWIN}-gcc")
 				elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -812,6 +869,7 @@ if(BUILD_LIBVPX)
 					set(EP_TARGET "x86-${DARWIN}-gcc")
 				endif()
 			endif()
+
 			set(EP_LINKING_TYPE "--enable-static" "--disable-shared" "--enable-pic")
 		elseif(ANDROID)
 			if(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv5te")
@@ -820,11 +878,12 @@ if(BUILD_LIBVPX)
 				set(EP_TARGET "armv7-android-gcc")
 			elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 				set(EP_TARGET "arm64-android-gcc")
-			elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+			elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
 				set(EP_TARGET "x86_64-android-gcc")
 			else()
 				set(EP_TARGET "x86-android-gcc")
 			endif()
+
 			list(APPEND EP_CONFIGURE_OPTIONS
 				"--sdk-path=${CMAKE_ANDROID_NDK}/"
 				"--android_ndk_api=${ANDROID_NATIVE_API_LEVEL}"
@@ -854,13 +913,17 @@ if(BUILD_LIBVPX)
 					set(EP_TARGET "x86-linux-gcc")
 				endif()
 			endif()
+
 			set(EP_LINKING_TYPE "--disable-static" "--enable-shared")
 		endif()
+
 		list(APPEND EP_CROSS_COMPILATION_OPTIONS "--prefix=${CMAKE_INSTALL_PREFIX}")
 		list(APPEND EP_CROSS_COMPILATION_OPTIONS "--libdir=${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" "--target=${EP_TARGET}")
+
 		if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND CMAKE_C_COMPILER_VERSION VERSION_LESS "4.0")
 			list(APPEND EP_CONFIGURE_OPTIONS "--disable-avx512")
 		endif()
+
 		set(EP_CONFIGURE_ENV "CC=$CC_NO_LAUNCHER LD=$CC_NO_LAUNCHER ASFLAGS=$ASFLAGS CFLAGS=$CFLAGS LDFLAGS=$LDFLAGS")
 
 		convert_to_string("${EP_CROSS_COMPILATION_OPTIONS}" EP_CROSS_COMPILATION_OPTIONS)
@@ -885,6 +948,7 @@ if(BUILD_LIBVPX)
 		else()
 			set(VPX_IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libvpx.so")
 		endif()
+
 		set(VPX_BYPRODUCTS "${VPX_IMPORTED_LOCATION}")
 
 		ExternalProject_Add(vpx
@@ -906,6 +970,7 @@ if(BUILD_LIBVPX)
 		add_dependencies(libvpx vpx)
 		add_dependencies(sdk libvpx)
 	endfunction()
+
 	add_libvpx()
 endif()
 
@@ -916,6 +981,7 @@ if(BUILD_LIBXML2)
 		add_subdirectory("external/libxml2")
 		add_dependencies(sdk xml2)
 	endfunction()
+
 	add_xml2()
 endif()
 
@@ -928,6 +994,7 @@ if(BUILD_LIBYUV)
 		add_subdirectory("external/libyuv")
 		add_dependencies(sdk yuv)
 	endfunction()
+
 	add_libyuv()
 endif()
 
@@ -940,6 +1007,7 @@ if(BUILD_MBEDTLS)
 			set(USE_SHARED_MBEDTLS_LIBRARY OFF)
 			set(USE_STATIC_MBEDTLS_LIBRARY ON)
 		endif()
+
 		set(ENABLE_PROGRAMS OFF)
 		set(ENABLE_TESTING OFF)
 		set(MBEDTLS_FATAL_WARNINGS ${BUILD_MBEDTLS_WITH_FATAL_WARNINGS})
@@ -947,6 +1015,7 @@ if(BUILD_MBEDTLS)
 		add_subdirectory("external/mbedtls")
 		add_dependencies(sdk mbedtls)
 	endfunction()
+
 	add_mbedtls()
 endif()
 
@@ -959,12 +1028,14 @@ if(BUILD_LIBSRTP2)
 		add_subdirectory("external/srtp")
 		add_dependencies(sdk srtp2)
 	endfunction()
+
 	add_srtp()
 endif()
 
 if(BUILD_OPENCORE_AMR)
 	function(add_opencore_amr)
 		set(BUILD_SHARED_LIBS ${BUILD_OPENCORE_AMR_SHARED_LIBS})
+
 		if(ENABLE_AMRNB)
 			set(ENABLE_AMRNB_ENCODER ON)
 			set(ENABLE_AMRNB_DECODER ON)
@@ -972,6 +1043,7 @@ if(BUILD_OPENCORE_AMR)
 			set(ENABLE_AMRNB_ENCODER OFF)
 			set(ENABLE_AMRNB_DECODER OFF)
 		endif()
+
 		if(ENABLE_AMRWB)
 			set(ENABLE_AMRWB_DECODER ON)
 		else()
@@ -981,6 +1053,7 @@ if(BUILD_OPENCORE_AMR)
 		add_subdirectory("external/opencore-amr")
 		add_dependencies(sdk opencore-amr)
 	endfunction()
+
 	add_opencore_amr()
 endif()
 
@@ -989,6 +1062,7 @@ if(BUILD_OPENH264)
 		find_program(NASM_PROGRAM
 			NAMES nasm nasm.exe
 		)
+
 		if(NOT NASM_PROGRAM)
 			if(WIN32)
 				message(FATAL_ERROR "Could not find the nasm.exe program. Please install it from http://www.nasm.us/")
@@ -1011,6 +1085,7 @@ if(BUILD_OPENH264)
 		set(EP_LDFLAGS)
 
 		set(EP_BUILD_TYPE "Release") # Always use Release build type, otherwise the codec is too slow...
+
 		if(WIN32)
 			set(EP_LINKING_TYPE "shared")
 		else()
@@ -1020,6 +1095,7 @@ if(BUILD_OPENH264)
 				set(EP_LINKING_TYPE "shared")
 			endif()
 		endif()
+
 		if(WIN32)
 			if(MSVC)
 				if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -1042,7 +1118,9 @@ if(BUILD_OPENH264)
 				set(CMAKE_ANDROID_API "21")
 				set(NDK_TOOLCHAIN_VERSION "clang")
 			endif()
+
 			set(EP_ADDITIONAL_MAKE_OPTIONS "TOOLCHAINPREFIX=\"${ANDROID_TOOLCHAIN_PREFIX}\" OS=\"android\" NDKROOT=\"${CMAKE_ANDROID_NDK}\" NDKLEVEL=${ANDROID_PLATFORM_LEVEL} TARGET=\"android-${CMAKE_ANDROID_API}\" NDK_TOOLCHAIN_VERSION=${NDK_TOOLCHAIN_VERSION}")
+
 			if(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7-a")
 				set(EP_ADDITIONAL_MAKE_OPTIONS "${EP_ADDITIONAL_MAKE_OPTIONS} ARCH=\"arm\" INCLUDE_PREFIX=\"arm-linux-androideabi\"")
 			elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
@@ -1056,14 +1134,16 @@ if(BUILD_OPENH264)
 			if(IOS)
 				if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 					set(EP_ADDITIONAL_MAKE_OPTIONS "OS=\"ios\" ARCH=\"arm64\"")
+
 					# XCode7 allows bitcode
 					if(NOT ${XCODE_VERSION} VERSION_LESS 7)
 						set(EP_CFLAGS "-fembed-bitcode")
 					endif()
 				elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7")
 					set(EP_ADDITIONAL_MAKE_OPTIONS "OS=\"ios\" ARCH=\"armv7\"")
+
 					# XCode7 allows bitcode
-					if (NOT ${XCODE_VERSION} VERSION_LESS 7)
+					if(NOT ${XCODE_VERSION} VERSION_LESS 7)
 						set(EP_CFLAGS "-fembed-bitcode")
 					endif()
 				elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
@@ -1074,6 +1154,7 @@ if(BUILD_OPENH264)
 			else()
 				set(MAC_ARCH "--target=${CMAKE_C_COMPILER_TARGET}")
 				set(FLAGS "${MAC_ARCH} -isysroot ${CMAKE_OSX_SYSROOT} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+
 				if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
 					set(EP_ADDITIONAL_MAKE_OPTIONS "ARCH=\"x86_64\"")
 				elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -1081,6 +1162,7 @@ if(BUILD_OPENH264)
 				else()
 					set(EP_ADDITIONAL_MAKE_OPTIONS "ARCH=\"x86\"")
 				endif()
+
 				set(EP_CFLAGS "${FLAGS}")
 				set(EP_CXXFLAGS "${FLAGS}")
 				set(EP_CPPFLAGS "${FLAGS}")
@@ -1109,6 +1191,7 @@ if(BUILD_OPENH264)
 		else()
 			set(EP_LIBRARY_NAME "libopenh264.a")
 		endif()
+
 		file(MAKE_DIRECTORY "${EP_BUILD_DIR}")
 		ExternalProject_Add(openh264
 			SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/openh264"
@@ -1127,6 +1210,7 @@ if(BUILD_OPENH264)
 		add_dependencies(libopenh264 openh264)
 		add_dependencies(sdk libopenh264)
 	endfunction()
+
 	add_openh264()
 endif()
 
@@ -1137,29 +1221,35 @@ if(BUILD_OPENLDAP)
 		if(WIN32)
 			set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /sdl-")
 		endif()
+
 		add_subdirectory("external/openldap")
 		add_dependencies(sdk ldap)
 	endfunction()
+
 	add_openldap()
 endif()
 
 if(BUILD_OPUS)
 	function(add_opus)
 		set(LINPHONESDK_INTEGRATED_BUILD ON)
+
 		if(WIN32)
 			set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W0")
 		else()
 			set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w")
 		endif()
+
 		if(ANDROID OR IOS OR UWP)
 			set(OPUS_FIXED_POINT ON)
 		endif()
+
 		set(BUILD_SHARED_LIBS ${BUILD_OPUS_SHARED_LIBS})
 
 		set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Prevent project from overriding the options we just set here
 		add_subdirectory("external/opus")
 		add_dependencies(sdk opus)
 	endfunction()
+
 	add_opus()
 endif()
 
@@ -1171,6 +1261,7 @@ if(BUILD_SQLITE3)
 		add_subdirectory("external/sqlite3")
 		add_dependencies(sdk sqlite3)
 	endfunction()
+
 	add_sqlite3()
 endif()
 
@@ -1183,23 +1274,28 @@ if(BUILD_SOCI)
 			set(SOCI_SHARED OFF)
 			set(SOCI_STATIC ON)
 		endif()
+
 		set(SOCI_INSTALL_BACKEND_TARGETS OFF)
 		set(SOCI_TESTS OFF)
+
 		if(LINPHONESDK_BUILD_TYPE STREQUAL "Flexisip")
 			set(SOCI_FRAMEWORK OFF)
 		endif()
+
 		foreach(_BACKEND ${BUILD_SOCI_BACKENDS})
 			string(TOUPPER "${_BACKEND}" _BACKEND)
 			set(WITH_${_BACKEND} ON)
 		endforeach()
 
 		add_subdirectory("external/soci")
+
 		if(BUILD_SOCI_SHARED_LIBS)
 			add_dependencies(sdk soci_core)
 		else()
 			add_dependencies(sdk soci_core_static)
 		endif()
 	endfunction()
+
 	add_soci()
 endif()
 
@@ -1210,6 +1306,7 @@ if(BUILD_SPEEX)
 		add_subdirectory("external/speex")
 		add_dependencies(sdk speex)
 	endfunction()
+
 	add_speex()
 endif()
 
@@ -1219,6 +1316,7 @@ if(BUILD_VO_AMRWBENC)
 		add_subdirectory("external/vo-amrwbenc")
 		add_dependencies(sdk vo_amrwbenc)
 	endfunction()
+
 	add_vo_amrwbenc()
 endif()
 
@@ -1229,6 +1327,7 @@ if(BUILD_XERCESC)
 		add_subdirectory("external/xerces-c")
 		add_dependencies(sdk xerces-c)
 	endfunction()
+
 	add_xercesc()
 endif()
 
@@ -1239,6 +1338,7 @@ if(BUILD_ZLIB)
 		add_subdirectory("external/zlib")
 		add_dependencies(sdk zlib)
 	endfunction()
+
 	add_zlib()
 endif()
 
@@ -1249,5 +1349,6 @@ if(BUILD_ZXINGCPP)
 		add_subdirectory("external/zxing-cpp")
 		add_dependencies(sdk ZXing)
 	endfunction()
+
 	add_zxingcpp()
 endif()
