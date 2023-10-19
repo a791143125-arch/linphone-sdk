@@ -18,7 +18,7 @@
 
 
 rocky8-makefile-gcc:
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux " ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8:$ROCKY_8_IMAGE_VERSION
   rules:
     - !reference [.rules-merge-request-manual, rules]
@@ -38,7 +38,7 @@ rocky8-makefile-gcc:
 
 
 rocky8-ninja-gcc:
-  tags: [ "docker" ]
+  tags: [ "peio-aorus-docker-linux " ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8:$ROCKY_8_IMAGE_VERSION
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $DOCKER_UPDATE == null && $SKIP_LINUX == null

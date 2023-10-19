@@ -1,6 +1,6 @@
 debian11-yocto-qemuarm64:
   stage: build
-  tags: ["docker"]
+  tags: [ "peio-aorus-docker-linux " ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-yocto:kirkstone-qemuarm64
   rules:
     - !reference [.rules-merge-request-manual, rules]

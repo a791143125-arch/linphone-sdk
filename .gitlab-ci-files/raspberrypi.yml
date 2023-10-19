@@ -37,7 +37,7 @@
 
 raspberrypi-0-1-ninja:
 
-  tags: [ "docker-raspberrypi" ]
+  tags: [ "peio-aorus-docker-raspberrypi" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-raspios:$RASPIOS_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja
@@ -48,7 +48,7 @@ raspberrypi-0-1-ninja:
 
 raspberrypi-2-3-ninja:
 
-  tags: [ "docker-raspberrypi" ]
+  tags: [ "peio-aorus-docker-raspberrypi" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-raspios:$RASPIOS_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja
@@ -59,7 +59,7 @@ raspberrypi-2-3-ninja:
 
 raspberrypi-3plus-ninja:
 
-  tags: [ "docker-raspberrypi" ]
+  tags: [ "peio-aorus-docker-raspberrypi" ]
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-raspios:$RASPIOS_IMAGE_VERSION
   variables:
     CMAKE_GENERATOR: Ninja
