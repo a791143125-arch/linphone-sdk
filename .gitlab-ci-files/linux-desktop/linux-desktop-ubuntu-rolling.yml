@@ -30,9 +30,8 @@ ubuntu-rolling-makefile-gcc:
   tags: [ "docker" ]
   image: !reference [.ubuntu-rolling_image_version, image]
   rules:
-    - !reference [.rules-merge-request-manual, rules]
-    - if: $NIGHTLY_MASTER
     - if: $DOCKER_UPDATE
+    - !reference [.linux-desktop, rules]
   variables:
     CMAKE_GENERATOR: Unix Makefiles
     CC: gcc
