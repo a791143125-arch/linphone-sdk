@@ -8,7 +8,7 @@ recache-get-from-branch:
     GIT_STRATEGY: none
   image: !reference [.debian12_image_version, image]
   rules:
-    - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "fix/schedule_run" && $CI_PIPELINE_SOURCE == "push"
   script:
     - curl --verbose --location --request GET "https://gitlab.linphone.org/api/v4/projects/411/merge_requests?state=merged&order_by=updated_at&target_branch=master&private_token=$UPDATE_CACHE_TOKEN" > temp_result.txt
     - cat temp_result.txt | jq ".[0].source_branch" > source_branch.txt
@@ -46,7 +46,7 @@ recache-get-from-branch:
   variables:
     GIT_STRATEGY: none
   rules:
-    - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "fix/schedule_run" && $CI_PIPELINE_SOURCE == "push"
   # We break abstraction if order to be able to automatically remove cache related to deleted mr branches, as this would eat CI machine disk space
   # cache:
   #   - key: $CI_JOB_IMAGE-master
@@ -91,7 +91,7 @@ recache-get-from-branch:
   image: !reference [.debian12_image_version, image]
   rules:
     - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $SKIP_LINUX == null
-    - if: ($CI_PIPELINE_SOURCE == "schedule") && $SKIP_LINUX == null && $CI_COMMIT_REF_SLUG != "master"
+    - if: ($CI_PIPELINE_SOURCE == "schedule") && $SKIP_LINUX == null && $CI_COMMIT_REF_SLUG != "fix_schedule_run"
   script:
     - |
      while true; do
