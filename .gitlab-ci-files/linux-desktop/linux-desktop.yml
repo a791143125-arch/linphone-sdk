@@ -419,7 +419,7 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 .test-mediastreamer:
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-mediastreamer" ]
   extends: .test
   variables:
     TESTER_BIN: "mediastreamer2-tester"

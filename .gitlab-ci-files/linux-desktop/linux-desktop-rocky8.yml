@@ -16,7 +16,7 @@ recache-rocky8:
 
 
 .factorize_rocky8: &docker_image_needs_platform_runner_tag_dev_toolset
-  tags: [ "docker-test" ]
+  tags: [ "docker-test-macx86" ]
   image: !reference [.rocky8_image_version, image]
   needs:
     - rocky8-ninja-gcc
@@ -63,7 +63,12 @@ rocky8-ninja-gcc:
     - wait-cache-synchro-rocky8
 
 rocky8-ninja-gcc-tunnel-pq-h264:
+  cache:
+    - key: $CI_JOB_IMAGE-$CI_COMMIT_REF_SLUG-tunnel-pq-h264
+      paths:
+        - ccache/
   variables:
+    CCACHE_SIZE: "5G"
     CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_OPENH264=ON -DENABLE_PQCRYPTO=ON -DENABLE_UNIT_TESTS=ON -DENABLE_TUNNEL=ON -DOPENSSL_ROOT_DIR=/usr/local
   extends: rocky8-ninja-gcc
 
