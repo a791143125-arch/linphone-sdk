@@ -10,10 +10,10 @@
     PODSPEC_END_PATH: ""
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
     GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
-  rules:
-    - if: $DEPLOY_RUN_IOS
-    - if: $NIGHTLY_MASTER && $SKIP_DEPLOY == null
-    - if: $NIGHTLY_RELEASE
+      #  rules:
+      #- if: $DEPLOY_RUN_IOS
+      # - if: $NIGHTLY_MASTER && $SKIP_DEPLOY == null
+      # - if: $NIGHTLY_RELEASE
   needs:
     - ios-xcode
 
