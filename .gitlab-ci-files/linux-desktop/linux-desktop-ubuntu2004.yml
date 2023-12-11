@@ -102,6 +102,7 @@ ubuntu2004-ninja-gcc-tunnel-pq:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   variables:
     CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_UNIT_TESTS=ON -DENABLE_TUNNEL=ON
+    CCACHE_SIZE: 5G
   extends: ubuntu2004-ninja-gcc
 
 #################################################

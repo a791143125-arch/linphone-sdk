@@ -8,7 +8,7 @@
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_ANDROID != null && $SKIP_DEPLOY == null
 
   variables:
-    CCACHE_SIZE: 4G
+    CCACHE_SIZE: 5G
     GIT_STRATEGY: fetch
     GRADLE_OPTIONS: -i
     MAVEN_REPO_PATH: linphone-sdk-android*
@@ -43,7 +43,7 @@ android-doc-upload:
     - if: $DEPLOY_ANDROID != null && $SKIP_DEPLOY == null
 
   variables:
-    CCACHE_SIZE: 4G
+    CCACHE_SIZE: 5G
     GIT_STRATEGY: fetch
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
     GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
