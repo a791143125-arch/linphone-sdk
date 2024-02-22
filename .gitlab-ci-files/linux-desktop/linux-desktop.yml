@@ -41,7 +41,7 @@
   stage: build
   extends: .linux-prepare
   variables:
-    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_PYTHON_WRAPPER=ON -DENABLE_DOC=ON
+    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_PYTHON_WRAPPER=ON -DENABLE_DOC=ON -DENABLE_PYTHON_WHEEL=ON
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_PYTHON != null && $SKIP_LINUX == null
     - !reference [.rules-merge-request-manual, rules]
@@ -57,7 +57,7 @@
     - echo $CMAKE_SANITIZER_OPTIONS
     - cmake --preset=default -B build/default -G "$CMAKE_GENERATOR" $DEFAULT_LINUX_CMAKE_OPTIONS $CMAKE_OPTIONS $SCHEDULE_CMAKE_OPTIONS $CMAKE_SANITIZER_OPTIONS
     - echo $ADDITIONAL_BUILD_OPTIONS
-    - cmake --build build/default --target wheel -- $ADDITIONAL_BUILD_OPTIONS
+    - cmake --build build/default -- $ADDITIONAL_BUILD_OPTIONS
     - echo $(git describe) > build/default/gitdescribe.txt
   artifacts:
     paths:

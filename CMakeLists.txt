@@ -75,6 +75,19 @@ elseif(LINPHONESDK_PLATFORM STREQUAL "UWP")
 	set(UWP TRUE)
 endif()
 
+if (ENABLE_PYTHON_WRAPPER AND ENABLE_PYTHON_WHEEL)
+	message(AUTHOR_WARNING "Disabling shared libs build to properly generate python wrapper wheel package")
+	set(BUILD_SHARED_LIBS FALSE)
+	set(BUILD_SOCI_SHARED_LIBS FALSE)
+endif()
+
+if(NOT BUILD_SHARED_LIBS)
+	message(AUTHOR_WARNING "Enabling CMAKE_POSITION_INDEPENDENT_CODE as we are building static libraries")
+	#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 include("cmake/Options.cmake")
 include("cmake/CheckBuildTools${LINPHONESDK_PLATFORM}.cmake")
 
@@ -143,8 +156,4 @@ endif()
 
 if(LINPHONESDK_PACKAGER STREQUAL "Nuget")
 	include(LinphoneSdkPackager)
-endif()
-
-if(ENABLE_PYTHON_WRAPPER)
-   include("cmake/python/GenerateWheel.cmake")
 endif()

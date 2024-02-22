@@ -121,6 +121,12 @@ macos-ninja-novideo:
     CMAKE_OPTIONS: -DENABLE_VIDEO=OFF -DENABLE_LDAP=ON
   extends: macos-ninja
 
+macos-ninja-python:
+  variables:
+    CMAKE_GENERATOR: Ninja
+    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_EXAMPLE_PLUGIN=ON -DENABLE_PYTHON_WRAPPER=ON -DENABLE_DOC=ON -DENABLE_PYTHON_WHEEL=ON
+  extends: .macos-desktop
+
 #################################################
 # XCode
 #################################################

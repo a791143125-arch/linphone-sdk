@@ -191,6 +191,10 @@ if(ENABLE_CSHARP_WRAPPER OR ENABLE_CXX_WRAPPER OR ENABLE_DOC OR ENABLE_JAVA_WRAP
 		if (ENABLE_DOC)
 			linphone_sdk_check_python_module_is_installed(pdoc)
 		endif()
+
+		if (ENABLE_PYTHON_WHEEL)
+			linphone_sdk_check_python_module_is_installed(wheel)
+		endif()
 	endif()
 
 endif()
