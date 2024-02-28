@@ -37,7 +37,6 @@
     expire_in: 1 week
 
 .linux-desktop-python:
-
   stage: build
   extends: .linux-prepare
   variables:

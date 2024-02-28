@@ -52,6 +52,54 @@
     when: always
     expire_in: 1 week
 
+.macos-desktop-python:
+  extends: .job-prepare
+  stage: build
+  tags: [ "macos-xcode13" ]
+
+  rules:
+    - !reference [.rules-merge-request-manual, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_PYTHON != null
+
+  variables:
+    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_PYTHON_WRAPPER=ON -DENABLE_DOC=ON
+    LINPHONESDK_MACOS_ARCHS: "arm64"
+
+  before_script:
+    - export CCACHE_DIR=~/Library/Preferences/ccache-linphone-sdk-master
+    - ccache -s --verbose
+
+    # We clean the cache stats because it is our only way to see the cache stats per job run (one cleaner way would be to store in a file a do the delta by hand)
+    - ccache -z
+    - ccache -s --verbose
+
+  after_script:
+    #Mandatory, as variable export is not kept between before_script/script and after script
+    - export CCACHE_DIR=~/Library/Preferences/ccache-linphone-sdk-master
+    - ccache -s --verbose
+
+  script:
+    - !reference [.set-max-jobs-unix, script]
+    - echo $MACOS_DEPLOY_URL
+    - echo $UPLOAD_CMAKE_OPTIONS
+    - if [ -d "build" ]; then rm -rf build; fi;
+    - echo $CMAKE_GENERATOR
+    - echo $DEFAULT_CMAKE_OPTIONS
+    - echo $CMAKE_OPTIONS
+    - echo $LINPHONESDK_MACOS_ARCHS
+    - cmake --preset=mac-arm64 -B build/mac -G "$CMAKE_GENERATOR" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DLINPHONESDK_MACOS_ARCHS="$LINPHONESDK_MACOS_ARCHS" $DEFAULT_CMAKE_OPTIONS $UPLOAD_CMAKE_OPTIONS $CMAKE_OPTIONS $SCHEDULE_CMAKE_OPTIONS
+    - cmake --build build/mac --target install -- $ADDITIONAL_BUILD_OPTIONS
+    - cmake --build build/mac --target wheel -- $ADDITIONAL_BUILD_OPTION
+    - echo $(git describe) > build/mac/gitdescribe.txt
+
+  artifacts:
+    paths:
+      - build/mac/gitdescribe.txt
+      - build/mac/linphone-sdk/macos/linphone*.whl
+      - build/mac/linphone-sdk/macos/pylinphone.html
+    when: always
+    expire_in: 1 week
+
 .macos-m1-multiarch-desktop:
   tags: [ "macos-min-xcode12.2" ]
   variables:
@@ -120,6 +168,11 @@ macos-ninja-novideo:
   variables:
     CMAKE_OPTIONS: -DENABLE_VIDEO=OFF -DENABLE_LDAP=ON
   extends: macos-ninja
+
+macos-ninja-python-wheel:
+  variables:
+    CMAKE_GENERATOR: Ninja
+  extends: .macos-desktop-python
 
 #################################################
 # XCode
