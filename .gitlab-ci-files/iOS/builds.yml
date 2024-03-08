@@ -139,13 +139,13 @@ ios-ninja-pqc:
 # XCode
 #################################################
 ios-xcode:
-  rules:
-    - if: $NIGHTLY_MASTER
-    - if: $NIGHTLY_RELEASE
-    - if: $DEPLOY_RUN_IOS
-    - if: $DEPLOY_RUN_NUGET
-    - if: $UPLOAD_XAMARIN
-    - if: $ENABLE_IOS_TESTS
+  #rules:
+  #  - if: $NIGHTLY_MASTER
+  #  - if: $NIGHTLY_RELEASE
+  #  - if: $DEPLOY_RUN_IOS
+  #  - if: $DEPLOY_RUN_NUGET
+  #  - if: $UPLOAD_XAMARIN
+  #  - if: $ENABLE_IOS_TESTS
 
   variables:
     CMAKE_GENERATOR: Xcode
@@ -172,15 +172,15 @@ ios-xcode:
   extends: .ios
 
 ios-xcode-novideo:
-  rules:
-    - if: $NIGHTLY_MASTER
-    - if: $NIGHTLY_RELEASE
-    - if: $DEPLOY_RUN_IOS
+  #  rules:
+  #  - if: $NIGHTLY_MASTER
+  #  - if: $NIGHTLY_RELEASE
+  #  - if: $DEPLOY_RUN_IOS
 
 
   variables:
     CMAKE_GENERATOR: Xcode
-    CMAKE_OPTIONS: -DENABLE_SWIFT_WRAPPER=YES -DENABLE_VIDEO=NO
+    CMAKE_OPTIONS: -DENABLE_SWIFT_WRAPPER=YES -DENABLE_VIDEO=NO -DENABLE_DOC=YES -DENABLE_JAZZY_DOC=YES -DENABLE_UNIT_TESTS=YES
     ADDITIONAL_BUILD_CONFIGURATIONS: --config RelWithDebInfo -j $MAX_NUMBER_TASK
     ARCHS_OPTIONS: "arm64,x86_64"
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
