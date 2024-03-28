@@ -14,12 +14,19 @@ recache-archlinux:
 #format = .className: &referenceName
 #Use = "<< *referenceName" to use the template ("-*" in script)
 
+.factorize_arch_rules: &rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ARCHLINUX_TESTS != null) && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
 .factorize_arch: &docker_image_platform_and_runner_tag
   tags: [ "docker-test" ]
   image: !reference [.archlinux_image_version, image]
   variables:
     PLATFORM: linux-arch
+  <<: *rules
+
 
 #################################################
 # Makefile
@@ -132,6 +139,7 @@ bellesip-arch-test:
   image: !reference [.archlinux_image_version, image]
   variables:
     PLATFORM: linux-arch
+  <<: *rules
 
 belr-arch-test:
   extends: .test-belr
@@ -160,3 +168,4 @@ liblinphone-arch-test:
     - arch-latest-ninja-clang
   variables:
     PLATFORM: linux-arch
+  <<: *rules

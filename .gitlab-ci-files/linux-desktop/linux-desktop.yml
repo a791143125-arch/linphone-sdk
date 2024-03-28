@@ -180,7 +180,7 @@
     USE_TUNNEL_PQ_TESTS_LIBLINPHONE: "false"
     CRYPTO_BACKEND_TESTS_LIBLINPHONE: "false"
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_LINUX_TESTS != null && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_ALL_LINUX_TESTS != null && $SKIP_LINUX == null
     - !reference [.rules-merge-request-manual, rules]
 
   script:

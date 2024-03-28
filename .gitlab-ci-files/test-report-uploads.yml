@@ -196,7 +196,7 @@
 .test-report-upload-linux-scheduled:
   extends: .test-report-upload
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_LINUX_TESTS != null && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_ALL_LINUX_TESTS != null && $SKIP_LINUX == null
     - !reference [.rules-merge-request-manual, rules]
 
 .test-report-upload-windows-scheduled:
