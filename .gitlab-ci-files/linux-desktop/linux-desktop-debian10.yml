@@ -15,13 +15,18 @@ recache-debian10:
 #format = .className: &referenceName
 #Use = "<< *referenceName" to use the template ("-*" in script)
 
+.factorize_debian10_rules: &rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_DEBIAN10_TESTS != null) && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
 .factorize_debian10: &docker_image_platform_and_runner_tag
   tags: [ "docker-test" ]
   image: !reference [.debian10_image_version, image]
   variables:
     PLATFORM: linux-debian10
-
+  <<: *rules
 #################################################
 # Makefile
 #################################################
@@ -142,7 +147,7 @@ bellesip-debian10-test:
   image: !reference [.debian10_image_version, image]
   variables:
     PLATFORM: linux-debian10
-
+  <<: *rules
 belr-debian10-test:
   extends: .test-belr
   needs:
@@ -174,3 +179,4 @@ liblinphone-debian10-test:
     - debian10-ninja-gcc
   variables:
     PLATFORM: linux-debian10
+  <<: *rules

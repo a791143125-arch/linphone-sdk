@@ -15,13 +15,18 @@ recache-debian11:
 #format = .className: &referenceName
 #Use = "<< *referenceName" to use the template ("-*" in script)
 
+.factorize_debian11_rules: &rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_DEBIAN11_TESTS != null) && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
 .factorize_debian11: &docker_image_platform_and_runner_tag
   tags: [ "docker-test" ]
   image: !reference [.debian11_image_version, image]
   variables:
     PLATFORM: linux-debian11
-
+  <<: *rules
 #################################################
 # Makefile
 #################################################
@@ -150,6 +155,7 @@ bellesip-debian11-test:
   image: !reference [.debian11_image_version, image]
   variables:
     PLATFORM: linux-debian11
+  <<: *rules
 
 belr-debian11-test:
   extends: .test-belr
@@ -182,7 +188,7 @@ liblinphone-debian11-test:
     - debian11-ninja-gcc
   variables:
     PLATFORM: linux-debian11
-
+  <<: *rules
 # liblinphone-debian11-test-mr:
 #   extends: .test-liblinphone-mr
 #   image: !reference [.debian11_test_libl_image_version, image]

@@ -16,12 +16,18 @@ recache-ubuntu-rolling:
 #format = .className: &referenceName
 #Use = "<< *referenceName" to use the template ("-*" in script)
 
+.factorize_ubuntu_rolling_rules: &rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_UBUNTU_ROLLING_TESTS != null) && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
 .factorize_ubuntu-rolling: &docker_image_platform_and_runner_tag
   tags: [ "docker-test" ]
   image: !reference [.ubuntu-rolling_image_version, image]
   variables:
     PLATFORM: linux-ubuntu-rolling
+  <<: *rules
 
 #################################################
 # Makefile
@@ -123,7 +129,8 @@ bellesip-ubuntu-test:
   image: !reference [.ubuntu-rolling_image_version, image]
   variables:
     PLATFORM: linux-ubuntu-rolling
-
+  <<: *rules
+  
 belr-ubuntu-test:
   extends: .test-belr
   needs:
@@ -155,3 +162,4 @@ liblinphone-ubuntu-test:
     - ubuntu-rolling-ninja-clang
   variables:
     PLATFORM: linux-ubuntu-rolling
+  <<: *rules

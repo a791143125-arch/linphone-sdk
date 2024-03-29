@@ -14,13 +14,18 @@ recache-debian12:
 #format = .className: &referenceName
 #Use = "<< *referenceName" to use the template ("-*" in script)
 
+.factorize_debian12_rules: &rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_DEBIAN12_TESTS != null) && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
 .factorize_debian12: &docker_image_platform_and_runner_tag
   tags: [ "docker-test" ]
   image: !reference [.debian12_image_version, image]
   variables:
     PLATFORM: linux-debian12
-
+  <<: *rules
 #################################################
 # Makefile
 #################################################
@@ -163,6 +168,7 @@ bellesip-debian12-test:
   image: !reference [.debian12_image_version, image]
   variables:
     PLATFORM: linux-debian12
+  <<: *rules
 
 belr-debian12-test:
   extends: .test-belr
@@ -195,6 +201,7 @@ liblinphone-debian12-test:
     - debian12-ninja-gcc
   variables:
     PLATFORM: linux-debian12
+  <<: *rules
 
 liblinphone-debian12-openssl-test-mr:
    image: !reference [.debian12_test_libl_image_version, image]
