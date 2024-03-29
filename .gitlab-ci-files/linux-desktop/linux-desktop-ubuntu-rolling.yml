@@ -93,6 +93,11 @@ ubuntu-rolling-ninja-clang:
     CC: clang
     CXX: clang++
   extends: .linux-desktop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_UBUNTU_ROLLING_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_LINUX_BUILDS != null && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
 ubuntu-rolling-ninja-clang-pqc:
   variables:
@@ -130,7 +135,7 @@ bellesip-ubuntu-test:
   variables:
     PLATFORM: linux-ubuntu-rolling
   <<: *rules
-  
+
 belr-ubuntu-test:
   extends: .test-belr
   needs:

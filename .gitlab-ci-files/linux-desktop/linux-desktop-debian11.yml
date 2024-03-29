@@ -63,6 +63,11 @@ debian11-makefile-clang:
 
 debian11-ninja-gcc:
 
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_DEBIAN11_TESTS != null && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_LINUX_BUILDS != null && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
+
   tags: [ "docker" ]
   image: !reference [.debian11_image_version, image]
   variables:

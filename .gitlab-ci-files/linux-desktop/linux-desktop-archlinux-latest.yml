@@ -87,6 +87,8 @@ arch-latest-ninja-clang:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ARCHLINUX_TESTS != null) && $SKIP_LINUX == null
   variables:
     CMAKE_GENERATOR: Ninja
     CC: clang

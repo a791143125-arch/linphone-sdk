@@ -64,6 +64,10 @@ debian10-makefile-clang:
 
 
 debian10-ninja-gcc:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_DEBIAN10_TESTS != null && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_LINUX_BUILDS != null && $SKIP_LINUX == null
+    - !reference [.rules-merge-request-manual, rules]
 
   tags: [ "docker" ]
   image: !reference [.debian10_image_version, image]

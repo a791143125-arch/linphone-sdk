@@ -37,7 +37,7 @@ recache-ubuntu2004:
   variables:
     PLATFORM: linux-ubuntu2004
   <<: *rules
-  
+
 # "tags" is defined in tester extends (check linux-desktop.yml)
 .factorize_ubuntu2004_libl: &docker_image_platform_and_runner_tag_libl
   image: !reference [.ubuntu2004_test_libl_image_version, image]
@@ -107,6 +107,8 @@ ubuntu2004-ninja-gcc-tunnel-pq:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_LINUX_BUILDS != null && $DOCKER_UPDATE == null && $SKIP_LINUX == null
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_ALL_LINUX_TESTS != null) && $SKIP_LINUX == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && ($ENABLE_UBUNTU_2004_TESTS != null) && $SKIP_LINUX == null
   variables:
     CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_UNIT_TESTS=ON -DENABLE_TUNNEL=ON
   extends: ubuntu2004-ninja-gcc
