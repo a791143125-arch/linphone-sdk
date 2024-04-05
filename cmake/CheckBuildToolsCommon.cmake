@@ -120,7 +120,7 @@ if(WIN32)
 	endif()
 endif()
 
-find_package(PythonInterp 3 REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 if(WIN32)
 	#Should be already installed from MSYS2
@@ -176,7 +176,7 @@ endif()
 
 
 
-find_package(PythonInterp 3 REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 linphone_sdk_check_git()
 

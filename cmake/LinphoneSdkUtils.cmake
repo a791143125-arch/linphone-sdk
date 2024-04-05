@@ -94,7 +94,7 @@ endmacro()
 
 function(linphone_sdk_check_python_module_is_installed MODULE_NAME)
 	execute_process(
-		COMMAND "${PYTHON_EXECUTABLE}" "-c" "import ${MODULE_NAME}"
+		COMMAND "${Python3_EXECUTABLE}" "-c" "import ${MODULE_NAME}"
 		RESULT_VARIABLE _result
 		OUTPUT_QUIET
 		ERROR_QUIET
