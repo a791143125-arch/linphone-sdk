@@ -220,6 +220,8 @@
     - echo $RESOURCES_DIR
     - echo $ADDITIONNAL_OPTIONS
     - echo $LOG_PATTERN.txt
+    - echo $RUNNER_MAX_CPUCOUNT
+    - echo ${RUNNER_MAX_CPUCOUNT}
     - |
         if [ $USE_TUNNEL_PQ_TESTS_LIBLINPHONE = "false" ];
         then
@@ -474,7 +476,7 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 .test-mediastreamer:
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3" ]
   extends: .test
   variables:
     TESTER_BIN: "mediastreamer2-tester"
@@ -493,7 +495,7 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 .test-liblinphone:
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3" ]
   extends: .test
   allow_failure: true
   variables:

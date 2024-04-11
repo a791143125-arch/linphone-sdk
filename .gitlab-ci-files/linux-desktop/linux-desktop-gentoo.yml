@@ -1,5 +1,5 @@
 .factorize_gentoo: &docker_image_platform_and_runner_tag
-  tags: ["docker-test"]
+  tags: ["docker-g3-sdk-tests"]
   image: !reference [.gentoo_image_version, image]
   needs:
     - gentoo
@@ -135,7 +135,7 @@ bzrtp-gentoo-test:
 # mediastreamer-gentoo-test:
 #   extends: .test-mediastreamer
 #   <<: *docker_image_platform_and_runner_tag
-#   tags: [ "docker-test-liblinphone" ]
+#   tags: [ "docker-test-liblinphone-g3" ]
 #   variables:
 #     PLATFORM: linux-gentoo
 #     PATH_TO_TESTER: "/usr/bin"
@@ -144,7 +144,7 @@ bzrtp-gentoo-test:
 liblinphone-gentoo-test:
   extends: .test-liblinphone
   <<: *docker_image_platform_and_runner_tag
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3" ]
   variables:
     PLATFORM: linux-gentoo
     PULSEAUDIO: "pulseaudio -D -L module-virtual-source --exit-idle-time=-1"

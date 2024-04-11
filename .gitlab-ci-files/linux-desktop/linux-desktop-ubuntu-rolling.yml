@@ -18,7 +18,7 @@ recache-ubuntu-rolling:
 
 
 .factorize_ubuntu-rolling: &docker_image_platform_and_runner_tag
-  tags: [ "docker-test" ]
+  tags: [ "docker-g3-sdk-tests" ]
   image: !reference [.ubuntu-rolling_image_version, image]
   variables:
     PLATFORM: linux-ubuntu-rolling
@@ -119,7 +119,7 @@ bellesip-ubuntu-test:
   extends: .test-bellesip
   needs:
     - ubuntu-rolling-ninja-clang
-  tags: [ "docker-test-ubuntu-rolling-nuc" ]
+  tags: [ "docker-g3-sdk-tests-ubuntu-rolling-nuc" ]
   image: !reference [.ubuntu-rolling_image_version, image]
   variables:
     PLATFORM: linux-ubuntu-rolling

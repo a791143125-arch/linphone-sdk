@@ -16,7 +16,7 @@ recache-rocky8:
 
 
 .factorize_rocky8: &docker_image_needs_platform_runner_tag_dev_toolset
-  tags: [ "docker-test" ]
+  tags: [ "docker-g3-sdk-tests" ]
   image: !reference [.rocky8_image_version, image]
   needs:
     - rocky8-ninja-gcc

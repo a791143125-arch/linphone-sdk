@@ -17,7 +17,7 @@ recache-debian11:
 
 
 .factorize_debian11: &docker_image_platform_and_runner_tag
-  tags: [ "docker-test" ]
+  tags: [ "docker-g3-sdk-tests" ]
   image: !reference [.debian11_image_version, image]
   variables:
     PLATFORM: linux-debian11
