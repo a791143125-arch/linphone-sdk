@@ -96,7 +96,15 @@ endmacro()
 
 macro(linphone_sdk_check_is_installed EXECUTABLE_NAME)
 	string(TOUPPER "${EXECUTABLE_NAME}" _upper_executable_name)
-	find_program(LINPHONESDK_${_upper_executable_name}_PROGRAM ${EXECUTABLE_NAME})
+	if (win32)
+		find_program(LINPHONESDK_${_upper_executable_name}_PROGRAM
+			NAMES ${EXECUTABLE_NAME} ${EXECUTABLE_NAME}.exe
+			HINTS ${_DEFAULT_MSYS2_BIN_PATH}
+		)
+	else()
+		find_program(LINPHONESDK_${_upper_executable_name}_PROGRAM ${EXECUTABLE_NAME})
+	endif()
+
 	if(NOT LINPHONESDK_${_upper_executable_name}_PROGRAM)
 		message(FATAL_ERROR "${EXECUTABLE_NAME} has not been found on your system. Please install it.")
 	endif()
