@@ -1,7 +1,7 @@
 .windows-vs2017:
   extends: .job-prepare
   stage: build
-  tags: [ "windows-powershell" ]
+  tags: [ "windows-powershell-rack" ]
   rules:
     - !reference [.rules-merge-request-manual, rules]
     - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_WINDOWS_BUILDS != null
@@ -30,7 +30,7 @@
     #we launch the msvc-cl wrapper located in python scripts folder
     #this wrapper relays only needed calls to the real compiler
     #cache stats display
-    - C:\PROGRA~1\Python37\Scripts\cl -s
+    #- C:\PROGRA~1\Python37\Scripts\cl -s
     - Write-Output $BUILD_DIR
     - Write-Output $SCHEDULE_CMAKE_OPTIONS
     - Write-Output $MAKEFILE_JOBS
@@ -100,7 +100,7 @@
 
     - if ($LAUNCH_SEARCH_STATUS_SCRIPT) { Invoke-Expression "$LAUNCH_SEARCH_STATUS_SCRIPT" -ErrorAction stop } else { Write-Output "LAUNCH_SEARCH_STATUS_SCRIPT is null" }
 
-    - C:\PROGRA~1\Python37\Scripts\cl -s
+    #- C:\PROGRA~1\Python37\Scripts\cl -s
 
 ################
   artifacts:
