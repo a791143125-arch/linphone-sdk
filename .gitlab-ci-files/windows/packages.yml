@@ -1,6 +1,6 @@
 vs2017-nuget-windows-package:
   stage: package
-  tags: [ "windows-powershell-rack" ]
+  tags: [ "windows-powershell" ]
   needs:
     - vs2017-win32store-scheduled-windows
     - vs2017-uwp-scheduled-windows
