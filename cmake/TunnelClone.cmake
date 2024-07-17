@@ -26,7 +26,7 @@ include("${PROJECT_SOURCE_DIR}/cmake/LinphoneSdkUtils.cmake")
 linphone_sdk_check_git()
 
 
-set(TUNNEL_REVISION "63de7b8bbd840fe8cf37827da85eca81968036b4")
+set(TUNNEL_REVISION "648938aacd5167747f31e3883f13bd8b6f586a63")
 
 
 if(IS_DIRECTORY "${PROJECT_SOURCE_DIR}/tunnel")
