@@ -27,7 +27,7 @@ recache-android:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_ANDROID_BUILDS != null
 
   variables:
-    CCACHE_SIZE: 4G
+    CCACHE_SIZE: 5G
 
   extends: .linux-prepare
 
