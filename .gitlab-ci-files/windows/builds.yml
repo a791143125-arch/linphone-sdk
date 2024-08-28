@@ -158,7 +158,7 @@
     CMAKE_PRESET: windows-sdk
     OUTPUT_ZIP_FOLDER: win32
     MINGW_TYPE: mingw32
-    PARALLEL_OPTIONS: "-- /maxcpucount /nodeReuse:true /p:TrackFileAccess=false"
+    PARALLEL_OPTIONS: "-- /maxcpucount /nodeReuse:true /p:TrackFileAccess=false /p:CLToolExe=cl.exe /p:CLToolPath=C:/sccache_not_in_path /p:UseMultiToolTask=true /p:EnforceProcessCountAcrossBuilds=true"
     EXITS_ON_ERROR_MSVC: 'if (-not ($$LastExitCode -eq 0)) {throw "Error: Build failed"}'
 
 .windows-vs2022-msvc:
