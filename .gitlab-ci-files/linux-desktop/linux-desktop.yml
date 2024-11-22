@@ -366,7 +366,7 @@
     when: always
     reports:
       junit:
-        - ${CI_PROJECT_DIR}/BCUnitAutomated-Results.xml
+        - ${CI_PROJECT_DIR}/BCUnitAutomated*-Results.xml
     expire_in: 1 week
 
 .test-bctoolbox:
