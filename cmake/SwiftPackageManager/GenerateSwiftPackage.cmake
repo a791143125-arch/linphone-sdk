@@ -74,7 +74,7 @@ if(NOT ENABLE_FAT_BINARY AND EXISTS "${LINPHONE_WRAPPER_SWIFT}")
 	string(REPLACE ";" ", " XCFRAMEWORKS_NAMES_CSV "${XCFRAMEWORKS_NAMES}")
 
 	configure_file(
-		"${LINPHONESDK_DIR}/cmake/SwiftPacketManager/LinphoneSwiftPackage.swift.in"
+		"${LINPHONESDK_DIR}/cmake/SwiftPackageManager/LinphoneSwiftPackage.swift.in"
 		"${SWIFT_PACKAGE_DIR}/Package.swift"
 		@ONLY
 	)
@@ -89,14 +89,14 @@ if(NOT ENABLE_FAT_BINARY AND EXISTS "${LINPHONE_WRAPPER_SWIFT}")
 	
 	# Expose SDK version and branch as static Core class through extension as not exposed through local build.
 	configure_file(
-		"${LINPHONESDK_DIR}/cmake/SwiftPacketManager/LinphoneSdkInfos.swift.in"
+		"${LINPHONESDK_DIR}/cmake/SwiftPackageManager/LinphoneSdkInfos.swift.in"
 		"${SWIFT_PACKAGE_DIR}/Sources/linphonesw/LinphoneSdkInfos.swift"
 		@ONLY
 	)
 	
 	# README and License file
 	configure_file(
-		"${LINPHONESDK_DIR}/cmake/SwiftPacketManager/README.md.in"
+		"${LINPHONESDK_DIR}/cmake/SwiftPackageManager/README.md.in"
 		"${SWIFT_PACKAGE_DIR}/README.md"
 		@ONLY
 	)
