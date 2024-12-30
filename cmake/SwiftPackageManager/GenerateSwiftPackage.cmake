@@ -83,7 +83,7 @@ if(NOT ENABLE_FAT_BINARY AND EXISTS "${LINPHONE_WRAPPER_SWIFT}")
 	file(MAKE_DIRECTORY "${SWIFT_PACKAGE_DIR}/Sources/linphonexcframeworks")
 	file(TOUCH "${SWIFT_PACKAGE_DIR}/Sources/linphonexcframeworks/Dummy.swift")
 	
-	# Copy LinphoneWrapper.swift (Swift Packet Manager does not allow relative path)
+	# Copy LinphoneWrapper.swift (Swift Package Manager does not allow relative path)
 	file(MAKE_DIRECTORY ${SWIFT_PACKAGE_DIR}/Sources/linphonesw)
 	file(COPY "${LINPHONE_WRAPPER_SWIFT}" DESTINATION "${SWIFT_PACKAGE_DIR}/Sources/linphonesw")
 	
