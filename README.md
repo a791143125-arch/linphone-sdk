@@ -23,6 +23,8 @@ The software products developed in the context of the Linphone project are dual 
 
 ## Build dependencies
 
+test
+
 ### Common to all target platforms
 
 The following tools must be installed on the build machine:
