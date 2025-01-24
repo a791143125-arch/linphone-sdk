@@ -30,7 +30,7 @@ architecture : @VALID_ARCHS@
 
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
-- On top right entry field enter https://gitlab.linphone.org:/public/linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@
+- On top right entry field enter https://gitlab.linphone.org:/public/linphone-sdk-swift
 - Select your target
 - in your classes add :
 	import linphonesw (or linphone for C functions)
