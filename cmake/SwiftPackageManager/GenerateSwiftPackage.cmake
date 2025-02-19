@@ -57,7 +57,7 @@ if(NOT ENABLE_FAT_BINARY AND EXISTS "${LINPHONE_WRAPPER_SWIFT}")
 			string(APPEND BINARY_TARGETS "
 			.binaryTarget(
 				name: \"${TARGET_NAME}\",
-				path: \"${SWIFT_PACKAGE_URL_ROOT}/XCFrameworks/${XCFRAMEWORK_NAME}.zip\",
+				path: \"${SWIFT_PACKAGE_URL_ROOT}/${LINPHONESDK_NAME}-${LINPHONESDK_VERSION}/XCFrameworks/${XCFRAMEWORK_NAME}.zip\",
 				checksum: \"${FRAMEWORK_ZIP_CHECKSUM}\"
 			),
 			")

@@ -27,7 +27,7 @@
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
     GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_IOS != null && $SKIP_DEPLOY == null
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_IOS_POD != null && $SKIP_DEPLOY == null
   needs:
     - ios-makefile
 
@@ -88,3 +88,16 @@ ios-xcode-pod-upload-xcode12:
 ios-xcode-pod-novideo-upload-xcode12:
   extends: .ios-xcode-novideo-upload
   tags: [ "macosx-min-xcode12.2-upload" ]
+
+.ios-xcode-spm-upload:
+  stage: deploy
+  variables:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_IOS_SPM != null && $SKIP_DEPLOY == null
+  needs:
+    - ios-makefile
+
+  script:
+    - !reference [.factorize_ios_upload, script]
+    - echo "Uploading SPM XCFrameworks to $UPLOAD_ROOT_DIRECTORY/ios/spm/linphone-sdk-$DESCRIBE
+    - rsync -rlv --rsync-path="mkdir -p $UPLOAD_ROOT_DIRECTORY/ios/spm/linphone-sdk-$DESCRIBE && rsync" build/ios/linphone-sdk-swift-ios/* $DEPLOY_SERVER:$UPLOAD_ROOT_DIRECTORY/ios/spm/linphone-sdk-$DESCRIBE
