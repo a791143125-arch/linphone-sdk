@@ -88,3 +88,30 @@ ios-xcode-pod-upload-xcode12:
 ios-xcode-pod-novideo-upload-xcode12:
   extends: .ios-xcode-novideo-upload
   tags: [ "macosx-min-xcode12.2-upload" ]
+
+ios-xcode-spm-upload:
+  tags: [ "macosx-min-xcode12.2-upload" ]
+  stage: deploy
+  when: manual 
+  variables:
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
+#  rules:
+    #- if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_IOS != null && $SKIP_DEPLOY == null
+  needs:
+    - ios-makefile
+
+  script:
+    - !reference [.factorize_ios_upload, script]
+    - echo "Uploading SPM to $UPLOAD_ROOT_DIRECTORY/ios/spm"
+    - rsync -rlv --rsync-path="mkdir -p $UPLOAD_ROOT_DIRECTORY/ios/spm && rsync" build/ios/linphone-sdk-swift-ios* $DEPLOY_SERVER:$UPLOAD_ROOT_DIRECTORY/ios/spm
+    - rm -rf build/ios/linphone-sdk-swift-ios-*/XCFrameworks
+    - cd build/ios
+    - git clone --depth 1 git@gitlab.linphone.org:BC/public/linphone-sdk-swift-ios.git
+    - cp -r linphone-sdk-swift-ios*/* linphone-sdk-swift
+    - cd linphone-sdk-swift
+    - VERSION=$(cat VERSION)
+    - git add .
+    - git commit -a -m "Swift package `cat VERSION`"
+    - git tag -a $VERSION -m "linphone-sdk $VERSION`"
+    - git push
