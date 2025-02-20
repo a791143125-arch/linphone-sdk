@@ -313,6 +313,6 @@ For more information, please visit [our dedicated wiki page](https://wiki.linpho
 Building the SDK for Mac or iOS with swift wrapper generation enabled will build a local SPM.
 Note that SPM on MacOS requires FAT_BINARY option to be turned off.
 
-Example iOS: cmake --preset=ios-sdk -G Ninja -B spm-ios && cmake --build spm-ios -> will build a SPM under  spm-ios/linphone-sdk-swift-ios
-Example MacOS: cmake --preset=mac-sdk -G Ninja -B spm-macos -DENABLE_FAT_BINARY=NO &&  cmake --build spm-macos  -> will build a SPM under spm-macos/linphone-sdk-swift-macos 
+Example iOS: cmake --preset=ios-sdk -G Ninja -B spm-ios && cmake --build spm-ios -> will build a SPM under  spm-ios/linphone-sdk-swift-ios-<linphone-sdk version>
+Example MacOS: cmake --preset=mac-sdk -G Ninja -B spm-macos -DENABLE_FAT_BINARY=NO &&  cmake --build spm-macos  -> will build a SPM under spm-macos/linphone-sdk-swift-macos-<linphone-sdk version>
 
