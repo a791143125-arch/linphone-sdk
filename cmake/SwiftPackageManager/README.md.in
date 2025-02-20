@@ -30,7 +30,7 @@ architecture : @VALID_ARCHS@
 
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
-- On top right entry field enter https://gitlab.linphone.org:/public/linphone-sdk-swift
+- On top right entry field enter https://gitlab.linphone.org:/public/linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@-@LINPHONESDK_VERSION@
 - Select your target
 - in your classes add :
 	import linphonesw (or linphone for C functions)
@@ -42,7 +42,7 @@ architecture : @VALID_ARCHS@
 - Menu File -> Add Package Dependencies
 - Add Local
 - Navigate to the <build folder>
-- select linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@
+- select linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@-@LINPHONESDK_VERSION@
 - Add Package
 - Select your target
 - in your classes add :
@@ -51,14 +51,14 @@ architecture : @VALID_ARCHS@
 
 # How to use a locally built package with version control
 
-- from terminal navigate to <build folder>/linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@
+- from terminal navigate to <build folder>/linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@-@LINPHONESDK_VERSION@
 - git init
 - git add .
 - git commit -a -m "Swift package @LINPHONESDK_VERSION@"
 - git tag -a @LINPHONESDK_VERSION@ -m "linphone-sdk @LINPHONESDK_VERSION@"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
-- On top right entry field enter file://<build folder>/linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@
+- On top right entry field enter file://<build folder>/linphone-sdk-swift-@SWIFT_PACKAGE_TARGET@-@LINPHONESDK_VERSION@
 - Select your target
 - in your classes add :
 	import linphonesw (or linphone for C functions)
