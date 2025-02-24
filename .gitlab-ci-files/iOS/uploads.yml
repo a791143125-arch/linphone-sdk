@@ -88,3 +88,57 @@ ios-xcode-pod-upload-xcode12:
 ios-xcode-pod-novideo-upload-xcode12:
   extends: .ios-xcode-novideo-upload
   tags: [ "macosx-min-xcode12.2-upload" ]
+
+ios-xcode-spm-upload:
+  tags: [ "macosx-min-xcode12.2-upload" ]
+  stage: deploy
+  variables:
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=no
+    SWIFT_PACKAGE_FLAVOR : ""
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_IOS != null && $SKIP_DEPLOY == null
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+  needs:
+    - ios-makefile
+
+  script:
+    - |
+        if [[ "$CI_PIPELINE_SOURCE" == "merge_request_event" ]]; then
+          TARGET_BRANCH="$CI_COMMIT_REF_NAME"
+          SPM_URL="$IOS_SNAPSHOTS_URL/spm"
+        else
+          TARGET_BRANCH="${SWIFT_PACKAGE_FLAVOR}${SPM_DEPLOY_TARGET_BRANCH}"
+          SPM_URL="$IOS_RELEASES_URL/spm"
+        fi
+    - !reference [.factorize_ios_upload, script]
+    - ls -lart build/ios
+    - VERSION=$(cat build/ios/linphone-sdk-swift-ios*/VERSION)
+    - echo "Uploading SPM to $DEPLOY_SERVER:$UPLOAD_ROOT_DIRECTORY/ios/spm/$SWIFT_PACKAGE_FLAVOR ($SPM_URL)"
+    - rsync -ar build/ios/linphone-sdk-swift-ios/ $DEPLOY_SERVER:$UPLOAD_ROOT_DIRECTORY/ios/spm/$SWIFT_PACKAGE_FLAVOR/linphone-sdk-swift-ios-$VERSION/
+    - rm -rf build/ios/linphone-sdk-swift-ios/XCFrameworks
+    - echo "Publishing SPM to branch $TARGET_BRANCH."
+    - cd build/ios
+    - git clone git@gitlab.linphone.org:BC/public/linphone-sdk-swift-ios.git public-linphone-sdk-swift-ios
+    - cd public-linphone-sdk-swift-ios
+    - git checkout "$TARGET_BRANCH" || git checkout -b "$TARGET_BRANCH"
+    - rsync -ar ../linphone-sdk-swift-ios/* .
+    - sed -i '' "s|SWIFT_PACKAGE_XCFRAMEWORKS_BASE_URL_PLACE_HOLDER|${SPM_URL}|g" Package.swift
+    - git add .
+    - git commit -a -m "Swift package $VERSION"
+    - git tag -a $VERSION -m "linphone-sdk $VERSION"
+    - git push || git push --set-upstream origin $TARGET_BRANCH
+    -  |
+         if [[ "$CI_PIPELINE_SOURCE" == "schedule" ]]; then
+           git push --tags
+         fi
+    - cd ..
+    - rm -rf public-linphone-sdk-swift-ios
+
+.ios-xcode-spm-novideo-upload:
+  needs:
+    - ios-makefile
+  variables:
+    SWIFT_PACKAGE_FLAVOR:"novideo/"
+  extends: ios-xcode-spm-upload
+

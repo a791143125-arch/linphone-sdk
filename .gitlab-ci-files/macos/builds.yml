@@ -84,7 +84,7 @@ macos-m1-multiarch-makefile:
 
     - !reference [.choose_url_macos, script]
 
-    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_MACOS_BASE_URL=$MACOS_URL"
+    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_MACOS_BASE_URL=$MACOS_URL -DSWIFT_PACKAGE_XCFRAMEWORKS_BASE_URL=${MACOS_URL}/spm"
 
     - !reference [.macos-m1-multiarch-desktop, script]
   extends: .macos-m1-multiarch-desktop
@@ -160,6 +160,14 @@ macos-xcode-pqc:
   extends: macos-xcode
   variables:
     CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON
+  rules:
+    - !reference [.rules-merge-request-manual, rules]
+    - if: $ALL_MACOS_BUILDS != null
+
+macos-xcode-swift:
+  extends: macos-xcode
+  variables:
+    CMAKE_OPTIONS: -DENABLE_FAT_BINARY=NO
   rules:
     - !reference [.rules-merge-request-manual, rules]
     - if: $ALL_MACOS_BUILDS != null
