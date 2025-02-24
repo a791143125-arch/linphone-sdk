@@ -49,6 +49,7 @@
       - build/mac/linphone-sdk-*.zip
       - build/mac/linphone-sdk.podspec
       - liblinphone/tester/*
+      - build/mac/linphone-sdk-swift-macos
     when: always
     expire_in: 1 day
 
@@ -163,3 +164,20 @@ macos-xcode-pqc:
   rules:
     - !reference [.rules-merge-request-manual, rules]
     - if: $ALL_MACOS_BUILDS != null
+
+macos-ninja-spm:
+  extends: macos-ninja
+  tags: [ "macos-xcode15" ]
+  variables:
+    CMAKE_OPTIONS: -DENABLE_FAT_BINARY=NO
+  rules:
+    - !reference [.rules-merge-request-manual, rules]
+    - if: $ALL_MACOS_BUILDS != null
+  script:
+    - DESCRIBE=$(git -C liblinphone describe)
+    - echo $DESCRIBE
+    - !reference [.choose_url_macos, script]
+    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_MACOS_BASE_URL=$MACOS_URL -DUPLOAD_SWIFT_PACKAGE=ON"
+    - !reference [macos-ninja, script]
+
+
