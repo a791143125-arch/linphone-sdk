@@ -20,3 +20,35 @@ macos-upload:
     - pod repo push linphone-sdk-macosx build/mac/linphone-sdk.podspec --skip-import-validation --verbose --allow-warnings
     - cd ~/.cocoapods/repos/linphone-sdk-macosx && git push origin master && cd -
     - pod repo remove linphone-sdk-macosx
+
+
+macos-upload-spm:
+  stage: deploy
+  tags: [ "macos-xcode13" ]
+
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $DEPLOY_MACOS != null
+  variables:
+    GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
+  needs:
+    - macos-xcode-swift 
+
+  script:
+    - !reference [.factorize_ios_upload, script]
+    - echo "Uploading SPM to $UPLOAD_ROOT_DIRECTORY/macosx/spm"
+    - rsync -rlv  build/ios/linphone-sdk-swift-macos* $DEPLOY_SERVER:$UPLOAD_ROOT_DIRECTORY/macos/sdk/spm
+    - rm -rf build/macosx/linphone-sdk-swift-macos-*/XCFrameworks
+    - cd build/macosx
+    - git clone --depth 1 git@gitlab.linphone.org:BC/public/linphone-sdk-swift-macos.git
+    - cp -r linphone-sdk-swift-macos*/* linphone-sdk-swift-macos
+    - cd linphone-sdk-swift-macos
+    - git checkout $SPM_DEPLOY_TARGET_BRANCH
+    - VERSION=$(cat VERSION)
+    - git add .
+    - git commit -a -m "Swift package $VERSION"
+    - git tag -a $VERSION -m "linphone-sdk $VERSION"
+    - git push
+    - cd ..
+    - rm -rf linphone-sdk-swift-macos
+

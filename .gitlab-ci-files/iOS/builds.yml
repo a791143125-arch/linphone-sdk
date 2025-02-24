@@ -51,6 +51,7 @@
       - build/ios/*.podspec
       - build/ios/docs
       - tester/IOS/LinphoneTester/Podfile
+      - build/ios/linphone-sdk-swift-ios*
 
     when: always
     expire_in: 1 day
@@ -83,7 +84,7 @@ ios-makefile:
     - DESCRIBE=$(git -C liblinphone describe)
     - echo $DESCRIBE
     - !reference [.choose_url_ios, script]
-    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL}"
+    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL} -DSWIFT_PACKAGE_XCFRAMEWORKS_BASE_URL=${IOS_URL}/spm"
     - !reference [.ios, script]
   extends: .ios
 
@@ -182,7 +183,7 @@ ios-xcode:
     - DESCRIBE=$(git -C liblinphone describe)
     - echo $DESCRIBE
     - !reference [.choose_url_ios, script]
-    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL}"
+    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL} -DSWIFT_PACKAGE_XCFRAMEWORKS_BASE_URL=${IOS_URL}/spm"
     - !reference [.ios, script]
 
   extends: .ios
@@ -211,7 +212,7 @@ ios-xcode-novideo:
     - echo $DESCRIBE
 
     - !reference [.choose_url_ios, script]
-    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL}/novideo/"
+    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL}/novideo/ -DSWIFT_PACKAGE_XCFRAMEWORKS_BASE_URL=${IOS_URL}/spm/novideo"
     - !reference [.ios, script]
   extends: .ios
 
