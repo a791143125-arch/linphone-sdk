@@ -1,7 +1,7 @@
 .macos-desktop:
   extends: .job-prepare
   stage: build
-  tags: [ "macos-xcode13" ]
+  tags: [ "macos-xcode15" ]
 
   rules:
     - !reference [.rules-merge-request-manual, rules]
@@ -49,6 +49,7 @@
       - build/mac/linphone-sdk-*.zip
       - build/mac/linphone-sdk.podspec
       - liblinphone/tester/*
+      - build/mac/linphone-sdk-swift-macos
     when: always
     expire_in: 1 day
 
@@ -84,7 +85,7 @@ macos-m1-multiarch-makefile:
 
     - !reference [.choose_url_macos, script]
 
-    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_MACOS_BASE_URL=$MACOS_URL"
+    - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_MACOS_BASE_URL=$MACOS_URL -DSWIFT_PACKAGE_XCFRAMEWORKS_BASE_URL=${MACOS_URL}/spm"
 
     - !reference [.macos-m1-multiarch-desktop, script]
   extends: .macos-m1-multiarch-desktop
@@ -160,6 +161,14 @@ macos-xcode-pqc:
   extends: macos-xcode
   variables:
     CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON
+  rules:
+    - !reference [.rules-merge-request-manual, rules]
+    - if: $ALL_MACOS_BUILDS != null
+
+macos-ninja-spm:
+  extends: macos-ninja
+  variables:
+    CMAKE_OPTIONS: -DENABLE_FAT_BINARY=NO -DUPLOAD_SWIFT_PACKAGE=ON
   rules:
     - !reference [.rules-merge-request-manual, rules]
     - if: $ALL_MACOS_BUILDS != null
