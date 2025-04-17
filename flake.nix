@@ -82,10 +82,11 @@
       devShells.x86_64-linux.default = with nixpkgs.legacyPackages.x86_64-linux;
         mkShell {
           # Build with
-          # CC=gcc CXX=g++ cmake -S . -B ./build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Sanitizer -DCMAKE_INSTALL_PREFIX="$PWD/build/install" -DENABLE_UNIT_TESTS=ON -DENABLE_STRICT=OFF -DENABLE_SANITIZER=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+          # CC=gcc CXX=g++ cmake -S . -B ./build -G "Ninja" -DCMAKE_BUILD_TYPE=Sanitizer -DCMAKE_INSTALL_PREFIX="$PWD/build/install" -DENABLE_UNIT_TESTS=ON -DENABLE_STRICT=OFF -DENABLE_SANITIZER=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=1
           # cd build
           # cmake --build .
           buildInputs = [
+            ninja
             cmake
             clang_13
             (python3.withPackages (ps: with ps; [ pystache six ]))
@@ -97,6 +98,16 @@
             libpulseaudio
             glew
             nixpkgs-fmt
+          ];
+        };
+
+      # CC=gcc CXX=g++ BUILD_DIR_NAME="build-java" cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -S . -B ./$BUILD_DIR_NAME -G "Ninja" --preset=java-sdk-linux -DCMAKE_INSTALL_PREFIX="$PWD/$BUILD_DIR_NAME/install" -DENABLE_CCACHE=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DENABLE_VIDEO=OFF
+      devShells.x86_64-linux.java = with nixpkgs.legacyPackages.x86_64-linux;
+        mkShell {
+          buildInputs = self.devShells.x86_64-linux.default.buildInputs ++ [
+            jetbrains.jdk
+            meson
+            nasm
           ];
         };
 
