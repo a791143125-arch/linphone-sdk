@@ -73,7 +73,7 @@ ubuntu2004-ninja-gcc:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $ALL_LINUX_BUILDS != null && $DOCKER_UPDATE == null && $SKIP_LINUX == null
     - !reference [.rules-merge-request-manual, rules]
   variables:
-    CMAKE_OPTIONS: -DENABLE_DOC=ON -DENABLE_LDAP=ON -DENABLE_QT_GL=ON
+    CMAKE_OPTIONS: -DENABLE_DOC=ON -DENABLE_LDAP=ON -DENABLE_QT_GL=ON -DENABLE_AUDIO_TRANSCRIPTION=ON
     CMAKE_GENERATOR: Ninja
     CC: gcc
     CXX: g++
