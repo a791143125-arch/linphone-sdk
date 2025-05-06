@@ -108,6 +108,8 @@ cmake_dependent_option(BUILD_ZLIB_SHARED_LIBS "Choose to build shared or static 
 cmake_dependent_option(BUILD_ZXINGCPP "Build zxing-cpp library source code from submodule instead of searching it in system libraries." ON "ENABLE_QRCODE" OFF)
 cmake_dependent_option(BUILD_ZXINGCPP_SHARED_LIBS "Choose to build shared or static zxing-cpp library." ${BUILD_SHARED_LIBS} "BUILD_ZXINGCPP" OFF)
 
+cmake_dependent_option(BUILD_WHISPER "Build whisper.cpp library source code from submodule instead of searching it in system libraries." ON "ENABLE_AUDIO_TRANSCRIPTION" OFF)
+cmake_dependent_option(BUILD_WHISPER_SHARED_LIBS "Choose to build shared or static whisper.cpp library." ${BUILD_SHARED_LIBS} "BUILD_WHISPER" OFF)
 
 ############################################################################
 # Define utility functions
@@ -1395,6 +1397,18 @@ if(BUILD_VO_AMRWBENC)
 		add_dependencies(sdk vo-amrwbenc)
 	endfunction()
 	add_vo_amrwbenc()
+endif()
+
+if(BUILD_WHISPER)
+	function(add_whisper)
+		set(BUILD_SHARED_LIBS ${BUILD_WHISPER_SHARED_LIBS})
+		set(WHISPER_BUILD_TESTS OFF)
+		set(WHISPER_BUILD_EXAMPLES OFF)
+
+		add_subdirectory("external/whispercpp")
+		add_dependencies(sdk whisper)
+	endfunction()
+	add_whisper()
 endif()
 
 if(BUILD_XERCESC)
