@@ -142,3 +142,6 @@
 [submodule "external/aom"]
 	path = external/aom
 	url = https://gitlab.linphone.org/BC/public/external/aom.git
+[submodule "external/whispercpp"]
+	path = external/whispercpp
+	url = https://gitlab.linphone.org/BC/public/external/whisper.cpp.git
