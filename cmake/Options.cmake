@@ -126,6 +126,7 @@ linphonesdk_dependent_option("WASAPI" "Windows Audio Session API (WASAPI) sound 
 linphonesdk_option("WebRTC AEC" "WebRTC echo canceller support." ON)
 linphonesdk_option("WebRTC AECM" "WebRTC echo canceller for mobile support." OFF)
 linphonesdk_option("WebRTC VAD" "WebRTC voice activation detector support." ON)
+linphonesdk_option("Transcription" "Audio transcription by Whisper.cpp ASR model." ON)
 
 # Activation of video related features
 linphonesdk_option("Video" "Ability to capture and display video." ON)
