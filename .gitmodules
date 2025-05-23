@@ -97,3 +97,6 @@
 [submodule "oboe"]
 	path = msoboe/oboe
 	url = https://github.com/google/oboe
+[submodule "webrtc"]
+	path = mswebrtc/webrtc
+	url = https://gitlab.linphone.org/BC/public/external/webrtc.git
