@@ -514,7 +514,7 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 .test-mediastreamer:
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3-2-sdk" ]
   extends: .test
   variables:
     TESTER_BIN: "mediastreamer2-tester"
@@ -533,7 +533,7 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 .test-liblinphone:
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3-2-sdk" ]
   extends: .test
   allow_failure: true
   variables:
@@ -552,7 +552,7 @@
 
 .test-liblinphone-tunnel-pq:
   extends: .test-liblinphone
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3-2-sdk" ]
   variables:
     #true
     USE_TUNNEL_PQ_TESTS_LIBLINPHONE: "true"
@@ -561,7 +561,7 @@
 
 .test-liblinphone-crypto-backend:
   extends: .test-liblinphone
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3-2-sdk" ]
   variables:
     #true
     CRYPTO_BACKEND_TESTS_LIBLINPHONE: "true"
@@ -575,7 +575,7 @@
 
 .test-liblinphone-tunnel-pq-mr:
   extends: .test-liblinphone-mr
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3-2-sdk" ]
   allow_failure: false
   variables:
     #true
@@ -584,7 +584,7 @@
 
 .test-liblinphone-crypto-backend-mr:
   extends: .test-liblinphone-mr
-  tags: [ "docker-test-liblinphone" ]
+  tags: [ "docker-test-liblinphone-g3-2-sdk" ]
   allow_failure: false
   variables:
     #true
