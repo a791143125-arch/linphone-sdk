@@ -1404,13 +1404,8 @@ if(BUILD_WHISPER)
 		set(BUILD_SHARED_LIBS ${BUILD_WHISPER_SHARED_LIBS})
 		set(WHISPER_BUILD_TESTS OFF)
 		set(WHISPER_BUILD_EXAMPLES OFF)
-		# # Define the model install directory
-        # set(MODEL_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/models/whisper.cpp")
-        # set(MODEL_PATH "${MODEL_INSTALL_DIR}/base.en-q8_0")  # Example model path
-
-        # # Pass the model path to the whispercpp library
-        # add_subdirectory("external/whispercpp")
-        # target_compile_definitions(whisper PUBLIC MODEL_PATH="${MODEL_PATH}")
+		set(MODEL_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/whisper.cpp/models")
+		file(MAKE_DIRECTORY "${MODEL_INSTALL_DIR}")
 		add_subdirectory("external/whispercpp")
 		add_dependencies(sdk whisper)
 	endfunction()
