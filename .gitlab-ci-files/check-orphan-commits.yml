@@ -1,6 +1,6 @@
 check-orphan-commits:
 
-  tags: [ "linux-deploy-flat" ]
+  tags: [ "linux-deploy-shell-lenovo-1-sdk-flat" ]
   stage: check-orphans
   #prevents jobs from gathering all previous jobs artifacts
   needs: []
