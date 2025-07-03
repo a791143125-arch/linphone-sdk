@@ -24,7 +24,7 @@ recache-ubuntu2004:
     PLATFORM: linux-ubuntu2004
 
 .factorize_ubuntu2004_s: &docker_image_platform_and_runner_tag_s
-  tags: [ "docker-sequential" ]
+  tags: [ "docker-test-sequential-lenovo-1-sdk" ]
   image: !reference [.ubuntu2004_image_version, image]
   needs:
     - ubuntu2004-ninja-gcc-tunnel-pq

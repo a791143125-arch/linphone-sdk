@@ -140,7 +140,7 @@ ortp-rocky8-test-mr:
   needs:
     - rocky8-ninja-gcc
   #different runner needed because belle-sip_tester can't work in parallel (dialog test suite is crashing randomly)
-  tags: [ "docker-sequential" ]
+  tags: [ "docker-test-sequential-lenovo-1-sdk" ]
   variables:
     PLATFORM: linux-rocky8
 

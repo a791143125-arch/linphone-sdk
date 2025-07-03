@@ -146,7 +146,7 @@ bellesip-debian11-test:
   needs:
     - debian11-ninja-gcc
   #different runner needed because belle-sip_tester can't work in parallel (dialog test suite is crashing randomly)
-  tags: [ "docker-sequential" ]
+  tags: [ "docker-test-sequential-lenovo-1-sdk" ]
   image: !reference [.debian11_image_version, image]
   variables:
     PLATFORM: linux-debian11
