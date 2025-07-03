@@ -16,7 +16,7 @@ recache-rocky8:
 
 
 .factorize_rocky8: &docker_image_needs_platform_runner_tag_dev_toolset
-  tags: [ "docker-test-lenovo-1-sdk" ]
+  tags: [ "docker-test-lenovo-2-sdk" ]
   image: !reference [ .rocky8_image_version, image ]
   needs:
     - rocky8-ninja-gcc
@@ -140,7 +140,7 @@ ortp-rocky8-test-mr:
   needs:
     - rocky8-ninja-gcc
   #different runner needed because belle-sip_tester can't work in parallel (dialog test suite is crashing randomly)
-  tags: [ "docker-test-sequential-lenovo-1-sdk" ]
+  tags: [ "docker-test-sequential-lenovo-2-sdk" ]
   variables:
     PLATFORM: linux-rocky8
 
