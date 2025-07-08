@@ -761,8 +761,10 @@ static int sender_set_active_speaker_ssrc(MSFilter *f, void *data) {
 
 	ms_filter_lock(f);
 	if (d->session) {
+		ortp_mutex_lock(&d->session->main_mutex);
 		rtp_session_clear_contributing_sources(d->session);
 		if (csrc != 0) rtp_session_add_contributing_source(d->session, csrc, "", NULL, NULL, NULL, NULL, NULL, NULL);
+		ortp_mutex_unlock(&d->session->main_mutex);
 		was_set = TRUE;
 	}
 	ms_filter_unlock(f);
