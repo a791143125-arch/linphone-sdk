@@ -264,7 +264,11 @@
            then
               if [ $SHAKY_TESTS_LIBLINPHONE = "false" ];
               then
-                  $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --tag '!shaky' --max-failed 0 $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt || EXIT=$?
+                  if [ $TESTS_LIBLINPHONE_SUITE != "" ];
+                  then
+                      $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --suite "$TEST_LIBLINPHONE_SUITE" "--tag '!shaky' --max-failed 0 $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt || EXIT=$?
+                  else
+                      $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --tag '!shaky' --max-failed 0 $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt || EXIT=$?
               else
                   $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --tag 'shaky' $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt --xml --xml-file BCUnitAutomatedShaky || EXIT=$?
               fi

@@ -63,7 +63,8 @@ include:
   - '.gitlab-ci-files/linux-desktop/linux-desktop-debian12.yml'
   - '.gitlab-ci-files/linux-desktop/linux-desktop-gentoo.yml'
   - '.gitlab-ci-files/linux-desktop/linux-desktop-rocky8.yml'
-
+  - '.gitlab-ci-files/linux-desktop/linux-desktop-rocky8-test-suites.yml'
+  
   - '.gitlab-ci-files/linux-desktop/linux-desktop-ubuntu-rolling.yml'
   - '.gitlab-ci-files/linux-desktop/linux-desktop-ubuntu2004.yml'
 

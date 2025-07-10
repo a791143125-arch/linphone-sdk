@@ -1,0 +1,734 @@
+.factorize_liblinphone_rocky8: &docker_image_needs_platform_devtoolset_libl
+  image: !reference [ .rocky8_test_libl_image_version, image ]
+  needs:
+    - rocky8-ninja-gcc
+  variables:
+    PLATFORM: linux-rocky8
+
+
+account-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Account"
+
+account-creator-flexiapi-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Account creator FlexiAPI"
+
+account-creator-local-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Account creator local"
+
+account-manager-services-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Account Manager Services"
+
+alerts-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Alerts"
+
+audio-bypass-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio Bypass"
+
+audio-call-quality-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio Call quality"
+
+audio-conference-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio conference"
+
+audio-conference-local-participant-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio conference (Local participant)"
+
+audio-conference-remote-participant-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio conference (Remote participant)"
+
+audio-routes-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio Routes"
+
+audio-video-conference-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio video conference (Basic)"
+
+audio-video-conference-2-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Audio video conference 2 (Basic)"
+
+bearer-authentication-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Bearer authentication"
+
+call-race-conditions-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Call race conditions"
+
+call-recovery-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Call recovery"
+
+call-twisted-cases-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Call twisted cases"
+
+call-with-flexfec-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Call with FlexFec"
+
+call-with-ice-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Call with ICE"
+
+call-with-rtp-bundle-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Call with RTP bundle"
+
+capability-negotiation-no-sdp-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Capability Negotiation (No SDP)"
+
+capability-negotiation-parameters-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Capability Negotiation (Parameters)"
+
+capability-negotiation-sdp-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Capability Negotiation (SDP)"
+
+clonableobject-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "ClonableObject"
+
+conference-event-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Conference event"
+
+conference-info-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Conference Info"
+
+contents-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Contents"
+
+cpim-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Cpim"
+
+dtls-srtp-capability-negotiation-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "DTLS SRTP Capability Negotiation (Basic)"
+
+dtls-srtp-capability-negotiation-encryption-change-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "DTLS SRTP Capability Negotiation (Encryption change)"
+
+dtls-srtp-ice-capability-negotiation-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "DTLS SRTP ICE Capability Negotiation"
+
+dtmf-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "DTMF"
+
+ephemeral-group-chat-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Ephemeral group chat"
+
+ephemeral-group-chat-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Ephemeral group chat (Basic)"
+
+event-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Event"
+
+external-domain-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "External domain"
+
+flexiapi-client-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "FlexiAPI Client"
+
+flexisip-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Flexisip"
+
+friends-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Friends"
+
+group-chat-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Group Chat"
+
+group-chat2-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Group Chat2"
+
+group-chat3-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Group Chat3"
+
+group-chat4-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Group Chat4"
+
+http-client-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "HTTP Client"
+
+ice-capability-negotiation-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "ICE Capability Negotiation"
+
+ice-conference-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "ICE conference"
+
+ics-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Ics"
+
+lime-data-bases-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Lime data bases"
+
+lime-server-user-authentication-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Lime server user authentication"
+
+local-conference-tester-chat-advanced-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Chat Advanced)"
+
+local-conference-tester-chat-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Chat Basic)"
+
+local-conference-tester-chat-error-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Chat error)"
+
+local-conference-tester-chat-imdn-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Chat IMDN)"
+
+local-conference-tester-conference-edition-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Conference edition)"
+
+local-conference-tester-ephemeral-chat-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Ephemeral Chat)"
+
+local-conference-tester-impromptu-conference-with-mismatch-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Impromptu Conference with mismatch)"
+
+local-conference-tester-impromptu-conference-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Impromptu Conference)"
+
+local-conference-tester-impromptu-encrypted-conference-point-to-point-encryption-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Impromptu Encrypted Conference Point to Point Encryption)"
+
+local-conference-tester-scheduled-conference-advanced-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Scheduled Conference Advanced)"
+
+local-conference-tester-scheduled-conference-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Scheduled Conference Basic)"
+
+local-conference-tester-scheduled-conference-with-audio-only-participants-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Scheduled Conference with Audio only participants)"
+
+local-conference-tester-scheduled-conference-with-chat-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Scheduled Conference with chat)"
+
+local-conference-tester-scheduled-conference-with-screen-sharing-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Scheduled Conference with Screen sharing)"
+
+local-conference-tester-scheduled-ice-conference-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Scheduled ICE Conference)"
+
+local-conference-tester-secure-chat-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Secure Chat)"
+
+local-conference-tester-transferred-conference-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Local conference tester (Transferred Conference Basic)"
+
+log-file-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Log file"
+
+logcollection-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "LogCollection"
+
+maindb-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "MainDb"
+
+message-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Message"
+
+multi-call-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Multi call"
+
+multicast-call-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Multicast Call"
+
+multipart-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Multipart"
+
+mwi-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Mwi"
+
+offer-answer-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Offer-answer"
+
+player-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Player"
+
+potential-configuration-graph-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Potential configuration graph"
+
+presence-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Presence"
+
+presence-using-server-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Presence using server"
+
+propertycontainer-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "PropertyContainer"
+
+proxy-config-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Proxy config"
+
+push-incoming-call-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Push Incoming Call"
+
+qualityreporting-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "QualityReporting"
+
+recorder-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Recorder"
+
+refer-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Refer"
+
+register-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Register"
+
+remoteprovisioning-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "RemoteProvisioning"
+
+rtt-message-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "RTT Message"
+
+secure-call-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure Call"
+
+secure-call2-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure Call2"
+
+secure-group-chat-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure group chat"
+
+secure-group-chat-exhume-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure group chat (Exhume)"
+
+secure-group-chat2-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure group chat2"
+
+secure-message-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure Message"
+
+secure-message2-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Secure Message2"
+
+session-timers-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Session Timers"
+
+setup-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Setup"
+
+shared-core-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Shared Core"
+
+single-call-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Single Call"
+
+single-call-not-established-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Single Call (Not established)"
+
+single-call2-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Single Call2"
+
+srtp-capability-negotiation-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "SRTP Capability Negotiation (Basic)"
+
+srtp-capability-negotiation-encryption-change-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "SRTP Capability Negotiation (Encryption Change)"
+
+srtp-ice-capability-negotiation-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "SRTP ICE Capability Negotiation"
+
+stun-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Stun"
+
+tunnel-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Tunnel"
+
+turn-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Turn"
+
+utils-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Utils"
+
+vcard-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "VCard"
+
+vfs-encryption-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "VFS encryption"
+
+video-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video"
+
+video-call-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video Call"
+
+video-call-advanced-scenarios-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video Call advanced scenarios"
+
+video-call-msogl-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video Call MSOGL"
+
+video-call-quality-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video Call quality"
+
+video-conference-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video conference"
+
+video-conference-layout-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Video conference (Layout)"
+
+wrapper-cpp-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "Wrapper Cpp"
+
+zrtp-capability-negotiation-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "ZRTP Capability Negotiation"
+
+zrtp-capability-negotiation-basic-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "ZRTP Capability Negotiation (Basic)"
+
+zrtp-ice-capability-negotiation-suite-liblinphone-test:
+  extends: .test-liblinphone-mr
+  <<: *docker_image_needs_platform_devtoolset_libl
+  variables:
+    TESTS_LIBLINPHONE_SUITE: "ZRTP ICE Capability Negotiation"
+
