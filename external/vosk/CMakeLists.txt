@@ -11,11 +11,5 @@ add_library(vosk SHARED IMPORTED GLOBAL)
 
 set_target_properties(vosk PROPERTIES
     IMPORTED_LOCATION "${VOSK_LIB_PATH}/libvosk.so"
-    INTERFACE_INCLUDE_DIRECTORIES "${VOSK_LIB_PATH}"  # This exposes vosk_api.h
-)
-
-add_executable(vosk_exe main.cpp)
-
-target_link_libraries(vosk_exe
-    vosk
+    INTERFACE_INCLUDE_DIRECTORIES "${VOSK_LIB_PATH}"
 )
