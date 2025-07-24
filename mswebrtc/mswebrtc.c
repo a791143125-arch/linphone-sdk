@@ -29,6 +29,9 @@ extern MSFilterDesc ms_webrtc_aec_desc;
 #ifdef BUILD_VAD
 extern MSFilterDesc ms_webrtc_vad_desc;
 #endif
+#ifdef BUILD_WNS
+extern MSFilterDesc ms_webrtc_noise_suppressor_desc;
+#endif
 
 #ifndef VERSION
 #define VERSION "debug"
@@ -47,6 +50,9 @@ MS_PLUGIN_DECLARE(void) libmswebrtc_init(MSFactory *factory) {
 #endif
 #ifdef BUILD_VAD
 	ms_factory_register_filter(factory, &ms_webrtc_vad_desc);
+#endif
+#ifdef BUILD_WNS
+	ms_factory_register_filter(factory, &ms_webrtc_noise_suppressor_desc);
 #endif
 
 	ms_message("libmswebrtc " VERSION " plugin loaded");

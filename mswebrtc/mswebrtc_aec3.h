@@ -48,10 +48,18 @@ private:
 	bool mEchoStarted;
 	bool mBypassMode;
 	bool mWaitingRef;
+	FILE *mEchoFile = nullptr;
+	FILE *mRefFile = nullptr;
+	FILE *mCleanFile = nullptr;
+	int mFileIndex = 0;
+	struct timeval mStartRec;
+	struct timeval mNow;
 
 public:
 	MSWebrtcAEC3(MSFilter *filter);
 	~MSWebrtcAEC3(){};
+	void open_audio_file();
+	void close_audio_file();
 	void uninit();
 	void preprocess();
 	void process(MSFilter *filter);

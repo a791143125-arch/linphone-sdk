@@ -31,7 +31,7 @@ else()
 endif()
 # all symbols must be resolved at link time, except when the sanitizer is enabled with Clang, because libasan introduces symbols that are resolved dynamically at runtime
 if(UNIX AND NOT APPLE AND NOT (COMPILER_IS_CLANG AND ENABLE_SANITIZER))
-	add_link_options("LINKER:-no-undefined") 
+	add_link_options("LINKER:-no-undefined")
 endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/mediastreamer2/plugins")
@@ -47,6 +47,7 @@ set(VERSION "${PACKAGE_VERSION}")
 
 option(ENABLE_AEC "Build the WebRTC echo canceller support." YES)
 option(ENABLE_VAD "Build the WebRTC VAD support" YES)
+option(ENABLE_WNS "Build the WebRTC noise suppressor support" YES)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -69,6 +70,9 @@ if(ENABLE_AEC)
 endif()
 if(ENABLE_VAD)
 	set(BUILD_VAD 1)
+endif()
+if(ENABLE_WNS)
+	set(BUILD_WNS 1)
 endif()
 
 add_definitions(-DWEBRTC_APM_DEBUG_DUMP=0)
@@ -126,7 +130,7 @@ if(SYSTEM_PROCESSOR MATCHES "arm" OR SYSTEM_PROCESSOR MATCHES "aarch64")
 			endif()
 	else()
 		add_definitions(-DWEBRTC_ARCH_ARM)
-		set(COMPILER_SUPPORTS_ARMV8 FALSE)	
+		set(COMPILER_SUPPORTS_ARMV8 FALSE)
 		if(SYSTEM_PROCESSOR MATCHES "armv[7-9]")
 			add_definitions(-DWEBRTC_ARCH_ARM_V7)
 			check_cxx_compiler_flag("-mfpu=neon" COMPILER_SUPPORTS_NEON)
@@ -147,6 +151,7 @@ endif()
 
 set(AUDIO_PROCESSING_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/audio_processing")
 set(AEC3_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/audio_processing/aec3")
+set(NS_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/audio_processing/ns")
 set(RTCBASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rtc_base")
 set(COMMON_AUDIO_SIGNAL_PROC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/common_audio/signal_processing")
 set(VAD_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/common_audio/vad")
@@ -156,7 +161,7 @@ set(WEBRTC_SRC
 )
 
 if(ENABLE_AEC)
-	list(APPEND WEBRTC_SRC 
+	list(APPEND WEBRTC_SRC
 		aec3.cc
 		mswebrtc_aec3.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/api/audio/echo_canceller3_config.cc
@@ -225,7 +230,7 @@ if(ENABLE_AEC)
 		${AEC3_SRC_DIR}/transparent_mode.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/audio_util.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/resampler/push_sinc_resampler.cc
-		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/resampler/sinc_resampler.cc	
+		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/resampler/sinc_resampler.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/third_party/ooura/fft_size_128/ooura_fft.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/system_wrappers/source/cpu_features.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/system_wrappers/source/field_trial.cc
@@ -267,7 +272,38 @@ if(ENABLE_VAD)
 	)
 endif()
 
-if(ENABLE_AEC)
+if(ENABLE_WNS)
+	list(APPEND WEBRTC_SRC
+		noise_suppressor.cc
+		mswebrtc_noise_suppressor.cc
+		${NS_SRC_DIR}/fast_math.cc
+		${NS_SRC_DIR}/histograms.cc
+		${NS_SRC_DIR}/noise_estimator.cc
+		${NS_SRC_DIR}/noise_suppressor.cc
+		${NS_SRC_DIR}/ns_fft.cc
+		${NS_SRC_DIR}/prior_signal_model.cc
+		${NS_SRC_DIR}/prior_signal_model_estimator.cc
+		${NS_SRC_DIR}/quantile_noise_estimator.cc
+		${NS_SRC_DIR}/signal_model.cc
+		${NS_SRC_DIR}/signal_model_estimator.cc
+		${NS_SRC_DIR}/speech_probability_estimator.cc
+		${NS_SRC_DIR}/suppression_params.cc
+		${NS_SRC_DIR}/wiener_filter.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/third_party/ooura/fft_size_256/fft4g.cc
+		${AUDIO_PROCESSING_DIR}/audio_buffer.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/resampler/push_sinc_resampler.cc
+		${AUDIO_PROCESSING_DIR}/splitting_filter.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/audio_util.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/common_audio/resampler/sinc_resampler.cc
+		${COMMON_AUDIO_SIGNAL_PROC_DIR}/splitting_filter.c
+		${AUDIO_PROCESSING_DIR}/three_band_filter_bank.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/system_wrappers/source/cpu_features.cc
+		${RTCBASE_DIR}/checks.cc
+		${RTCBASE_DIR}/memory/aligned_malloc.cc
+	)
+endif()
+
+if(ENABLE_AEC OR ENABLE_WNS)
 	if(CMAKE_SYSTEM_NAME MATCHES "Android")
 		if(CMAKE_CXX_COMPILER_TARGET MATCHES "x86_64|i686" OR ANDROID_ABI MATCHES "x86_64|x86")
 			set(COMPILER_SUPPORTS_AVX2 TRUE)
@@ -334,6 +370,15 @@ if(ENABLE_VAD)
 		${CMAKE_CURRENT_SOURCE_DIR}/third_party/abseil-cpp/absl/meta
 	)
 endif()
+if(ENABLE_WNS)
+	target_include_directories(mswebrtc PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}
+		${NS_SRC_DIR}
+		${AUDIO_PROCESSING_DIR}
+		${CMAKE_CURRENT_SOURCE_DIR}/third_party/abseil-cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/third_party/abseil-cpp/absl/meta
+	)
+endif()
 
 set(LIBS)
 
@@ -345,7 +390,7 @@ target_link_libraries(mswebrtc PRIVATE ${Mediastreamer2_TARGET} ${LIBS})
 find_package(Threads REQUIRED)
 target_link_libraries(mswebrtc PRIVATE Threads::Threads)
 
-if(ENABLE_AEC)
+if(ENABLE_AEC OR ENABLE_WNS)
 	if(COMPILER_IS_CLANG)
 		target_compile_definitions(mswebrtc PRIVATE WEBRTC_ENABLE_AVX2)
 	endif()

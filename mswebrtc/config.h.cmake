@@ -33,3 +33,4 @@
 
 #cmakedefine BUILD_AEC
 #cmakedefine BUILD_VAD
+#cmakedefine BUILD_WNS

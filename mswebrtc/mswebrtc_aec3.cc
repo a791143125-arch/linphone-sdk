@@ -21,6 +21,7 @@
 #include "aec3_common.h"
 #include "audio_buffer.h"
 #include "echo_control.h"
+#include "mediastreamer2/mediastream.h"
 #include "mediastreamer2/mscommon.h"
 #include "mediastreamer2/msqueue.h"
 #include "mediastreamer2/msticker.h"
@@ -37,6 +38,7 @@
 #include "modules/audio_processing/audio_buffer.h"
 #include "mswebrtc_aec3.h"
 
+#define EC_DUMP 1
 namespace mswebrtcaec3 {
 
 MSWebrtcAEC3::MSWebrtcAEC3(MSFilter *filter) {
@@ -56,6 +58,9 @@ MSWebrtcAEC3::MSWebrtcAEC3(MSFilter *filter) {
 
 void MSWebrtcAEC3::uninit() {
 	if (mStateStr) ms_free(mStateStr);
+#ifdef EC_DUMP
+	close_audio_file();
+#endif
 }
 
 void MSWebrtcAEC3::configureFlowControlledBufferizer() {
@@ -64,7 +69,56 @@ void MSWebrtcAEC3::configureFlowControlledBufferizer() {
 	ms_flow_controlled_bufferizer_set_granularity_ms(&mRef, kFramesizeMs);
 }
 
+void mswebrtc_aec3::open_audio_file() {
+	ms_message("Dump audio in files");
+	bctbx_gettimeofday(&mStartRec, NULL);
+	char *fname = ms_strdup_printf("%s/mswebrtcaec3_echo_%d.raw", getenv("HOME"), mFileIndex);
+	mEchoFile = fopen(fname, "w");
+	ms_message("%s", fname);
+	ms_free(fname);
+	fname = ms_strdup_printf("%s/mswebrtcaec3_ref_%d.raw", getenv("HOME"), mFileIndex);
+	mRefFile = fopen(fname, "w");
+	ms_message("%s", fname);
+	ms_free(fname);
+	fname = ms_strdup_printf("%s/mswebrtcaec3_clean_%d.raw", getenv("HOME"), mFileIndex);
+	mCleanFile = fopen(fname, "w");
+	ms_message("%s", fname);
+	ms_free(fname);
+	ms_message("start timer at %d:%d", (int)mStartRec.tv_sec, (int)mStartRec.tv_usec);
+	mFileIndex++;
+}
+
+void mswebrtc_aec3::close_audio_file() {
+	ms_message("Stop dump audio in files");
+	if (mEchoFile) fclose(mEchoFile);
+	if (mRefFile) fclose(mRefFile);
+	if (mCleanFile) fclose(mCleanFile);
+}
+
 void MSWebrtcAEC3::preprocess() {
+
+#ifdef EC_DUMP
+	char cwd[1024];
+	if (getcwd(cwd, sizeof(cwd)) != NULL) {
+		ms_message("Current working directory: %s", cwd);
+	}
+	open_audio_file();
+	//  ms_message("Dump audio in files");
+	// char *fname = ms_strdup_printf("mswebrtcaec3_echo_%d.raw", mFileIndex);
+	// mEchoFile = fopen(fname, "w");
+	// ms_message("%s", fname);
+	// ms_free(fname);
+	// fname = ms_strdup_printf("mswebrtcaec3_ref_%d.raw", mFileIndex);
+	// mRefFile = fopen(fname, "w");
+	// ms_message("%s", fname);
+	// ms_free(fname);
+	// fname = ms_strdup_printf("mswebrtcaec3_clean_%d.raw", mFileIndex);
+	// mCleanFile = fopen(fname, "w");
+	// ms_message("%s", fname);
+	// ms_free(fname);
+	// bctbx_gettimeofday(&mStartRec, NULL);
+#endif
+
 	if (!webrtc::ValidFullBandRate(mSampleRateInHz)) {
 		ms_error(
 		    "WebRTC echo canceller 3 does not support %d sample rate. Accepted values are 16000, 32000 or 48000 Hz.",
@@ -164,9 +218,29 @@ void MSWebrtcAEC3::process(MSFilter *filter) {
 			}
 		}
 
+#ifdef EC_DUMP
+		bctbx_gettimeofday(&mNow, NULL);
+		float elapsed = (mNow.tv_sec - mStartRec.tv_sec);
+		if (elapsed > 60.) {
+			close_audio_file();
+			open_audio_file();
+		}
+		if (mEchoFile) fwrite(echoData, mNbytes, 1, mEchoFile);
+		if (mRefFile) fwrite(refData, mNbytes, 1, mRefFile);
+#endif
+
 		// fill audio buffer
 		mCaptureBuffer->webrtc::AudioBuffer::CopyFrom(echoData.data(), mStreamConfig);
 		mRenderBuffer->webrtc::AudioBuffer::CopyFrom(refData.data(), mStreamConfig);
+
+		// #ifdef EC_DUMP
+		// 		for (int i = 0; i < mCaptureBuffer->num_frames(); ++i) {
+		// 			ms_message("capture audio [0, %d] = %f", i, mCaptureBuffer->channels()[0][i]);
+		// 		}
+		// 		for (int i = 0; i < mRenderBuffer->num_frames(); ++i) {
+		// 			ms_message("render audio [0, %d] = %f", i, mRenderBuffer->channels()[0][i]);
+		// 		}
+		// #endif
 
 		if (mSampleRateInHz > webrtc::AudioProcessing::kSampleRate16kHz) {
 			mCaptureBuffer->SplitIntoFrequencyBands();
@@ -194,7 +268,16 @@ void MSWebrtcAEC3::process(MSFilter *filter) {
 			mCaptureBuffer->MergeFrequencyBands();
 		}
 
+		// #ifdef EC_DUMP
+		// 		for (int i = 0; i < mCaptureBuffer->num_frames(); ++i) {
+		// 			ms_message("output [0, %d] = %f", i, mCaptureBuffer->channels()[0][i]);
+		// 		}
+		// #endif
+
 		mCaptureBuffer->CopyTo(mStreamConfig, (int16_t *)oEcho->b_wptr);
+#ifdef EC_DUMP
+		if (mCleanFile) fwrite(oEcho->b_wptr, mNbytes, 1, mCleanFile);
+#endif
 		oEcho->b_wptr += mNbytes;
 		ms_queue_put(filter->outputs[1], oEcho);
 	}
