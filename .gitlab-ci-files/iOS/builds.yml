@@ -175,6 +175,7 @@ ios-xcode:
 
   before_script:
     - CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
+    - export CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
 
     - !reference [.ios, before_script]
   # All variables declared in "variables" are processed before "before_script" and "script", so declaring UPLOAD_CMAKE_OPTIONS (path to base URL) in before_script allows to set it dynamically.
@@ -185,6 +186,12 @@ ios-xcode:
     - !reference [.choose_url_ios, script]
     - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL}"
     - !reference [.ios, script]
+
+  after_script:
+    - CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
+    - export CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
+
+    - !reference [.ios, after_script]
 
   extends: .ios
 
@@ -202,9 +209,7 @@ ios-xcode-novideo:
     GIT_SUBMODULE_UPDATE_FLAGS: --jobs 8 --force --recursive
 
   before_script:
-    - CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
-
-    - !reference [.ios, before_script]
+    - !reference [ios-xcode, before_script]
   # All variables declared in "variables" are processed before "before_script" and "script", so declaring UPLOAD_CMAKE_OPTIONS (path to base URL) in before_script allows to set it dynamically.
 
   script:
@@ -214,6 +219,10 @@ ios-xcode-novideo:
     - !reference [.choose_url_ios, script]
     - UPLOAD_CMAKE_OPTIONS="-DLINPHONESDK_IOS_BASE_URL=${IOS_URL}/novideo/"
     - !reference [.ios, script]
+
+  after_script:
+    - !reference [ios-xcode, after_script]
+
   extends: .ios
 
 ios-xcode-pqc:

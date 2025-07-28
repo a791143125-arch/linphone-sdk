@@ -150,6 +150,7 @@ macos-xcode:
 
   before_script:
     - CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
+    - export CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
 
     - !reference [.macos-desktop, before_script]
 
@@ -157,6 +158,12 @@ macos-xcode:
     - DESCRIBE=$(git -C liblinphone describe)
     - echo $DESCRIBE
     - !reference [macos-m1-multiarch-makefile, script]
+
+  after_script:
+    - CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
+    - export CCACHE_CONFIGPATH=~/Library/Preferences/ccache/ccache-xcode.conf
+
+    - !reference [.macos-desktop, after_script]
 
 macos-xcode-pqc:
   extends: macos-xcode
@@ -168,7 +175,7 @@ macos-xcode-pqc:
 
 macos-ninja-spm:
   extends: macos-ninja
-  tags: [ "macos-xcode15" ]
+  tags: [ "macmini-m1-3-xcode15" ]
   variables:
     CMAKE_OPTIONS: -DENABLE_FAT_BINARY=NO
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
