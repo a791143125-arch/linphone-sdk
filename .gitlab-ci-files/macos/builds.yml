@@ -1,7 +1,7 @@
 .macos-desktop:
   extends: .job-prepare
   stage: build
-  tags: [ "macmini-m1-3-xcode15" ]
+  tags: [ "macmini-m1-3-xcode16" ]
 
   rules:
     - !reference [.rules-merge-request-manual, rules]
@@ -56,7 +56,7 @@
 
 # Screen sharing not available on Xcode 12
 .macos-m1-multiarch-desktop:
-  tags: [ "macmini-m1-3-xcode15" ]
+  tags: [ "macmini-m1-3-xcode16" ]
   variables:
     LINPHONESDK_MACOS_ARCHS: "arm64, x86_64"
     CMAKE_OPTIONS: -DENABLE_SCREENSHARING=OFF
@@ -175,7 +175,7 @@ macos-xcode-pqc:
 
 macos-ninja-spm:
   extends: macos-ninja
-  tags: [ "macmini-m1-3-xcode15" ]
+  tags: [ "macmini-m1-3-xcode16" ]
   variables:
     CMAKE_OPTIONS: -DENABLE_FAT_BINARY=NO
     GIT_FETCH_EXTRA_FLAGS: --tags --force --recurse-submodules=yes
