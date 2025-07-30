@@ -1333,18 +1333,25 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 					LinphoneMediaDirection thumbnail_dir =
 					    linphone_participant_device_get_thumbnail_stream_capability(device);
 					bool is_thumbnail_inactive = false;
+
+					bool supports_rtp_volumes =
+					    (linphone_config_get_int(linphone_core_get_config(mgr->lc), "rtp", "use_volumes", 1) == 1);
 					if (participant) {
 						LinphoneParticipantRole role = linphone_participant_get_role(participant);
-						expected_audio_direction =
-						    ((role == LinphoneParticipantRoleSpeaker) ? LinphoneMediaDirectionSendRecv
-						                                              : LinphoneMediaDirectionRecvOnly);
+						if (role == LinphoneParticipantRoleListener) {
+							expected_audio_direction = LinphoneMediaDirectionRecvOnly;
+							video_check &= ((video_dir == LinphoneMediaDirectionRecvOnly) ||
+							                (video_dir == LinphoneMediaDirectionInactive));
+						} else {
+							if (linphone_participant_device_get_is_muted(device) && !supports_rtp_volumes) {
+								expected_audio_direction = LinphoneMediaDirectionRecvOnly;
+							} else {
+								expected_audio_direction = LinphoneMediaDirectionSendRecv;
+							}
+						}
 						LinphoneMediaDirection audio_dir =
 						    linphone_participant_device_get_stream_capability(device, LinphoneStreamTypeAudio);
 						audio_direction_check &= (audio_dir == expected_audio_direction);
-						if (role == LinphoneParticipantRoleListener) {
-							video_check &= ((video_dir == LinphoneMediaDirectionRecvOnly) ||
-							                (video_dir == LinphoneMediaDirectionInactive));
-						}
 						// Thumbnail
 						try {
 							auto participant_mgr_it =
@@ -2650,7 +2657,7 @@ void create_conference_base(time_t start_time,
 		}
 
 		if (!all_listeners) {
-			ms_message("Marie mutes its microphone");
+			ms_message("%s mutes its microphone", linphone_core_get_identity(marie.getLc()));
 			LinphoneConference *marie_conference = linphone_core_search_conference_2(marie.getLc(), confAddr);
 			BC_ASSERT_PTR_NOT_NULL(marie_conference);
 			if (marie_conference) {

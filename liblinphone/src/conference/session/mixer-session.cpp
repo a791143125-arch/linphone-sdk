@@ -36,6 +36,14 @@ MixerSession::MixerSession(Core &core) : mCore(core) {
 MixerSession::~MixerSession() {
 }
 
+void MixerSession::addListener(MixerSessionListener *listener) {
+	mListeners.push_back(listener);
+}
+
+void MixerSession::removeListener(MixerSessionListener *listener) {
+	mListeners.remove(listener);
+}
+
 void MixerSession::joinStreamsGroup(StreamsGroup &sg) {
 	lInfo() << sg << " is joining " << *this;
 	sg.joinMixerSession(this);
@@ -113,6 +121,12 @@ void MixerSession::enableLocalParticipant(bool enabled) {
 void MixerSession::onActiveTalkerChanged(StreamsGroup *sg) {
 	if (!mScreenSharing) {
 		setFocus(sg);
+	}
+}
+
+void MixerSession::onMuted(uint32_t ssrc, bool muted) {
+	for (auto &l : mListeners) {
+		l->onMuted(ssrc, muted);
 	}
 }
 

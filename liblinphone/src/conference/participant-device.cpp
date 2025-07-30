@@ -442,6 +442,16 @@ bool ParticipantDevice::setStreamCapability(const LinphoneMediaDirection &direct
 	if (!idxFound || (streams[type].direction != direction)) {
 		streams[type].direction = direction;
 		_linphone_participant_device_notify_stream_capability_changed(toC(), direction, type);
+		const auto conference = getConference();
+		const auto session = (conference ? conference->getMainSession() : nullptr);
+		auto participant = getParticipant();
+		if (session && !dynamic_pointer_cast<MediaSession>(session)->isMixerToClientExtensionNegotiated() &&
+		    (type == LinphoneStreamTypeAudio) && (participant->getRole() == Participant::Role::Speaker)) {
+			auto expectedMuted = (direction == LinphoneMediaDirectionRecvOnly);
+			if (mIsMuted != expectedMuted) {
+				getConference()->participantDeviceMuted(getSharedFromThis(), expectedMuted);
+			}
+		}
 		return true;
 	}
 	return false;
@@ -936,6 +946,15 @@ void ParticipantDevice::setDisconnectionData(bool initiated, int code, LinphoneR
 		mDisconnectionReason = std::string("Reason: SIP;cause=") + std::to_string(code) +
 		                       ";text=" + std::string(linphone_reason_to_string(reason));
 	}
+}
+
+bool ParticipantDevice::isMixerToClientExtensionNegotiated() const {
+	if (mSession) {
+		const auto mMediaSession = dynamic_pointer_cast<MediaSession>(mSession);
+		return (mMediaSession && mMediaSession->isMixerToClientExtensionNegotiated());
+	}
+
+	return false;
 }
 
 LinphoneParticipantDeviceCbsIsSpeakingChangedCb ParticipantDeviceCbs::getIsSpeakingChanged() const {

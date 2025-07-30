@@ -57,6 +57,15 @@ class LINPHONE_PUBLIC ServerConferenceEventHandler : public std::enable_shared_f
 	friend class Tester;
 #endif
 public:
+	class NotifyContext {
+	public:
+		EventLog::Type type;
+		std::shared_ptr<Address> participantAddress;
+		std::shared_ptr<Address> deviceAddress;
+		std::string subject;
+		std::map<ConferenceMediaCapabilities, bool> capabilities;
+	};
+
 	ServerConferenceEventHandler(std::shared_ptr<Conference> conf, ConferenceListener *listener = nullptr);
 
 	void publishStateChanged(const std::shared_ptr<EventPublish> &ev, LinphonePublishState state);
@@ -67,13 +76,26 @@ public:
 	std::shared_ptr<Content> getNotifyForId(int notifyId, const std::shared_ptr<EventSubscribe> &ev);
 
 	// protected:
+	void notifyAllExcept(NotifyContext context, const std::shared_ptr<Participant> &exceptParticipant);
+	void notifyAllExceptDevice(NotifyContext context, const std::shared_ptr<ParticipantDevice> &exceptDevice);
+	void notifyAll(NotifyContext context);
+	void notifyOnlyAdmins(NotifyContext context);
+	void notifyAllParticipants(NotifyContext context,
+	                           const std::function<bool(const std::shared_ptr<Participant> &)> &filter);
+	void notifyAllDevices(NotifyContext context,
+	                      const std::function<bool(const std::shared_ptr<ParticipantDevice> &)> &filter);
 	void notifyFullState(const std::shared_ptr<Content> &notify, const std::shared_ptr<ParticipantDevice> &device);
 	void notifyAllExcept(const std::shared_ptr<Content> &notify, const std::shared_ptr<Participant> &exceptParticipant);
 	void notifyAllExceptDevice(const std::shared_ptr<Content> &notify,
 	                           const std::shared_ptr<ParticipantDevice> &exceptDevice);
 	void notifyAll(const std::shared_ptr<Content> &notify);
 	void notifyOnlyAdmins(const std::shared_ptr<Content> &notify);
-	std::shared_ptr<Content> createNotifyFullState(const std::shared_ptr<EventSubscribe> &ev);
+	void notifyAllParticipants(const std::shared_ptr<Content> &notify,
+	                           const std::function<bool(const std::shared_ptr<Participant> &)> &filter);
+	void notifyAllDevices(const std::shared_ptr<Content> &notify,
+	                      const std::function<bool(const std::shared_ptr<ParticipantDevice> &)> &filter);
+	std::shared_ptr<Content> createNotifyFullState(const std::shared_ptr<EventSubscribe> &ev,
+	                                               const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
 	std::shared_ptr<Content> createNotifyMultipart(int notifyId);
 
 	// Conference
@@ -81,17 +103,20 @@ public:
 	std::string createNotifySubjectChanged();
 
 	// Participant
-	std::string createNotifyParticipantAdded(const std::shared_ptr<Address> &pAddress);
+	std::string createNotifyParticipantAdded(const std::shared_ptr<Address> &pAddress,
+	                                         const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
 	std::string createNotifyParticipantAdminStatusChanged(const std::shared_ptr<Address> &pAddress, bool isAdmin);
 	std::string createNotifyParticipantRemoved(const std::shared_ptr<Address> &pAddress);
 
 	// Participant device
 	std::string createNotifyParticipantDeviceAdded(const std::shared_ptr<Address> &pAddress,
-	                                               const std::shared_ptr<Address> &dAddress);
+	                                               const std::shared_ptr<Address> &dAddress,
+	                                               const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
 	std::string createNotifyParticipantDeviceRemoved(const std::shared_ptr<Address> &pAddress,
 	                                                 const std::shared_ptr<Address> &dAddress);
 	std::string createNotifyParticipantDeviceDataChanged(const std::shared_ptr<Address> &pAddress,
-	                                                     const std::shared_ptr<Address> &dAddress);
+	                                                     const std::shared_ptr<Address> &dAddress,
+	                                                     const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
 
 	static void notifyResponseCb(LinphoneEvent *lev);
 
@@ -226,7 +251,6 @@ public:
 	virtual void onActiveSpeakerParticipantDevice(const std::shared_ptr<ParticipantDevice> &device) override;
 
 protected:
-	// TODO: use weak_ptr
 	std::weak_ptr<Conference> conference;
 	ConferenceListener *confListener;
 
@@ -236,6 +260,9 @@ private:
 	std::string createNotifyEphemeralLifetime(const long &lifetime, const long &notReadLifetime);
 	std::string createNotifyEphemeralMode(const EventLog::Type &type);
 	std::shared_ptr<Content> makeContent(const std::string &xml);
+	std::shared_ptr<Content> makeContent(NotifyContext context, const std::shared_ptr<ParticipantDevice> &toDevice);
+	void notifyParticipant(NotifyContext context, const std::shared_ptr<Participant> &participant);
+	void notifyParticipantDevice(NotifyContext context, const std::shared_ptr<ParticipantDevice> &device);
 	void notifyParticipant(const std::shared_ptr<Content> &notify, const std::shared_ptr<Participant> &participant);
 	void notifyParticipantDevice(const std::shared_ptr<Content> &content,
 	                             const std::shared_ptr<ParticipantDevice> &device);
@@ -244,7 +271,8 @@ private:
 
 	void addProtocols(const std::shared_ptr<ParticipantDevice> &device, Xsd::ConferenceInfo::EndpointType &endpoint);
 	void addMediaCapabilities(const std::shared_ptr<ParticipantDevice> &device,
-	                          Xsd::ConferenceInfo::EndpointType &endpoint);
+	                          Xsd::ConferenceInfo::EndpointType &endpoint,
+	                          const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
 	void addEndpointSessionInfo(const std::shared_ptr<ParticipantDevice> &device,
 	                            Xsd::ConferenceInfo::EndpointType &endpoint);
 	void addEndpointCallInfo(const std::shared_ptr<ParticipantDevice> &device,

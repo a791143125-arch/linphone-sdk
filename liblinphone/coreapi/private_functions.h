@@ -473,6 +473,8 @@ void linphone_conference_scheduler_notify_invitations_sent(LinphoneConferenceSch
 void _linphone_participant_device_notify_video_display_error_occurred(LinphoneParticipantDevice *participant_device,
                                                                       int error_code);
 
+LINPHONE_PUBLIC bool_t
+linphone_participant_device_is_mixer_to_client_negotiated(const LinphoneParticipantDevice *participant_device);
 LINPHONE_PUBLIC void linphone_participant_device_set_state(LinphoneParticipantDevice *participant_device,
                                                            LinphoneParticipantDeviceState state);
 LINPHONE_PUBLIC LinphoneCore *linphone_participant_device_get_core(const LinphoneParticipantDevice *participant_device);

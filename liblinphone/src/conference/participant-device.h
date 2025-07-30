@@ -224,6 +224,8 @@ public:
 	void setSendAddedNotify(bool sendNotify);
 	bool addedNotifySent() const;
 
+	bool isMixerToClientExtensionNegotiated() const;
+
 protected:
 	std::shared_ptr<Conference> getConference() const;
 

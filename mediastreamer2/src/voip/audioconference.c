@@ -61,6 +61,7 @@ struct _MSAudioEndpoint {
 	int samplerate;
 	MSConferenceMode conf_mode;
 	bool_t muted;
+	bool_t client_muted;
 };
 
 MSAudioConference *ms_audio_conference_new(const MSAudioConferenceParams *params, MSFactory *factory) {
@@ -415,7 +416,7 @@ int ms_audio_conference_get_participant_volume(MSAudioConference *obj, uint32_t 
 	return AUDIOSTREAMVOLUMES_NOT_FOUND;
 }
 
-void ms_audio_conference_process_events(MSAudioConference *obj) {
+void notify_active_speaker_change(MSAudioConference *obj) {
 	const bctbx_list_t *elem;
 	MSAudioEndpoint *winner = NULL;
 	uint32_t winner_ssrc = 0;
@@ -482,6 +483,42 @@ void ms_audio_conference_process_events(MSAudioConference *obj) {
 
 		obj->current_speaker_ssrc = winner_ssrc;
 	}
+}
+
+void notify_muted_change(MSAudioConference *obj) {
+	if (obj->params.muted_callback == NULL) return;
+
+	if (obj->params.mode == MSConferenceModeRouterFullPacket) {
+		// TODO: Implement a method in PacketRouter filter to get the information of mute for a pin or all muted pins at
+		// once. And call muted callback as below.
+	} else {
+		for (const bctbx_list_t *elem = obj->members; elem != NULL; elem = elem->next) {
+			MSAudioEndpoint *ep = (MSAudioEndpoint *)elem->data;
+			if (ep->st == NULL) continue; /* This happens for the player/recorder special endpoint */
+
+			int is_remote = (ep->in_cut_point_prev.filter == ep->st->volrecv);
+			MSFilter *volume_filter = is_remote ? ep->st->volrecv : ep->st->volsend;
+
+			if (volume_filter) {
+				float gain = 0;
+
+				ms_filter_call_method(ep->st->volsend, MS_VOLUME_GET_GAIN, &gain);
+				bool_t muted = (gain == 0);
+
+				if (muted != ep->client_muted) {
+					uint32_t ssrc = is_remote ? rtp_session_get_recv_ssrc(ep->st->ms.sessions.rtp_session)
+					                          : rtp_session_get_send_ssrc(ep->st->ms.sessions.rtp_session);
+					obj->params.muted_callback(obj, ssrc, muted);
+					ep->client_muted = muted;
+				}
+			}
+		}
+	}
+}
+
+void ms_audio_conference_process_events(MSAudioConference *obj) {
+	notify_active_speaker_change(obj);
+	notify_muted_change(obj);
 }
 
 void ms_audio_conference_destroy(MSAudioConference *obj) {

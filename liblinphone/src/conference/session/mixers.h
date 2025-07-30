@@ -35,9 +35,19 @@ class StreamMixer;
 class MS2VideoStream;
 
 /**
+ * Generic listener for mixer session.
+ */
+class MixerSessionListener {
+public:
+	virtual ~MixerSessionListener() = default;
+	/*
+	 * Notifies when the participant, referred to by its ssrc, as muted/unmuted itself.
+	 */
+	virtual void onMuted(uint32_t ssrc, bool muted) = 0;
+};
+
+/**
  * Generic listener for audio mixers.
- * It reports the active talker by providing a StreamsGroup pointer.
- * By convention, a null StreamsGroup means that the local participant is talking.
  */
 class AudioMixerListener {
 public:
@@ -46,6 +56,11 @@ public:
 	 * Notifies the active talker. By convention sg = nullptr means that the local participant is the active talker.
 	 */
 	virtual void onActiveTalkerChanged(StreamsGroup *sg) = 0;
+
+	/*
+	 * Notifies when the participant, referred to by its ssrc, as muted/unmuted itself.
+	 */
+	virtual void onMuted(uint32_t ssrc, bool muted) = 0;
 };
 
 /**
@@ -93,14 +108,20 @@ public:
 	 */
 	void enableScreenSharing(bool enable, StreamsGroup *sg);
 
+	void addListener(MixerSessionListener *listener);
+	void removeListener(MixerSessionListener *listener);
+
 protected:
 	virtual void onActiveTalkerChanged(StreamsGroup *sg) override;
+	virtual void onMuted(uint32_t ssrc, bool muted) override;
 
 private:
 	Core &mCore;
 	std::map<SalStreamType, std::unique_ptr<StreamMixer>> mMixers;
 	ConferenceParams::SecurityLevel mSecurityLevel = ConferenceParams::SecurityLevel::None;
 	bool mScreenSharing = false;
+
+	std::list<MixerSessionListener *> mListeners;
 };
 
 inline std::ostream &operator<<(std::ostream &str, const MixerSession &session) {
@@ -213,6 +234,8 @@ public:
 private:
 	void onActiveTalkerChanged(MSAudioEndpoint *ep);
 	static void sOnActiveTalkerChanged(MSAudioConference *audioconf, MSAudioEndpoint *ep);
+	void onMuted(uint32_t ssrc, bool muted);
+	static void sOnMuted(MSAudioConference *audioconf, uint32_t ssrc, bool_t muted);
 	void addLocalParticipant();
 	void removeLocalParticipant();
 	RtpProfile *sMakeDummyProfile(int samplerate);

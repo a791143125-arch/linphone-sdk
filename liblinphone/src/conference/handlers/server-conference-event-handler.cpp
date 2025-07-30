@@ -60,6 +60,51 @@ ServerConferenceEventHandler::ServerConferenceEventHandler(std::shared_ptr<Confe
 }
 
 // -----------------------------------------------------------------------------
+void ServerConferenceEventHandler::notifyOnlyAdmins(NotifyContext context) {
+	auto filter = [](const std::shared_ptr<Participant> &participant) { return participant->isAdmin(); };
+	notifyAllParticipants(context, filter);
+}
+
+void ServerConferenceEventHandler::notifyAllExceptDevice(NotifyContext context,
+                                                         const shared_ptr<ParticipantDevice> &exceptDevice) {
+	auto filter = [&exceptDevice](const std::shared_ptr<ParticipantDevice> &device) { return device != exceptDevice; };
+	/* Only notify to device that are present in the conference. */
+	notifyAllDevices(context, filter);
+}
+
+void ServerConferenceEventHandler::notifyAllExcept(NotifyContext context,
+                                                   const shared_ptr<Participant> &exceptParticipant) {
+	auto filter = [&exceptParticipant](const std::shared_ptr<Participant> &participant) {
+		return participant != exceptParticipant;
+	};
+	notifyAllParticipants(context, filter);
+}
+
+void ServerConferenceEventHandler::notifyAll(NotifyContext context) {
+	notifyAllParticipants(context, nullptr);
+}
+
+void ServerConferenceEventHandler::notifyAllParticipants(
+    NotifyContext context, const std::function<bool(const std::shared_ptr<Participant> &)> &filter) {
+	const auto conf = getConference();
+	if (!conf) return;
+	for (const auto &participant : conf->getParticipants()) {
+		if (filter == nullptr || filter(participant)) notifyParticipant(context, participant);
+	}
+}
+
+void ServerConferenceEventHandler::notifyAllDevices(
+    NotifyContext context, const std::function<bool(const std::shared_ptr<ParticipantDevice> &)> &filter) {
+	const auto conf = getConference();
+	if (!conf) return;
+	for (const auto &participant : conf->getParticipants()) {
+		for (const auto &device : participant->getDevices()) {
+			if (filter == nullptr || filter(device)) {
+				notifyParticipantDevice(context, device);
+			}
+		}
+	}
+}
 
 void ServerConferenceEventHandler::notifyFullState(const std::shared_ptr<Content> &notify,
                                                    const shared_ptr<ParticipantDevice> &device) {
@@ -67,61 +112,53 @@ void ServerConferenceEventHandler::notifyFullState(const std::shared_ptr<Content
 }
 
 void ServerConferenceEventHandler::notifyOnlyAdmins(const std::shared_ptr<Content> &notify) {
-	auto conf = getConference();
-	if (!conf) {
-		return;
-	}
-	for (const auto &participant : conf->getParticipants()) {
-		if (participant->isAdmin()) {
-			for (const auto &device : participant->getDevices()) {
-				notifyParticipantDevice(notify, device);
-			}
-		}
-	}
+	auto filter = [](const std::shared_ptr<Participant> &participant) { return participant->isAdmin(); };
+	notifyAllParticipants(notify, filter);
 }
 
 void ServerConferenceEventHandler::notifyAllExceptDevice(const std::shared_ptr<Content> &notify,
                                                          const shared_ptr<ParticipantDevice> &exceptDevice) {
-	auto conf = getConference();
-	if (!conf) {
-		return;
-	}
-	for (const auto &participant : conf->getParticipants()) {
-		for (const auto &device : participant->getDevices()) {
-			if (device != exceptDevice) {
-				/* Only notify to device that are present in the conference. */
-				notifyParticipantDevice(notify, device);
-			}
-		}
-	}
+	auto filter = [&exceptDevice](const std::shared_ptr<ParticipantDevice> &device) { return device != exceptDevice; };
+	/* Only notify to device that are present in the conference. */
+	notifyAllDevices(notify, filter);
 }
 
 void ServerConferenceEventHandler::notifyAllExcept(const std::shared_ptr<Content> &notify,
                                                    const shared_ptr<Participant> &exceptParticipant) {
-	auto conf = getConference();
-	if (!conf) {
-		return;
-	}
+	auto filter = [&exceptParticipant](const std::shared_ptr<Participant> &participant) {
+		return participant != exceptParticipant;
+	};
+	notifyAllParticipants(notify, filter);
+}
 
+void ServerConferenceEventHandler::notifyAll(const std::shared_ptr<Content> &notify) {
+	notifyAllParticipants(notify, nullptr);
+}
+
+void ServerConferenceEventHandler::notifyAllParticipants(
+    const std::shared_ptr<Content> &notify, const std::function<bool(const std::shared_ptr<Participant> &)> &filter) {
+	const auto conf = getConference();
+	if (!conf) return;
 	for (const auto &participant : conf->getParticipants()) {
-		if (participant != exceptParticipant) {
-			notifyParticipant(notify, participant);
+		if (filter == nullptr || filter(participant)) notifyParticipant(notify, participant);
+	}
+}
+
+void ServerConferenceEventHandler::notifyAllDevices(
+    const std::shared_ptr<Content> &notify,
+    const std::function<bool(const std::shared_ptr<ParticipantDevice> &)> &filter) {
+	const auto conf = getConference();
+	if (!conf) return;
+	for (const auto &participant : conf->getParticipants()) {
+		for (const auto &device : participant->getDevices()) {
+			if (filter == nullptr || filter(device)) notifyParticipantDevice(notify, device);
 		}
 	}
 }
 
-void ServerConferenceEventHandler::notifyAll(const std::shared_ptr<Content> &notify) {
-	auto conf = getConference();
-	if (!conf) {
-		return;
-	}
-
-	for (const auto &participant : conf->getParticipants()) {
-		notifyParticipant(notify, participant);
-	}
-}
-
-std::shared_ptr<Content> ServerConferenceEventHandler::createNotifyFullState(const shared_ptr<EventSubscribe> &ev) {
+std::shared_ptr<Content>
+ServerConferenceEventHandler::createNotifyFullState(const shared_ptr<EventSubscribe> &ev,
+                                                    const std::shared_ptr<ParticipantDevice> toDevice) {
 	auto conf = getConference();
 	if (!conf) {
 		return nullptr;
@@ -266,7 +303,7 @@ std::shared_ptr<Content> ServerConferenceEventHandler::createNotifyFullState(con
 			addProtocols(device, endpoint);
 
 			// Media capabilities
-			addMediaCapabilities(device, endpoint);
+			addMediaCapabilities(device, endpoint, toDevice);
 
 			// Enpoint session info
 			addEndpointSessionInfo(device, endpoint);
@@ -408,8 +445,14 @@ void ServerConferenceEventHandler::addEndpointCallInfo(const std::shared_ptr<Par
 }
 
 void ServerConferenceEventHandler::addMediaCapabilities(const std::shared_ptr<ParticipantDevice> &device,
-                                                        EndpointType &endpoint) {
-	const auto &audioDirection = device->getStreamCapability(LinphoneStreamTypeAudio);
+                                                        EndpointType &endpoint,
+                                                        const std::shared_ptr<ParticipantDevice> toDevice) {
+	auto audioDirection = device->getStreamCapability(LinphoneStreamTypeAudio);
+	if (toDevice && !toDevice->isMixerToClientExtensionNegotiated() && device->getIsMuted()) {
+		// If the receiver of the NOTIFY doesn't support volumes sent over RTP packets, then set its audio direction to
+		// recvonly to pass the mute information on
+		audioDirection = LinphoneMediaDirectionRecvOnly;
+	}
 	MediaType audio = MediaType("1");
 	audio.setDisplayText("audio");
 	audio.setType("audio");
@@ -421,6 +464,7 @@ void ServerConferenceEventHandler::addMediaCapabilities(const std::shared_ptr<Pa
 	if (!device->getStreamLabel(LinphoneStreamTypeAudio).empty()) {
 		audio.setLabel(device->getStreamLabel(LinphoneStreamTypeAudio));
 	}
+
 	audio.setStatus(XmlUtils::mediaDirectionToMediaStatus(audioDirection));
 	endpoint.getMedia().push_back(audio);
 
@@ -561,14 +605,7 @@ std::shared_ptr<Content> ServerConferenceEventHandler::createNotifyMultipart(int
 				body = createNotifyParticipantDeviceRemoved(participantAddress, deviceAddress);
 			} break;
 
-			case EventLog::Type::ConferenceParticipantDeviceStatusChanged: {
-				shared_ptr<ConferenceParticipantDeviceEvent> deviceStatusChangedEvent =
-				    static_pointer_cast<ConferenceParticipantDeviceEvent>(eventLog);
-				const std::shared_ptr<Address> &participantAddress = deviceStatusChangedEvent->getParticipantAddress();
-				const std::shared_ptr<Address> &deviceAddress = deviceStatusChangedEvent->getDeviceAddress();
-				body = createNotifyParticipantDeviceDataChanged(participantAddress, deviceAddress);
-			} break;
-
+			case EventLog::Type::ConferenceParticipantDeviceStatusChanged:
 			case EventLog::Type::ConferenceParticipantDeviceMediaAvailabilityChanged:
 			case EventLog::Type::ConferenceParticipantDeviceMediaCapabilityChanged: {
 				shared_ptr<ConferenceParticipantDeviceEvent> deviceMediaCapabilityChangedEvent =
@@ -605,7 +642,8 @@ std::shared_ptr<Content> ServerConferenceEventHandler::createNotifyMultipart(int
 	return Content::create(multipart);
 }
 
-string ServerConferenceEventHandler::createNotifyParticipantAdded(const std::shared_ptr<Address> &pAddress) {
+string ServerConferenceEventHandler::createNotifyParticipantAdded(const std::shared_ptr<Address> &pAddress,
+                                                                  const std::shared_ptr<ParticipantDevice> toDevice) {
 	auto conf = getConference();
 	if (!conf) {
 		return std::string();
@@ -629,7 +667,7 @@ string ServerConferenceEventHandler::createNotifyParticipantAdded(const std::sha
 			if (!displayName.empty()) endpoint.setDisplayText(displayName);
 
 			// Media capabilities
-			addMediaCapabilities(device, endpoint);
+			addMediaCapabilities(device, endpoint, toDevice);
 
 			// Enpoint session info
 			addEndpointSessionInfo(device, endpoint);
@@ -705,8 +743,10 @@ string ServerConferenceEventHandler::createNotifyParticipantRemoved(const std::s
 	return createNotify(confInfo);
 }
 
-string ServerConferenceEventHandler::createNotifyParticipantDeviceAdded(const std::shared_ptr<Address> &pAddress,
-                                                                        const std::shared_ptr<Address> &dAddress) {
+string
+ServerConferenceEventHandler::createNotifyParticipantDeviceAdded(const std::shared_ptr<Address> &pAddress,
+                                                                 const std::shared_ptr<Address> &dAddress,
+                                                                 const std::shared_ptr<ParticipantDevice> toDevice) {
 	auto conf = getConference();
 	if (!conf) {
 		return std::string();
@@ -734,7 +774,7 @@ string ServerConferenceEventHandler::createNotifyParticipantDeviceAdded(const st
 			addProtocols(participantDevice, endpoint);
 
 			// Media capabilities
-			addMediaCapabilities(participantDevice, endpoint);
+			addMediaCapabilities(participantDevice, endpoint, toDevice);
 
 			// Enpoint session info
 			addEndpointSessionInfo(participantDevice, endpoint);
@@ -820,9 +860,10 @@ string ServerConferenceEventHandler::createNotifyParticipantDeviceRemoved(const 
 	return createNotify(confInfo);
 }
 
-string
-ServerConferenceEventHandler::createNotifyParticipantDeviceDataChanged(const std::shared_ptr<Address> &pAddress,
-                                                                       const std::shared_ptr<Address> &dAddress) {
+string ServerConferenceEventHandler::createNotifyParticipantDeviceDataChanged(
+    const std::shared_ptr<Address> &pAddress,
+    const std::shared_ptr<Address> &dAddress,
+    const std::shared_ptr<ParticipantDevice> toDevice) {
 	auto conf = getConference();
 	if (!conf) {
 		return std::string();
@@ -850,7 +891,7 @@ ServerConferenceEventHandler::createNotifyParticipantDeviceDataChanged(const std
 			if (!displayName.empty()) endpoint.setDisplayText(displayName);
 
 			// Media capabilities
-			addMediaCapabilities(participantDevice, endpoint);
+			addMediaCapabilities(participantDevice, endpoint, toDevice);
 
 			// Enpoint session info
 			addEndpointSessionInfo(participantDevice, endpoint);
@@ -1088,6 +1129,48 @@ string ServerConferenceEventHandler::createNotifyAvailableMediaChanged(
 	return createNotify(confInfo);
 }
 
+void ServerConferenceEventHandler::notifyParticipant(NotifyContext context,
+                                                     const shared_ptr<Participant> &participant) {
+	for (const auto &device : participant->getDevices()) {
+		/* Only notify to device that are present in the conference. */
+		switch (device->getState()) {
+			case ParticipantDevice::State::Joining:
+			case ParticipantDevice::State::ScheduledForJoining:
+			case ParticipantDevice::State::Alerting:
+			case ParticipantDevice::State::Present:
+			case ParticipantDevice::State::OnHold:
+			case ParticipantDevice::State::RequestingToJoin:
+			case ParticipantDevice::State::MutedByFocus:
+				notifyParticipantDevice(context, device);
+				break;
+			case ParticipantDevice::State::Leaving:
+			case ParticipantDevice::State::Left:
+			case ParticipantDevice::State::ScheduledForLeaving:
+				break;
+		}
+	}
+}
+
+void ServerConferenceEventHandler::notifyParticipantDevice(NotifyContext context,
+                                                           const shared_ptr<ParticipantDevice> &device) {
+	if (!device->isSubscribedToConferenceEventPackage()) return;
+	auto conf = getConference();
+	if (!conf) {
+		return;
+	}
+
+	shared_ptr<EventSubscribe> ev = device->getConferenceSubscribeEvent();
+	shared_ptr<EventCbs> cbs = EventCbs::create();
+	cbs->setUserData(this);
+	cbs->notifyResponseCb = notifyResponseCb;
+	ev->addCallbacks(cbs);
+
+	auto content = makeContent(context, device);
+	ev->notify(content);
+	LinphoneContent *cContent = content->isEmpty() ? nullptr : content->toC();
+	linphone_core_notify_notify_sent(conf->getCore()->getCCore(), ev->toC(), cContent);
+}
+
 void ServerConferenceEventHandler::notifyParticipant(const std::shared_ptr<Content> &notify,
                                                      const shared_ptr<Participant> &participant) {
 	for (const auto &device : participant->getDevices()) {
@@ -1183,7 +1266,7 @@ LinphoneStatus ServerConferenceEventHandler::subscribeReceived(const shared_ptr<
 			}
 			lInfo() << "Sending initial notify of " << *conf << " to: " << *dAddress
 			        << " with last notify version set to " << conf->getLastNotify();
-			notifyFullState(createNotifyFullState(ev), device);
+			notifyFullState(createNotifyFullState(ev, device), device);
 			device->clearChangingSubscribeEvent();
 		} else if (evLastNotify < lastNotify) {
 			lInfo() << "Sending all missed notify [" << evLastNotify << "-" << lastNotify << "] for " << *conf
@@ -1197,7 +1280,7 @@ LinphoneStatus ServerConferenceEventHandler::subscribeReceived(const shared_ptr<
 			// not stored in the database
 			const auto &conference = conf->getCore()->findConference(conf->getConferenceId(), false);
 			if ((conference && !conference->isChatOnly()) || forceFullState) {
-				notifyFullState(createNotifyFullState(ev), device);
+				notifyFullState(createNotifyFullState(ev, device), device);
 			} else {
 				notifyParticipantDevice(createNotifyMultipart(static_cast<int>(evLastNotify)), device);
 			}
@@ -1205,7 +1288,7 @@ LinphoneStatus ServerConferenceEventHandler::subscribeReceived(const shared_ptr<
 			lWarning() << "Last notify received by client [" << evLastNotify << "] for " << *conf
 			           << " should not be higher than last notify sent by server [" << lastNotify
 			           << "] - sending a notify full state in an attempt to recover from this situation";
-			notifyFullState(createNotifyFullState(ev), device);
+			notifyFullState(createNotifyFullState(ev, device), device);
 		} else {
 			notifyParticipantDevice(Content::create(), device);
 		}
@@ -1272,6 +1355,57 @@ std::shared_ptr<Content> ServerConferenceEventHandler::makeContent(const std::st
 	return content;
 }
 
+std::shared_ptr<Content> ServerConferenceEventHandler::makeContent(NotifyContext context,
+                                                                   const std::shared_ptr<ParticipantDevice> &toDevice) {
+	std::shared_ptr<Content> content;
+	std::string body;
+	switch (context.type) {
+		case EventLog::Type::ConferenceParticipantAdded: {
+			body = createNotifyParticipantAdded(context.participantAddress, toDevice);
+		} break;
+
+		case EventLog::Type::ConferenceParticipantRemoved: {
+			body = createNotifyParticipantRemoved(context.participantAddress);
+		} break;
+
+		case EventLog::Type::ConferenceParticipantSetAdmin: {
+			body = createNotifyParticipantAdminStatusChanged(context.participantAddress, true);
+		} break;
+
+		case EventLog::Type::ConferenceParticipantUnsetAdmin: {
+			body = createNotifyParticipantAdminStatusChanged(context.participantAddress, false);
+		} break;
+
+		case EventLog::Type::ConferenceParticipantDeviceAdded: {
+			body = createNotifyParticipantDeviceAdded(context.participantAddress, context.deviceAddress, toDevice);
+		} break;
+
+		case EventLog::Type::ConferenceParticipantDeviceRemoved: {
+			body = createNotifyParticipantDeviceRemoved(context.participantAddress, context.deviceAddress);
+		} break;
+
+		case EventLog::Type::ConferenceParticipantDeviceStatusChanged:
+		case EventLog::Type::ConferenceParticipantDeviceMediaAvailabilityChanged:
+		case EventLog::Type::ConferenceParticipantDeviceMediaCapabilityChanged: {
+			body =
+			    createNotifyParticipantDeviceDataChanged(context.participantAddress, context.deviceAddress, toDevice);
+		} break;
+
+		case EventLog::Type::ConferenceSubjectChanged: {
+			body = createNotifySubjectChanged(context.subject);
+		} break;
+
+		case EventLog::Type::ConferenceAvailableMediaChanged: {
+			body = createNotifyAvailableMediaChanged(context.capabilities);
+		} break;
+		default:
+			// We should never pass here!
+			L_ASSERT(false);
+			break;
+	}
+	return makeContent(body);
+}
+
 void ServerConferenceEventHandler::onFullStateReceived() {
 }
 
@@ -1285,9 +1419,11 @@ void ServerConferenceEventHandler::onParticipantAdded(const std::shared_ptr<Conf
 	// Do not send notify if conference pointer is null. It may mean that the confernece has been terminated
 	const auto &pAddress = participant->getAddress();
 	if (conf) {
-		notifyAllExcept(makeContent(createNotifyParticipantAdded(pAddress)), participant);
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = pAddress;
+		notifyAllExcept(context, participant);
 		conf->updateParticipantInConferenceInfo(participant);
-
 		// Enquire whether this conference belongs to a server group chat room
 		std::shared_ptr<AbstractChatRoom> chatRoom = conf->getChatRoom();
 		if (chatRoom) {
@@ -1309,7 +1445,10 @@ void ServerConferenceEventHandler::onParticipantRemoved(const std::shared_ptr<Co
 	// Do not send notify if conference pointer is null. It may mean that the confernece has been terminated
 	const auto &pAddress = participant->getAddress();
 	if (conf) {
-		notifyAllExcept(makeContent(createNotifyParticipantRemoved(pAddress)), participant);
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = pAddress;
+		notifyAllExcept(context, participant);
 		// Enquire whether this conference belongs to a server group chat room
 		std::shared_ptr<AbstractChatRoom> chatRoom = conf->getChatRoom();
 		if (chatRoom) {
@@ -1325,10 +1464,12 @@ void ServerConferenceEventHandler::onParticipantSetAdmin(const std::shared_ptr<C
                                                          const std::shared_ptr<Participant> &participant) {
 	// Do not send notify if conference pointer is null. It may mean that the confernece has been terminated
 	auto conf = getConference();
-	const bool isAdmin = (event->getType() == EventLog::Type::ConferenceParticipantSetAdmin);
 	const auto &pAddress = participant->getAddress();
 	if (conf) {
-		notifyAll(makeContent(createNotifyParticipantAdminStatusChanged(pAddress, isAdmin)));
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = pAddress;
+		notifyAll(context);
 		// Enquire whether this conference belongs to a server group chat room
 		std::shared_ptr<AbstractChatRoom> chatRoom = conf->getChatRoom();
 		if (chatRoom) {
@@ -1362,8 +1503,27 @@ void ServerConferenceEventHandler::onParticipantDeviceIsSpeakingChanged(const st
                                                                         BCTBX_UNUSED(bool isSpeaking)) {
 }
 
-void ServerConferenceEventHandler::onParticipantDeviceIsMuted(const std::shared_ptr<ParticipantDevice> &,
+void ServerConferenceEventHandler::onParticipantDeviceIsMuted(const std::shared_ptr<ParticipantDevice> &device,
                                                               BCTBX_UNUSED(bool isMuted)) {
+	// Do not send a Notify if the conference pointer is null. It may mean that the conference has been terminated.
+	const auto conf = getConference();
+	const auto &dAddress = device->getAddress();
+
+	if (conf) {
+		auto filter = [](const std::shared_ptr<ParticipantDevice> &d) {
+			// Only notify devices that don't have this extension negotiated
+			return !d->isMixerToClientExtensionNegotiated();
+		};
+		auto participant = device->getParticipant();
+		NotifyContext context;
+		context.type = EventLog::Type::ConferenceParticipantDeviceMediaCapabilityChanged;
+		context.participantAddress = participant->getAddress();
+		context.deviceAddress = dAddress;
+		notifyAllDevices(context, filter);
+	} else {
+		lWarning() << __func__ << ": Not sending notification of participant device " << *dAddress
+		           << " being added because pointer to conference is null";
+	}
 }
 
 void ServerConferenceEventHandler::onAvailableMediaChanged(
@@ -1391,7 +1551,11 @@ void ServerConferenceEventHandler::onParticipantDeviceJoiningRequest(
 	if (conf) {
 		auto participant = device->getParticipant();
 		const auto &pAddress = participant->getAddress();
-		notifyAllExceptDevice(makeContent(createNotifyParticipantDeviceAdded(pAddress, dAddress)), device);
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = pAddress;
+		context.deviceAddress = dAddress;
+		notifyAllExceptDevice(context, device);
 	} else {
 		lWarning() << __func__ << ": Not sending notification of participant device " << *dAddress
 		           << " being added because pointer to conference is null";
@@ -1407,11 +1571,15 @@ void ServerConferenceEventHandler::onParticipantDeviceAdded(
 		auto participant = device->getParticipant();
 		const auto &pAddress = participant->getAddress();
 		if (device->addedNotifySent()) {
+			NotifyContext context;
+			context.type = event->getType();
+			context.participantAddress = pAddress;
+			context.deviceAddress = dAddress;
 			// If the ssrc is not 0, send a NOTIFY to the participant being added in order to give him its own SSRC
 			if ((device->getSsrc(LinphoneStreamTypeAudio) != 0) || (device->getSsrc(LinphoneStreamTypeVideo) != 0)) {
-				notifyAll(makeContent(createNotifyParticipantDeviceAdded(pAddress, dAddress)));
+				notifyAll(context);
 			} else {
-				notifyAllExceptDevice(makeContent(createNotifyParticipantDeviceAdded(pAddress, dAddress)), device);
+				notifyAllExceptDevice(context, device);
 			}
 		}
 		// Enquire whether this conference belongs to a server group chat room
@@ -1432,8 +1600,12 @@ void ServerConferenceEventHandler::onParticipantDeviceRemoved(
 	const auto &dAddress = device->getAddress();
 	if (conf) {
 		auto participant = device->getParticipant();
-		notifyAllExceptDevice(makeContent(createNotifyParticipantDeviceRemoved(participant->getAddress(), dAddress)),
-		                      device);
+		const auto &pAddress = participant->getAddress();
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = pAddress;
+		context.deviceAddress = dAddress;
+		notifyAllExceptDevice(context, device);
 		// Enquire whether this conference belongs to a server group chat room
 		std::shared_ptr<AbstractChatRoom> chatRoom = conf->getChatRoom();
 		if (chatRoom) {
@@ -1452,7 +1624,11 @@ void ServerConferenceEventHandler::onParticipantDeviceStateChanged(
 	const auto &dAddress = device->getAddress();
 	if (conf) {
 		auto participant = device->getParticipant();
-		notifyAll(makeContent(createNotifyParticipantDeviceDataChanged(participant->getAddress(), dAddress)));
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = participant->getAddress();
+		context.deviceAddress = dAddress;
+		notifyAll(context);
 		// Enquire whether this conference belongs to a server group chat room
 		std::shared_ptr<AbstractChatRoom> chatRoom = conf->getChatRoom();
 		if (chatRoom) {
@@ -1470,12 +1646,16 @@ void ServerConferenceEventHandler::onParticipantDeviceScreenSharingChanged(
     const std::shared_ptr<ParticipantDevice> &device) {
 	// Do not send notify if conference pointer is null. It may mean that the confernece has been terminated
 	auto conf = getConference();
+	const auto &dAddress = device->getAddress();
 	if (conf) {
 		auto participant = device->getParticipant();
-		notifyAll(
-		    makeContent(createNotifyParticipantDeviceDataChanged(participant->getAddress(), device->getAddress())));
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = participant->getAddress();
+		context.deviceAddress = dAddress;
+		notifyAll(context);
 	} else {
-		lWarning() << __func__ << ": Not sending notification of participant device " << device->getAddress()
+		lWarning() << __func__ << ": Not sending notification of participant device " << *dAddress
 		           << " being added because pointer to conference is null";
 	}
 }
@@ -1488,7 +1668,11 @@ void ServerConferenceEventHandler::onParticipantDeviceMediaCapabilityChanged(
 	const auto &dAddress = device->getAddress();
 	if (conf) {
 		auto participant = device->getParticipant();
-		notifyAll(makeContent(createNotifyParticipantDeviceDataChanged(participant->getAddress(), dAddress)));
+		NotifyContext context;
+		context.type = event->getType();
+		context.participantAddress = participant->getAddress();
+		context.deviceAddress = dAddress;
+		notifyAll(context);
 	} else {
 		lWarning() << __func__ << ": Not sending notification of participant device " << *dAddress
 		           << " being added because pointer to conference is null";

@@ -1084,6 +1084,15 @@ void ServerConference::finalizeCreation() {
 	}
 }
 
+bool ServerConference::allSupportMixerToClientExtension() const {
+	for (const auto &device : getParticipantDevices()) {
+		if (!device->isMixerToClientExtensionNegotiated()) {
+			return false;
+		}
+	}
+	return true;
+}
+
 // -----------------------------------------------------------------------------
 
 void ServerConference::subscribeReceived(const shared_ptr<EventSubscribe> &event) {
@@ -1315,6 +1324,24 @@ shared_ptr<ConferenceParticipantDeviceEvent> ServerConference::notifyParticipant
 	incrementLastNotify();
 	auto event = Conference::notifyParticipantDeviceMediaCapabilityChanged(creationTime, isFullState, participant,
 	                                                                       participantDevice);
+#ifdef HAVE_DB_STORAGE
+	if (mConfParams->chatEnabled()) {
+		getCore()->getPrivate()->mainDb->addEvent(event);
+	}
+#endif // HAVE_DB_STORAGE
+	return event;
+}
+
+std::shared_ptr<ConferenceParticipantDeviceEvent>
+ServerConference::notifyParticipantDeviceMuted(time_t creationTime,
+                                               bool isFullState,
+                                               const std::shared_ptr<Participant> &participant,
+                                               const std::shared_ptr<ParticipantDevice> &participantDevice) {
+	if (!allSupportMixerToClientExtension()) {
+		// Increment last notify before notifying participants so that the delta can be calculated correctly
+		incrementLastNotify();
+	}
+	auto event = Conference::notifyParticipantDeviceMuted(creationTime, isFullState, participant, participantDevice);
 #ifdef HAVE_DB_STORAGE
 	if (mConfParams->chatEnabled()) {
 		getCore()->getPrivate()->mainDb->addEvent(event);
@@ -1981,6 +2008,7 @@ bool ServerConference::addParticipant(const std::shared_ptr<Call> call) {
 		if (!mMixerSession && supportsMedia()) {
 			mMixerSession.reset(new MixerSession(*getCore().get()));
 			mMixerSession->setSecurityLevel(mConfParams->getSecurityLevel());
+			mMixerSession->addListener(this);
 		}
 
 		// Add participant to the conference participant list
@@ -4006,6 +4034,10 @@ ServerConference::verifyVideoDirection(const std::shared_ptr<CallSession> &sessi
 		}
 	}
 	return videoDir;
+}
+
+void ServerConference::onMuted(uint32_t ssrc, bool muted) {
+	notifyMutedDevice(ssrc, muted);
 }
 
 LINPHONE_END_NAMESPACE

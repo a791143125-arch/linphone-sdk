@@ -6278,6 +6278,19 @@ bool MediaSession::isScreenSharingNegotiated() const {
 #endif
 }
 
+bool MediaSession::isMixerToClientExtensionNegotiated() const {
+	L_D();
+	if (d->op) {
+		const std::shared_ptr<SalMediaDescription> &md = d->op->getFinalMediaDescription();
+		const auto audioStream = md->findBestStream(SalAudio);
+		if (audioStream.has_value()) {
+			const auto &audioStreamCfg = (*audioStream)->getActualConfiguration();
+			return audioStreamCfg.getMixerToClientExtensionId() > 0;
+		}
+	}
+	return false;
+}
+
 bool MediaSession::requestThumbnail(const std::shared_ptr<ParticipantDevice> &device) const {
 	const bool isInLocalConference = getMediaParams()->getPrivate()->getInConference();
 	const auto &confLayout = isInLocalConference ? getRemoteParams()->getConferenceVideoLayout()

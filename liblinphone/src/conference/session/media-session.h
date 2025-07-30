@@ -202,6 +202,7 @@ public:
 	LinphoneMediaDirection getDirectionOfStream(const std::string &content,
 	                                            const std::string &label = std::string()) const;
 	bool isScreenSharingNegotiated() const;
+	bool isMixerToClientExtensionNegotiated() const;
 	const std::shared_ptr<const VideoSourceDescriptor> getVideoSourceDescriptor() const;
 
 	bool requestThumbnail(const std::shared_ptr<ParticipantDevice> &device) const;

@@ -31,6 +31,7 @@
 #include "conference/conference.h"
 #include "conference/session/media-session.h"
 #include "content/content-manager.h"
+#include "session/mixers.h"
 
 // =============================================================================
 
@@ -40,7 +41,7 @@ class ServerConferenceEventHandler;
 class EventSubscribe;
 class EventPublish;
 
-class LINPHONE_PUBLIC ServerConference : public Conference, public CoreListener {
+class LINPHONE_PUBLIC ServerConference : public Conference, public CoreListener, public MixerSessionListener {
 	friend ServerChatRoom;
 
 public:
@@ -163,6 +164,11 @@ public:
 	                                            const bool isFullState,
 	                                            const std::shared_ptr<Participant> &participant,
 	                                            const std::shared_ptr<ParticipantDevice> &participantDevice) override;
+	std::shared_ptr<ConferenceParticipantDeviceEvent>
+	notifyParticipantDeviceMuted(time_t creationTime,
+	                             bool isFullState,
+	                             const std::shared_ptr<Participant> &participant,
+	                             const std::shared_ptr<ParticipantDevice> &participantDevice) override;
 
 	void notifyFullState() override;
 	void confirmCreation();
@@ -247,6 +253,8 @@ protected:
 
 	bool addParticipantDevice(const std::shared_ptr<Call> &call) override;
 
+	void onMuted(uint32_t ssrc, bool muted) override;
+
 private:
 	L_DISABLE_COPY(ServerConference);
 
@@ -276,6 +284,7 @@ private:
 	                                   const std::string &errorMessage);
 	int checkServerConfiguration(const std::shared_ptr<Address> &remoteContactAddress,
 	                             std::shared_ptr<LinphonePrivate::MediaSession> &session);
+	bool allSupportMixerToClientExtension() const;
 
 	void addLocalEndpoint();
 	void removeLocalEndpoint();

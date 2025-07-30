@@ -158,6 +158,10 @@ LinphoneParticipant *linphone_participant_device_get_participant(const LinphoneP
 	return bellesip::toC(ParticipantDevice::toCpp(participant_device)->getParticipant());
 }
 
+bool_t linphone_participant_device_is_mixer_to_client_negotiated(const LinphoneParticipantDevice *participant_device) {
+	return ParticipantDevice::toCpp(participant_device)->isMixerToClientExtensionNegotiated();
+}
+
 LinphoneCore *linphone_participant_device_get_core(const LinphoneParticipantDevice *participant_device) {
 	const auto &core = ParticipantDevice::toCpp(participant_device)->getCore();
 	return core ? core->getCCore() : nullptr;
@@ -222,7 +226,8 @@ void *linphone_participant_device_get_native_video_window_id(const LinphoneParti
 	return LinphonePrivate::ParticipantDevice::toCpp(participant_device)->getWindowId();
 }
 
-void *linphone_participant_device_create_native_video_window_id_2(LinphoneParticipantDevice *participant_device, void *context) {
+void *linphone_participant_device_create_native_video_window_id_2(LinphoneParticipantDevice *participant_device,
+                                                                  void *context) {
 	return LinphonePrivate::ParticipantDevice::toCpp(participant_device)->createWindowId(context);
 }
 
