@@ -46,7 +46,7 @@ include:
 
   - '.gitlab-ci-files/linux-prepare.yml'
 
-  # - '.gitlab-ci-files/android/builds.yml'
+  - '.gitlab-ci-files/android/builds.yml'
   # - '.gitlab-ci-files/android/tests.yml'
   # - '.gitlab-ci-files/android/uploads.yml'
 
@@ -81,12 +81,12 @@ include:
   - '.gitlab-ci-files/macos/tests.yml'
   - '.gitlab-ci-files/macos/uploads.yml'
 
-  # - '.gitlab-ci-files/windows/builds.yml'
+  - '.gitlab-ci-files/windows/builds.yml'
   # - '.gitlab-ci-files/windows/tests.yml'
   # - '.gitlab-ci-files/windows/packages.yml'
   # - '.gitlab-ci-files/windows/uploads.yml'
 
-  # - '.gitlab-ci-files/xamarin/packages.yml'
+  - '.gitlab-ci-files/xamarin/packages.yml'
   # - '.gitlab-ci-files/xamarin/uploads.yml'
 
   # - '.gitlab-ci-files/test-report-uploads.yml'
