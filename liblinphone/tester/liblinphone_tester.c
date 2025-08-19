@@ -21,7 +21,6 @@
 #include "bctoolbox/defs.h"
 
 #include "linphone/core.h"
-#include "linphone/logging.h"
 
 #include "tester_utils.h"
 
@@ -588,7 +587,7 @@ void liblinphone_tester_add_suites(void) {
 	liblinphone_tester_add_suite_with_default_time(&flexiapiclient_suite, 4);
 	liblinphone_tester_add_suite_with_default_time(&account_creator_flexiapi_test_suite, 20);
 #endif
-	liblinphone_tester_add_suite_with_default_time(&stun_test_suite, 259);
+	liblinphone_tester_add_suite_with_default_time(&stun_turn_test_suite, 259);
 	liblinphone_tester_add_suite_with_default_time(&event_test_suite, 70);
 #ifdef HAVE_ADVANCED_IM
 	liblinphone_tester_add_suite_with_default_time(&conference_event_test_suite, 32);
@@ -641,7 +640,6 @@ void liblinphone_tester_add_suites(void) {
 	bc_tester_add_suite(&bearer_auth_test_suite);
 	bc_tester_add_suite(&call_twisted_cases_suite);
 	bc_tester_add_suite(&http_client_test_suite);
-	bc_tester_add_suite(&turn_server_test_suite);
 	bc_tester_add_suite(&dtmf_test_suite);
 }
 
@@ -688,8 +686,10 @@ void liblinphone_tester_simulate_mire_defunct(MSFilter *filter, bool_t defunct, 
 	}
 }
 
-void liblinphone_tester_set_dns_engine_by_default(LinphoneCore * lc) {
-	belle_sip_stack_set_dns_engine(sal_get_stack_impl(linphone_core_get_sal(lc)), BELLE_SIP_DNS_DNS_C); // Make sure we are not using Apple DNS Service during liblinphone tests
+void liblinphone_tester_set_dns_engine_by_default(LinphoneCore *lc) {
+	belle_sip_stack_set_dns_engine(
+	    sal_get_stack_impl(linphone_core_get_sal(lc)),
+	    BELLE_SIP_DNS_DNS_C); // Make sure we are not using Apple DNS Service during liblinphone tests
 }
 
 #if !TARGET_OS_IPHONE && !(defined(LINPHONE_WINDOWS_PHONE) || defined(LINPHONE_WINDOWS_UNIVERSAL))
