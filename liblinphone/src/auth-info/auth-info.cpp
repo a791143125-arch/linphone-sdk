@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -39,7 +39,7 @@ AuthInfo::AuthInfo(const string &username,
                    const string &ha1,
                    const string &realm,
                    const string &domain) {
-	AuthInfo::init(username, userid, passwd, ha1, realm, domain, "");
+	init(username, userid, passwd, ha1, realm, domain, "");
 }
 
 AuthInfo::AuthInfo(const string &username,
@@ -49,7 +49,7 @@ AuthInfo::AuthInfo(const string &username,
                    const string &realm,
                    const string &domain,
                    const string &algorithm) {
-	AuthInfo::init(username, userid, passwd, ha1, realm, domain, algorithm);
+	init(username, userid, passwd, ha1, realm, domain, algorithm);
 }
 AuthInfo::AuthInfo(const string &username,
                    const string &userid,
@@ -59,7 +59,7 @@ AuthInfo::AuthInfo(const string &username,
                    const string &domain,
                    const string &algorithm,
                    const list<string> &availableAlgorithms) {
-	AuthInfo::init(username, userid, passwd, ha1, realm, domain, algorithm, availableAlgorithms);
+	init(username, userid, passwd, ha1, realm, domain, algorithm, availableAlgorithms);
 }
 
 AuthInfo::AuthInfo(const std::string &username, std::shared_ptr<BearerToken> token, const std::string &realm) {
@@ -292,7 +292,7 @@ void AuthInfo::writeConfig(LpConfig *config, int pos) {
 	bool_t store_ha1_passwd = !!linphone_config_get_int(config, "sip", "store_ha1_passwd", 1);
 	bctbx_list_t *algos = NULL;
 
-	sprintf(key, "auth_info_%i", pos);
+	snprintf(key, sizeof(key), "auth_info_%i", pos);
 	linphone_config_clean_section(config, key);
 
 	if (linphone_config_get_int(config, "sip", "store_auth_info", 1) == 0) {

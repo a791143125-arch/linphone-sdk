@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -47,9 +46,7 @@
 #endif /*_WIN32_WCE*/
 
 #undef snprintf
-#include <mediastreamer2/stun.h>
 
-#include <math.h>
 #if _MSC_VER
 #define snprintf _snprintf
 #define popen _popen
@@ -60,12 +57,10 @@
 #include "private.h"
 
 #include "c-wrapper/c-wrapper.h"
-#include "call/call-log.h"
 #include "call/call.h"
 #include "conference/session/media-session-p.h"
 #include "linphone/api/c-account-params.h"
 #include "linphone/api/c-account.h"
-#include "linphone/api/c-address.h"
 #include "linphone/api/c-nat-policy.h"
 #include "nat/stun-client.h"
 #include "utils/payload-type-handler.h"
@@ -92,7 +87,7 @@ void linphone_core_update_allocated_audio_bandwidth(LinphoneCore *lc) {
 	                                                                 linphone_core_get_upload_bandwidth(lc));
 	int max_codec_bitrate = 0;
 
-	for (elem = linphone_core_get_audio_codecs(lc); elem != NULL; elem = elem->next) {
+	for (elem = linphone_core_get_audio_payload_types(lc); elem != NULL; elem = elem->next) {
 		PayloadType *pt = (PayloadType *)elem->data;
 		if (payload_type_enabled(pt)) {
 			int pt_bitrate = LinphonePrivate::PayloadTypeHandler::getAudioPayloadTypeBandwidth(pt, maxbw);
@@ -131,6 +126,8 @@ bool_t linphone_core_is_payload_type_usable_for_bandwidth(BCTBX_UNUSED(const Lin
 			break;
 		case PAYLOAD_TEXT:
 			ret = TRUE;
+			break;
+		default:
 			break;
 	}
 	return ret;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -214,7 +214,9 @@ char *linphone_core_get_device_identity(LinphoneCore *lc) {
 	if (proxy) {
 		const LinphoneAddress *contactAddr = linphone_proxy_config_get_contact(proxy);
 		if (contactAddr) identity = linphone_address_as_string(contactAddr);
-		else identity = bctbx_strdup(linphone_proxy_config_get_identity(proxy));
+		else
+			identity =
+			    bctbx_strdup(linphone_address_as_string_uri_only(linphone_proxy_config_get_identity_address(proxy)));
 	} else {
 		identity = bctbx_strdup(linphone_core_get_primary_contact(lc));
 	}
@@ -253,21 +255,20 @@ size_t linphone_chat_room_get_previouses_conference_ids_count(BCTBX_UNUSED(Linph
 }
 
 bool_t linphone_call_check_rtp_sessions(LinphoneCall *call) {
-	std::shared_ptr<LinphonePrivate::MediaSession> ms = Call::toCpp(call)->getMediaSession();
-	if (ms) {
-		StreamsGroup &sg = L_GET_PRIVATE(ms)->getStreamsGroup();
+	if (std::shared_ptr<MediaSession> mediaSession = Call::toCpp(call)->getMediaSession()) {
+		StreamsGroup &sg = L_GET_PRIVATE(mediaSession)->getStreamsGroup();
 		for (auto &stream : sg.getStreams()) {
 			if (!stream) continue;
-			MS2Stream *s = dynamic_cast<MS2Stream *>(stream.get());
+			const MS2Stream *s = dynamic_cast<MS2Stream *>(stream.get());
 			if (stream->getType() == SalVideo) {
-				MediaStream *ms = s->getMediaStream();
-				RtpSession *rtp_session = ms->sessions.rtp_session;
+				const MediaStream *media_stream = s->getMediaStream();
+				const RtpSession *rtp_session = media_stream->sessions.rtp_session;
 				if (!rtp_session) {
 					lInfo() << "checkRtpSession(): session empty";
 					return false;
 				}
 				const rtp_stats_t *rtps = rtp_session_get_stats(rtp_session);
-				switch (media_stream_get_direction(ms)) {
+				switch (media_stream_get_direction(media_stream)) {
 					case MediaStreamRecvOnly:
 						// Can be 0 if it's not attached with filter
 						break;

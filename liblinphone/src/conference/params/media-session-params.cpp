@@ -92,8 +92,8 @@ void MediaSessionParamsPrivate::clean() {
 	if (receivedVideoDefinition) linphone_video_definition_unref(receivedVideoDefinition);
 	if (sentVideoDefinition) linphone_video_definition_unref(sentVideoDefinition);
 	if (customSdpAttributes) sal_custom_sdp_attribute_free(customSdpAttributes);
-	for (unsigned int i = 0; i < (unsigned int)LinphoneStreamTypeUnknown; i++) {
-		if (customSdpMediaAttributes[i]) sal_custom_sdp_attribute_free(customSdpMediaAttributes[i]);
+	for (const auto &customSdpMediaAttribute : customSdpMediaAttributes) {
+		if (customSdpMediaAttribute) sal_custom_sdp_attribute_free(customSdpMediaAttribute);
 	}
 	memset(customSdpMediaAttributes, 0, sizeof(customSdpMediaAttributes));
 }
@@ -265,7 +265,7 @@ void MediaSessionParams::initDefault(const std::shared_ptr<Core> &core, Linphone
 	d->cameraEnabled = true;
 	d->fecEnabled = false;
 
-	LinphoneConference *conference = linphone_core_get_conference(cCore);
+	LinphoneConference *conference = linphone_core_get_conference(cCore); // TODO
 
 	d->videoDirection = LinphoneMediaDirectionSendRecv;
 	if (conference) {

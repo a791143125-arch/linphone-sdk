@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -37,8 +37,10 @@ int StunClient::run(int audioPort, int videoPort, int textPort) {
 		lWarning() << "STUN support is not implemented for ipv6";
 		return -1;
 	}
-	if (!linphone_core_get_stun_server(getCore()->getCCore())) return -1;
-	const struct addrinfo *ai = linphone_core_get_stun_server_addrinfo(getCore()->getCCore());
+	auto nat_policy = linphone_core_get_nat_policy(getCore()->getCCore());
+	if (!(nat_policy && linphone_nat_policy_get_stun_server(nat_policy))) return -1;
+	const struct addrinfo *ai = linphone_core_get_stun_server_addrinfo(
+	    getCore()->getCCore()); // Est-ce que cette fonction doit également être dépréciée ?
 	if (!ai) {
 		lError() << "Could not obtain STUN server addrinfo";
 		return -1;

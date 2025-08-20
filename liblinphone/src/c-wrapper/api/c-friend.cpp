@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2023 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -37,7 +37,6 @@
 #include <bctoolbox/defs.h>
 
 #if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNXNTO__)
-#include <iconv.h>
 #include <langinfo.h>
 #include <string.h>
 #endif // if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNXNTO__)
@@ -110,7 +109,6 @@ const LinphoneAddress *linphone_friend_get_address(const LinphoneFriend *lf) {
 
 const bctbx_list_t *linphone_friend_get_addresses(const LinphoneFriend *lf) {
 	if (!lf) return nullptr;
-	Friend::toCpp(lf)->getAddresses();
 	return Friend::toCpp(lf)->getAddressesCList();
 }
 
@@ -504,7 +502,7 @@ LinphoneFriend *linphone_friend_new_from_config_file(LinphoneCore *lc, int index
 	LinphoneFriend *lf;
 	LpConfig *config = lc->config;
 
-	sprintf(item, "friend_%i", index);
+	snprintf(item, sizeof(item), "friend_%i", index);
 
 	if (!linphone_config_has_section(config, item)) {
 		return NULL;
@@ -635,13 +633,12 @@ const char *linphone_online_status_to_string(LinphoneOnlineStatus ss) {
 LinphoneOnlineStatus linphone_friend_get_status(const LinphoneFriend *lf) {
 	const LinphonePresenceModel *presence = linphone_friend_get_presence_model(lf);
 	LinphoneOnlineStatus online_status = LinphoneStatusOffline;
-	LinphonePresenceBasicStatus basic_status = LinphonePresenceBasicStatusClosed;
 	LinphonePresenceActivity *activity = NULL;
 	const char *description = NULL;
 	unsigned int nb_activities = 0;
 
 	if (presence != NULL) {
-		basic_status = linphone_presence_model_get_basic_status(presence);
+		LinphonePresenceBasicStatus basic_status = linphone_presence_model_get_basic_status(presence);
 		nb_activities = linphone_presence_model_get_nb_activities(presence);
 		online_status =
 		    (basic_status == LinphonePresenceBasicStatusOpen) ? LinphoneStatusOnline : LinphoneStatusOffline;

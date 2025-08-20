@@ -26,20 +26,16 @@
 
 #include "address/address.h"
 #include "c-wrapper/c-wrapper.h"
-#include "c-wrapper/internal/c-tools.h"
 #include "conference/conference-params.h"
 #include "conference/conference.h"
 #include "conference/participant.h"
 #include "friend/friend-list.h"
 #include "friend/friend.h"
-#include "linphone/api/c-account-params.h"
 #include "linphone/api/c-account.h"
 #include "linphone/api/c-address.h"
 #include "linphone/api/c-call-log.h"
-#include "linphone/api/c-chat-room.h"
 #include "linphone/api/c-conference-info.h"
 #include "linphone/api/c-participant-info.h"
-#include "linphone/api/c-participant.h"
 #include "linphone/chat.h"
 #include "linphone/core.h"
 #include "linphone/types.h"
@@ -172,7 +168,7 @@ bool MagicSearch::iterate(void) {
 	}
 	if (mState == STATE_END && mIteration) {
 		getCore()->destroyTimer(mIteration);
-		mIteration = NULL;
+		mIteration = nullptr;
 		continueLoop = false;
 	}
 	return continueLoop;
@@ -521,7 +517,7 @@ list<shared_ptr<SearchResult>> MagicSearch::getAddressFromGroupChatRoomParticipa
 				}
 			}
 		} else if (backend == ChatParams::Backend::Basic) {
-			const auto peerAddress = room->getPeerAddress(); // Can return NULL if getPeerAddress() is not valid
+			const auto peerAddress = room->getPeerAddress(); // Can return nullptr if getPeerAddress() is not valid
 			if (peerAddress && peerAddress->isValid()) {
 				LinphoneAddress *cPeerAddress = peerAddress->toC();
 				if (filter.empty()) {
@@ -611,7 +607,7 @@ bool MagicSearch::arePluginsProcessingDone(SearchAsyncData *asyncData) const {
 
 	for (auto plugin : mPlugins) {
 		timeout = startTime;
-		bctbx_timespec_add(&timeout, plugin->getTimeout());
+		bctbx_timespec_add_secs(&timeout, plugin->getTimeout());
 		if (plugin->getHasEnded() || bctbx_timespec_compare(&currentTime, &timeout) > 0) {
 			if (!plugin->getHasEnded()) {
 				lWarning() << "[Magic Search] Plugin [" << plugin->getDisplayName()
@@ -767,10 +763,10 @@ list<shared_ptr<SearchResult>> MagicSearch::continueSearch(const string &withDom
 
 static bool isSipUri(const string &phoneNumber) {
 	const char *c_phone_number = phoneNumber.c_str();
-	if ((strstr(c_phone_number, "sip:") == NULL) && (strstr(c_phone_number, "sips:") == NULL)) {
+	if ((strstr(c_phone_number, "sip:") == nullptr) && (strstr(c_phone_number, "sips:") == nullptr)) {
 		return false;
 	}
-	return (strchr(c_phone_number, '@') != NULL);
+	return (strchr(c_phone_number, '@') != nullptr);
 }
 
 shared_ptr<SearchResult>
@@ -816,7 +812,6 @@ list<shared_ptr<SearchResult>>
 MagicSearch::searchInFriend(const shared_ptr<Friend> &lFriend, const string &withDomain, int flags) const {
 	unsigned int minWeight = getMinWeight();
 	list<shared_ptr<SearchResult>> friendResult;
-	string phoneNumber = "";
 	unsigned int weight = minWeight;
 	bool addedToResults = false;
 	bool filteredResults = SearchResult::isFilteredResults(flags);
@@ -841,7 +836,7 @@ MagicSearch::searchInFriend(const shared_ptr<Friend> &lFriend, const string &wit
 	// SIP URI
 	const auto &addresses = lFriend->getAddresses();
 	for (const auto &addr : addresses) {
-		phoneNumber = "";
+		string phoneNumber = "";
 		unsigned int weightAddress = searchInAddress(addr, withDomain);
 		if (weightAddress == minWeight && filteredResults) {
 			++weightAddress; // Ignore filtering if it was already done

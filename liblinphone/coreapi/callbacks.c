@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -637,8 +637,8 @@ static void auth_failure(SalOp *op, SalAuthInfo *info) {
 			ms_message("%s/%s/%s/%s authentication fails.", info->realm, info->username, info->domain,
 			           sal_auth_mode_to_string(info->mode));
 			if (info->mode == SalAuthModeHttpDigest) {
-				LinphoneAuthInfo *auth_info =
-				    linphone_core_create_auth_info(lc, info->username, NULL, NULL, NULL, info->realm, info->domain);
+				LinphoneAuthInfo *auth_info = linphone_factory_create_auth_info(
+				    linphone_factory_get(), info->username, NULL, NULL, NULL, info->realm, info->domain);
 				/*ask again for password if auth info was already supplied but apparently not working*/
 				L_GET_PRIVATE_FROM_C_OBJECT(lc)->getAuthStack().pushAuthRequested(
 				    AuthInfo::toCpp(ai)->getSharedFromThis());
@@ -699,9 +699,9 @@ static void register_failure(SalOp *op) {
 	if (Account::toCpp(account)->getPresencePublishEvent()) {
 		/*prevent publish to be sent now until registration gets successful*/
 		Account::toCpp(account)->getPresencePublishEvent()->terminate();
-		Account::toCpp(account)->setPresencePublishEvent(NULL);
+		Account::toCpp(account)->setPresencePublishEvent(nullptr);
 		Account::toCpp(account)->setSendPublish(
-		    linphone_account_params_get_publish_enabled(linphone_account_get_params(account)));
+		    linphone_account_params_publish_enabled(linphone_account_get_params(account)));
 	}
 }
 
@@ -927,8 +927,8 @@ static bool_t auth_requested(Sal *sal, SalAuthInfo *sai) {
 		 * prompt from the library */
 		switch (sai->mode) {
 			case SalAuthModeHttpDigest: {
-				LinphoneAuthInfo *ai =
-				    linphone_core_create_auth_info(lc, sai->username, NULL, NULL, NULL, sai->realm, sai->domain);
+				LinphoneAuthInfo *ai = linphone_factory_create_auth_info(linphone_factory_get(), sai->username, NULL,
+				                                                         NULL, NULL, sai->realm, sai->domain);
 				linphone_auth_info_set_algorithm(ai, sai->algorithm);
 				/* Request app for new authentication information, but later. */
 				L_GET_PRIVATE_FROM_C_OBJECT(lc)->getAuthStack().pushAuthRequested(
@@ -939,8 +939,8 @@ static bool_t auth_requested(Sal *sal, SalAuthInfo *sai) {
 				}
 			} break;
 			case SalAuthModeBearer: {
-				LinphoneAuthInfo *ai =
-				    linphone_core_create_auth_info(lc, sai->username, NULL, NULL, NULL, sai->realm, sai->domain);
+				LinphoneAuthInfo *ai = linphone_factory_create_auth_info(linphone_factory_get(), sai->username, NULL,
+				                                                         NULL, NULL, sai->realm, sai->domain);
 				linphone_auth_info_set_authorization_server(ai, sai->authz_server);
 				linphone_core_notify_authentication_requested(lc, ai, LinphoneAuthBearer);
 				linphone_auth_info_unref(ai);

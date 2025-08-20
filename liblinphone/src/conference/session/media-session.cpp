@@ -2912,9 +2912,9 @@ void MediaSessionPrivate::makeLocalMediaDescription(bool localIsOfferer,
 		if (mdForMainStream) {
 			const auto audioStreamIndex = mdForMainStream->findIdxBestStream(SalAudio);
 			if (audioStreamIndex != -1) getStreamsGroup().setStreamMain(static_cast<size_t>(audioStreamIndex));
-			const auto remoteContactAddress = q->getRemoteContactAddress();
+			const auto contactAddress = q->getRemoteContactAddress();
 			const auto videoStreamIndex =
-			    (conference || (remoteContactAddress && remoteContactAddress->hasParam(Conference::sIsFocusParameter)))
+			    (conference || (contactAddress && contactAddress->hasParam(Conference::sIsFocusParameter)))
 			        ? mdForMainStream->findIdxStreamWithContent(mainStreamAttrValue)
 			        : mdForMainStream->findIdxBestStream(SalVideo);
 			if (videoStreamIndex != -1) getStreamsGroup().setStreamMain(static_cast<size_t>(videoStreamIndex));
@@ -3199,10 +3199,10 @@ MSCryptoSuite LinphoneSrtpSuite2MSCryptoSuite(const LinphoneSrtpSuite suite) {
 
 /**
  * Convert a list of enum LinphoneSrtpSuite into a list enum MSCryptoSuite
- * Enums definitions are not perferctly matching
+ * Enums definitions are not perfectly matching
  * input giving MS_CRYPTO_SUITE_INVALID are skipped in the output list
  *
- * @param[in]	suite	The list of LinphoneSrtpSuite to be converted
+ * @param[in]	suites	The list of LinphoneSrtpSuite to be converted
  * @return	the matching MSCryptoSuite list, unconvertible input are skipped
  **/
 std::list<MSCryptoSuite> LinphoneSrtpSuite2MSCryptoSuite(const std::list<LinphoneSrtpSuite> suites) {
@@ -4165,9 +4165,11 @@ LinphoneStatus MediaSessionPrivate::startAccept() {
 	// in
 	bool isThisNotCurrentMediaSession = currentCall && (currentCall->getActiveSession() != q->getSharedFromThis());
 
-	bool isCoreInLocalConference = linphone_core_is_in_conference(q->getCore()->getCCore());
+	auto cCore = q->getCore()->getCCore();
+	bool isCoreInLocalConference = cCore ? linphone_conference_is_in(cCore->conf_ctx) : false;
 	const auto callConference = q->getCore()->findConference(q->getSharedFromThis(), false);
-	auto coreConference = linphone_core_get_conference(q->getCore()->getCCore());
+	auto conferenceAddress = callConference->getConferenceAddress();
+	auto coreConference = linphone_core_search_conference_2(q->getCore()->getCCore(), conferenceAddress->toC());
 	// If the core in a conference, request to empty sound resources only if the call is in a different conference or
 	// the call is not part of a conference
 	bool isThisNotCurrentConference =

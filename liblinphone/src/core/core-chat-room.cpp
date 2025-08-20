@@ -31,12 +31,9 @@
 #include "chat/chat-room/basic-chat-room.h"
 #include "chat/chat-room/chat-room.h"
 #include "conference/conference-context.h"
-#include "conference/participant-info.h"
 #include "conference/participant.h"
 #include "conference/server-conference.h"
 #include "core-p.h"
-#include "linphone/api/c-account-params.h"
-#include "linphone/api/c-account.h"
 #include "linphone/api/c-chat-message-cbs.h"
 #include "linphone/api/c-chat-message.h"
 #include "linphone/api/c-chat-room.h"
@@ -46,9 +43,6 @@
 #include "chat/chat-room/client-chat-room.h"
 #include "conference/handlers/client-conference-list-event-handler.h"
 #endif
-
-// TODO: Remove me later.
-#include "c-wrapper/c-wrapper.h"
 
 // =============================================================================
 
@@ -370,7 +364,6 @@ shared_ptr<AbstractChatRoom> CorePrivate::createChatRoom(const shared_ptr<Confer
 		std::shared_ptr<const Address> remoteAddr = participants.front();
 		chatRoom = searchChatRoom(params, localAddr, remoteAddr, {});
 		if (chatRoom == nullptr) {
-			std::shared_ptr<const Address> remoteAddr = participants.front();
 			chatRoom = createBasicChatRoom(ConferenceId(remoteAddr, localAddr, q->createConferenceIdParams()), params);
 			insertChatRoom(chatRoom);
 			insertChatRoomWithDb(chatRoom);
@@ -489,7 +482,7 @@ void CorePrivate::handleEphemeralMessages(time_t currentTime) {
 				// Notify ephemeral message deleted to message if exists.
 				LinphoneChatMessage *message = L_GET_C_BACK_PTR(msg.get());
 				if (message) {
-					LinphoneChatMessageCbs *cbs = linphone_chat_message_get_callbacks(message);
+					LinphoneChatMessageCbs *cbs = linphone_chat_message_get_callbacks(message); // TODO
 					if (cbs && linphone_chat_message_cbs_get_ephemeral_message_deleted(cbs)) {
 						linphone_chat_message_cbs_get_ephemeral_message_deleted(cbs)(message);
 					}

@@ -106,7 +106,7 @@ simple_account_creation_base(bool_t remove_accounts, bool_t bring_offline_while_
 
 	accounts = linphone_core_get_account_list(marie->lc);
 	if (!!remove_accounts) {
-		unsigned int account_deletion_timeout = 5;
+		account_deletion_timeout = 5;
 		linphone_core_set_account_deletion_timeout(marie->lc, account_deletion_timeout);
 		for (; accounts != NULL; accounts = accounts->next) {
 			LinphoneAccount *account = (LinphoneAccount *)accounts->data;
@@ -128,11 +128,9 @@ simple_account_creation_base(bool_t remove_accounts, bool_t bring_offline_while_
 	}
 
 	if (!!remove_accounts) {
-		unsigned int account_deletion_timeout = 5;
+		account_deletion_timeout = 5;
 		linphone_core_set_account_deletion_timeout(marie->lc, account_deletion_timeout);
-		marieStats = marie->stat;
 		accounts = linphone_core_get_account_list(marie->lc);
-		number_accounts = (int)bctbx_list_size(accounts);
 		for (; accounts != NULL; accounts = accounts->next) {
 			LinphoneAccount *account = (LinphoneAccount *)accounts->data;
 			linphone_core_remove_account(marie->lc, account);
@@ -265,8 +263,8 @@ static void added_account_removal_base(bool_t enable_register) {
 	}
 	const bctbx_list_t *marie_account_list = linphone_core_get_account_list(marie->lc);
 	for (const bctbx_list_t *account_it = marie_account_list; account_it != NULL; account_it = account_it->next) {
-		LinphoneAccount *account = (LinphoneAccount *)account_it->data;
-		linphone_core_remove_account(marie->lc, account);
+		LinphoneAccount *acc = account_it->data;
+		linphone_core_remove_account(marie->lc, acc);
 	}
 	if (enable_register) {
 		BC_ASSERT_TRUE(wait_for(marie->lc, NULL, &marie->stat.number_of_LinphoneRegistrationCleared,
@@ -299,8 +297,10 @@ static void registration_state_changed_on_account(LinphoneAccount *account,
 	stats *counters;
 	ms_message("New registration state %s for user id [%s] at account [%s]\n",
 	           linphone_registration_state_to_string(state),
-	           linphone_account_params_get_identity(linphone_account_get_params(account)),
-	           linphone_account_params_get_server_addr(linphone_account_get_params(account)));
+	           linphone_address_as_string_uri_only(
+	               linphone_account_params_get_identity_address(linphone_account_get_params(account))),
+	           linphone_address_as_string_uri_only(
+	               linphone_account_params_get_server_address(linphone_account_get_params(account))));
 	counters = get_stats(lc);
 	switch (state) {
 		case LinphoneRegistrationNone:
@@ -490,8 +490,11 @@ static void account_dependency_to_self(void) {
 	BC_ASSERT_TRUE(wait_for(marie->lc, NULL, &marie->stat.number_of_LinphoneRegistrationCleared, 2));
 
 	LinphoneAccountParams *marie_dependent_params = linphone_account_params_new(marie->lc, TRUE);
+	LinphoneAddress *server_address =
+	    linphone_factory_create_address(linphone_factory_get(), "sip:external.example.org:5068;transport=tcp");
 	linphone_account_params_set_identity_address(marie_dependent_params, marie_secondary_address);
-	linphone_account_params_set_server_addr(marie_dependent_params, "sip:external.example.org:5068;transport=tcp");
+	linphone_account_params_set_server_address(marie_dependent_params, server_address);
+	linphone_address_unref(server_address);
 
 	bctbx_list_t *list = NULL;
 	const char *route = "sip:external.example.org:5068;transport=tcp";
@@ -499,7 +502,7 @@ static void account_dependency_to_self(void) {
 	linphone_account_params_set_routes_addresses(marie_dependent_params, list);
 	bctbx_list_free_with_data(list, (bctbx_list_free_func)linphone_address_unref);
 
-	linphone_account_params_set_register_enabled(marie_dependent_params, TRUE);
+	linphone_account_params_enable_register(marie_dependent_params, TRUE);
 	linphone_address_unref(marie_secondary_address);
 	LinphoneAccount *new_account = linphone_account_new(marie->lc, marie_dependent_params);
 	linphone_account_set_dependency(new_account, new_account);

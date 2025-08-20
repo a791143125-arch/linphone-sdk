@@ -60,7 +60,6 @@
 #include "conference/handlers/client-conference-list-event-handler.h"
 #include "conference/handlers/server-conference-list-event-handler.h"
 #include "conference/params/media-session-params-p.h"
-#include "conference/participant-info.h"
 #include "conference/participant.h"
 #include "conference/session/call-session-listener.h"
 #include "conference/session/media-session-p.h"
@@ -71,13 +70,11 @@
 #include "event/event.h"
 #include "factory/factory.h"
 #include "http/http-client.h"
-#include "ldap/ldap.h"
 #include "linphone/api/c-account-cbs.h"
 #include "linphone/api/c-account-params.h"
 #include "linphone/api/c-account.h"
 #include "linphone/api/c-address.h"
 #include "linphone/lpconfig.h"
-#include "linphone/utils/algorithm.h"
 #include "linphone/utils/utils.h"
 #include "logger/logger.h"
 #include "paths/paths.h"
@@ -200,7 +197,7 @@ void CorePrivate::init() {
 
 			loadChatRooms();
 			linphone_core_friends_storage_resync_friends_lists(lc); // Load friends from mainDB if any
-		} else lWarning() << "Database explicitely not requested, this Core is built with no database support.";
+		} else lWarning() << "Database explicitly not requested, this Core is built with no database support.";
 
 		// Leave this part to import the legacy call logs to MainDB
 		string calHistoryDbPath = L_C_TO_STRING(
@@ -208,8 +205,8 @@ void CorePrivate::init() {
 		if (calHistoryDbPath.empty()) calHistoryDbPath = q->getDataPath() + "/" + LINPHONE_CALL_HISTORY_DB;
 		if (calHistoryDbPath != "null") {
 			lInfo() << "Using [" << calHistoryDbPath << "] as legacy call history database path";
-			linphone_core_set_call_logs_database_path(lc, calHistoryDbPath.c_str());
-		} else lWarning() << "Call logs database explicitely not requested";
+			linphone_core_set_call_logs_database_path(lc, calHistoryDbPath.c_str()); // TODO : Fix warning
+		} else lWarning() << "Call logs database explicitly not requested";
 
 		if (lc->zrtp_secrets_cache == NULL) {
 			string zrtpSecretsDbPath = L_C_TO_STRING(
@@ -218,7 +215,7 @@ void CorePrivate::init() {
 			if (zrtpSecretsDbPath != "null") {
 				lInfo() << "Using [" << zrtpSecretsDbPath << "] as default zrtp secrets database path";
 				linphone_core_set_zrtp_secrets_file(lc, zrtpSecretsDbPath.c_str());
-			} else lWarning() << "ZRTP secrets database explicitely not requested";
+			} else lWarning() << "ZRTP secrets database explicitly not requested";
 		}
 
 		// Leave this part to import the legacy friends to MainDB
@@ -228,11 +225,11 @@ void CorePrivate::init() {
 			if (friendsDbPath.empty()) friendsDbPath = q->getDataPath() + "/" + LINPHONE_FRIENDS_DB;
 			if (friendsDbPath != "null") {
 				lInfo() << "Using [" << friendsDbPath << "] as legacy friends database path";
-				linphone_core_set_friends_database_path(lc, friendsDbPath.c_str());
-			} else lWarning() << "Friends database explicitely not requested";
+				linphone_core_set_friends_database_path(lc, friendsDbPath.c_str()); // TODO : Fix warning
+			} else lWarning() << "Friends database explicitly not requested";
 		}
 	} else {
-		lInfo() << "The Core was explicitely requested not to use any database";
+		lInfo() << "The Core was explicitly requested not to use any database";
 	}
 
 	createConferenceCleanupTimer(q->getConferenceCleanupPeriod());
@@ -1347,14 +1344,12 @@ std::shared_ptr<AudioDevice> Core::getInputAudioDevice() const {
 		Conference *conf = Conference::toCpp(getCCore()->conf_ctx);
 		AudioControlInterface *i = conf->getAudioControlInterface();
 		return i ? i->getInputDevice() : nullptr;
-	} else {
-		shared_ptr<LinphonePrivate::Call> call = getCurrentCall();
-		if (call) {
-			return call->getInputAudioDevice();
-		}
-		for (const auto &call : getCalls()) {
-			return call->getInputAudioDevice();
-		}
+	}
+	if (const auto currentCall = getCurrentCall()) {
+		return currentCall->getInputAudioDevice();
+	}
+	for (const auto &call : getCalls()) {
+		return call->getInputAudioDevice();
 	}
 
 	return nullptr;
@@ -1367,14 +1362,12 @@ std::shared_ptr<AudioDevice> Core::getOutputAudioDevice() const {
 		Conference *conf = Conference::toCpp(getCCore()->conf_ctx);
 		AudioControlInterface *i = conf->getAudioControlInterface();
 		return i ? i->getOutputDevice() : nullptr;
-	} else {
-		shared_ptr<LinphonePrivate::Call> call = getCurrentCall();
-		if (call) {
-			return call->getOutputAudioDevice();
-		}
-		for (const auto &call : getCalls()) {
-			return call->getOutputAudioDevice();
-		}
+	}
+	if (const auto currentCall = getCurrentCall()) {
+		return currentCall->getOutputAudioDevice();
+	}
+	for (const auto &call : getCalls()) {
+		return call->getOutputAudioDevice();
 	}
 
 	return nullptr;
@@ -2396,7 +2389,6 @@ int Core::loadPlugins(BCTBX_UNUSED(const std::string &dir)) {
 	DIR *ds;
 	std::list<std::string> loaded_plugins;
 	struct dirent *de;
-	char *ext;
 	ds = opendir(dir.c_str());
 	if (ds == NULL) {
 		lInfo() << "Cannot open directory " << dir << ": " << strerror(errno);
@@ -2407,8 +2399,7 @@ int Core::loadPlugins(BCTBX_UNUSED(const std::string &dir)) {
 #ifndef __QNX__
 		    (de->d_type == DT_REG || de->d_type == DT_UNKNOWN || de->d_type == DT_LNK) &&
 #endif
-		    (strstr(de->d_name, "liblinphone_") == de->d_name) &&
-		    ((ext = strstr(de->d_name, LINPHONE_PLUGINS_EXT)) != NULL)) {
+		    (strstr(de->d_name, "liblinphone_") == de->d_name) && (strstr(de->d_name, LINPHONE_PLUGINS_EXT) != NULL)) {
 			std::string plugin_file_name(de->d_name);
 			if (std::find(loaded_plugins.cbegin(), loaded_plugins.cend(), plugin_file_name) != loaded_plugins.cend())
 				continue;

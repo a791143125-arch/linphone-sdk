@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -24,7 +24,6 @@
 #include "linphone/api/c-account-manager-services.h"
 #include "linphone/api/c-auth-info.h"
 #include "tester_utils.h"
-#include <ctype.h>
 
 typedef struct _LinphoneAccountManagerServicesStats {
 	int request_result_received;
@@ -204,7 +203,8 @@ static void desktop_create_account_active_using_email_code(void) {
 	}
 
 	// Create auth info with credentials
-	LinphoneAuthInfo *ai = linphone_core_create_auth_info(manager->lc, username, NULL, password, NULL, NULL, NULL);
+	LinphoneAuthInfo *ai =
+	    linphone_factory_create_auth_info(linphone_factory_get(), username, NULL, password, NULL, NULL, NULL);
 	linphone_core_add_auth_info(manager->lc, ai);
 
 	// Step 3.1: link the account to an email address to activate it
@@ -379,7 +379,8 @@ static void mobile_create_account_active_using_sms_code(void) {
 	}
 
 	// Create auth info with credentials
-	LinphoneAuthInfo *ai = linphone_core_create_auth_info(manager->lc, username, NULL, password, NULL, NULL, NULL);
+	LinphoneAuthInfo *ai =
+	    linphone_factory_create_auth_info(linphone_factory_get(), username, NULL, password, NULL, NULL, NULL);
 	linphone_core_add_auth_info(manager->lc, ai);
 
 	// Step 3.1: link the account to a phone number to activate it

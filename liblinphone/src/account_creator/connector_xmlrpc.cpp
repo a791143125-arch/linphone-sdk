@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -19,7 +19,6 @@
  */
 
 #include "bctoolbox/crypto.h"
-#include "bctoolbox/regex.h"
 
 #include "c-wrapper/c-wrapper.h"
 #include "dial-plan/dial-plan.h"
@@ -235,7 +234,6 @@ void linphone_account_creator_cbs_set_login_linphone_account(LinphoneAccountCrea
 /************************** Start Account Creator Linphone **************************/
 
 LinphoneAccountCreatorStatus linphone_account_creator_constructor_linphone_xmlrpc(LinphoneAccountCreator *creator) {
-	LinphoneAddress *addr;
 	const char *identity =
 	    linphone_config_get_default_string(linphone_core_get_config(creator->core), "proxy", "reg_identity", NULL);
 	const char *proxy =
@@ -257,10 +255,10 @@ LinphoneAccountCreatorStatus linphone_account_creator_constructor_linphone_xmlrp
 		if (route_list) {
 			bctbx_list_free_with_data(route_list, (bctbx_list_free_func)linphone_address_unref);
 		}
-		linphone_account_params_set_server_addr(account_params, proxy ? proxy : "sip.linphone.org");
-		addr = linphone_address_new(identity ? identity : "sip:username@sip.linphone.org");
+		const LinphoneAddress *proxy_address = linphone_address_new(proxy ? proxy : "sip.linphone.org");
+		linphone_account_params_set_server_address(account_params, proxy_address);
+		const LinphoneAddress *addr = linphone_address_new(identity ? identity : "sip:username@sip.linphone.org");
 		linphone_account_params_set_identity_address(account_params, addr);
-		linphone_address_unref(addr);
 		creator->account = linphone_core_create_account(creator->core, account_params);
 		linphone_account_params_unref(account_params);
 	}
@@ -321,7 +319,7 @@ linphone_account_creator_is_account_exist_linphone_xmlrpc(LinphoneAccountCreator
 		    request, linphone_account_creator_get_domain_with_fallback_to_proxy_domain(creator));
 		linphone_xml_rpc_request_set_user_data(request, creator);
 		linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request),
-		                                          _is_account_exist_response_cb);
+		                                          _is_account_exist_response_cb); // TODO : Fix warning
 		linphone_xml_rpc_session_send_request(xmlrpc_session, request);
 		linphone_xml_rpc_request_unref(request);
 

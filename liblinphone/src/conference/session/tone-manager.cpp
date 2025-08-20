@@ -338,7 +338,7 @@ MSFilter *ToneManager::getAudioResource(AudioResourceType rtype, MSSndCard *card
 	float tmp;
 	if (call) {
 		stream = reinterpret_cast<AudioStream *>(linphone_call_get_stream(call, LinphoneStreamTypeAudio));
-	} else if (linphone_core_is_in_conference(lc)) {
+	} else if (lc->conf_ctx && linphone_conference_is_in(lc->conf_ctx)) {
 		stream = linphone_conference_get_audio_stream(lc->conf_ctx);
 	}
 	if (stream) {
@@ -484,7 +484,7 @@ bool ToneManager::shouldPlayWaitingTone(const std::shared_ptr<CallSession> &sess
 	shared_ptr<Call> currentCall = getCore().getCurrentCall();
 	LinphoneCore *lc = getCore().getCCore();
 
-	if (linphone_core_is_in_conference(lc)) return true;
+	if (lc->conf_ctx && linphone_conference_is_in(lc->conf_ctx)) return true;
 	if (currentCall != nullptr && currentCall->getActiveSession() != session) {
 		switch (currentCall->getActiveSession()->getState()) {
 			case CallSession::State::OutgoingInit:
@@ -555,8 +555,9 @@ void ToneManager::notifyIncomingCall(const std::shared_ptr<CallSession> &session
 
 void ToneManager::notifyOutgoingCallRinging(const std::shared_ptr<CallSession> &session) {
 	auto currentCall = getCore().getCurrentCall();
+	auto cCore = getCore().getCCore();
 	if ((currentCall != nullptr && currentCall->getActiveSession() != session) ||
-	    linphone_core_is_in_conference(getCore().getCCore())) {
+	    (cCore->conf_ctx && linphone_conference_is_in(cCore->conf_ctx))) {
 		lInfo() << "Will not play ringback tone, audio is already used in a call or conference.";
 		return;
 	}
@@ -607,7 +608,8 @@ void ToneManager::notifyToneIndication(LinphoneReason reason) {
 
 bool ToneManager::inCallOrConference() const {
 	shared_ptr<Call> currentCall = getCore().getCurrentCall();
-	return currentCall != nullptr || linphone_core_is_in_conference(getCore().getCCore());
+	auto cCore = getCore().getCCore();
+	return currentCall != nullptr || (cCore->conf_ctx && linphone_conference_is_in(cCore->conf_ctx));
 }
 
 /*
@@ -728,8 +730,9 @@ void ToneManager::notifyState(const std::shared_ptr<CallSession> &callSession, C
 			}
 			break;
 		case CallSession::State::Pausing: {
+			auto cCore = getCore().getCCore();
 			if (session->pausedByApp() && (getCore().getCallCount() == 1) &&
-			    !linphone_core_is_in_conference(getCore().getCCore()) && mSessionPaused == nullptr) {
+			    !(cCore->conf_ctx && linphone_conference_is_in(cCore->conf_ctx)) && mSessionPaused == nullptr) {
 				mSessionPaused = session;
 				startNamedTone(LinphoneToneCallOnHold);
 			}

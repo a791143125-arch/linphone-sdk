@@ -26,8 +26,6 @@
 #include "conference/client-conference.h"
 #include "content/content.h"
 #include "core/core.h"
-#include "linphone/api/c-account-params.h"
-#include "linphone/api/c-account.h"
 #include "linphone/api/c-address.h"
 #include "linphone/utils/algorithm.h"
 #include "push-notification/push-notification-config.h"
@@ -1664,8 +1662,8 @@ void Account::onLimeServerUrlChanged(const std::string &limeServerUrl) {
 		linphone_core_add_linphone_spec(core, "lime");
 	} else {
 		// If LIME server URL is still set in the Core, do not remove the spec
-		const char *core_lime_server_url = linphone_core_get_lime_x3dh_server_url(core);
-		if (core_lime_server_url && strlen(core_lime_server_url)) {
+		const auto coreLimeServerUrl = getAccountParams()->getLimeServerUrl();
+		if (!coreLimeServerUrl.empty()) {
 			return;
 		}
 
@@ -2001,7 +1999,7 @@ void Account::handleResponseConferenceInformation(void *ctx, const HttpResponse 
 							if (nodeName == "xcon:conference-time") {
 								ConferenceTimeType conferenceTime{anyElement};
 								for (auto &conferenceTimeEntry : conferenceTime.getEntry()) {
-									const std::string base = conferenceTimeEntry.getBase();
+									const auto base = string(conferenceTimeEntry.getBase());
 									if (!base.empty()) {
 										auto ics = Ics::Icalendar::createFromString(base);
 										if (ics) {

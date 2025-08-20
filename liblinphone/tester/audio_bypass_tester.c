@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -147,7 +147,8 @@ static void audio_bypass_snd_read_preprocess(MSFilter *f) {
 	d->state = MSPlayerPaused;
 	d->fd = fd;
 	d->ts = 0;
-	if (read_wav_header(d) != 0 && strstr(file, ".wav")) {
+	if (read_wav_header(d) != 0 &&
+	    strstr(file, ".wav")) { // TODO : Est-ce normal que read_wav_header(d) renvoie toujours 0 ?
 		ms_warning("File %s has .wav extension but wav header could be found.", file);
 	}
 	ms_filter_notify_no_arg(f, MS_FILTER_OUTPUT_FMT_CHANGED);
@@ -412,17 +413,21 @@ static void audio_bypass_snd_card_detect(MSSndCardManager *m) {
 	ms_snd_card_manager_add_card(m, create_audio_bypass_snd_card());
 }
 
-static void only_enable_payload(LinphoneCore *lc, const char *mime, int rate, int channels) {
-	const MSList *elem = linphone_core_get_audio_codecs(lc);
-	PayloadType *pt;
+static void only_enable_payload(LinphoneCore *lc,
+                                const char *mime,
+                                int rate,
+                                int channels) { // TODO : lorsque cette fonction est appelée, il n'y a que le premier
+	                                            // paramètre qui change de valeur.
+	const MSList *elem = linphone_core_get_audio_payload_types(lc);
+	LinphonePayloadType *pt;
 
 	for (; elem != NULL; elem = elem->next) {
-		pt = (PayloadType *)elem->data;
-		linphone_core_enable_payload_type(lc, pt, FALSE);
+		pt = (LinphonePayloadType *)elem->data;
+		linphone_payload_type_enable(pt, FALSE);
 	}
-	pt = linphone_core_find_payload_type(lc, mime, rate, channels);
+	pt = linphone_core_get_payload_type(lc, mime, rate, channels);
 	if (BC_ASSERT_PTR_NOT_NULL(pt)) {
-		linphone_core_enable_payload_type(lc, pt, TRUE);
+		linphone_payload_type_enable(pt, TRUE);
 	}
 }
 

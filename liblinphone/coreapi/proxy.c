@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -37,7 +37,6 @@
 #include <string>
 
 #include "linphone/core.h"
-#include "linphone/core_utils.h"
 #include "linphone/lpconfig.h"
 #include "linphone/sipsetup.h"
 
@@ -52,12 +51,10 @@
 #include "core/core-p.h"
 #include "core/core.h"
 #include "dial-plan/dial-plan.h"
-#include "enum.h"
 #include "event/event-publish.h"
 #include "linphone/api/c-account-params.h"
 #include "linphone/api/c-account.h"
 #include "linphone/api/c-address.h"
-#include "linphone/api/c-dial-plan.h"
 #include "private.h"
 
 using namespace LinphonePrivate;
@@ -122,7 +119,8 @@ LinphoneStatus linphone_proxy_config_set_server_addr(LinphoneProxyConfig *cfg, c
 		linphone_proxy_config_edit(cfg);
 	}
 
-	LinphoneStatus status = linphone_account_params_set_server_addr(cfg->edit, server_addr);
+	const LinphoneAddress *server_address = linphone_address_new(server_addr);
+	const LinphoneStatus status = linphone_account_params_set_server_address(cfg->edit, server_address);
 	linphone_proxy_config_done(cfg);
 	return status;
 }
@@ -188,7 +186,7 @@ void linphone_proxy_config_enableregister(LinphoneProxyConfig *cfg, bool_t val) 
 		linphone_proxy_config_edit(cfg);
 	}
 
-	linphone_account_params_set_register_enabled(cfg->edit, val);
+	linphone_account_params_enable_register(cfg->edit, val);
 	linphone_proxy_config_done(cfg);
 }
 
@@ -206,7 +204,7 @@ void linphone_proxy_config_enable_publish(LinphoneProxyConfig *cfg, bool_t val) 
 		linphone_proxy_config_edit(cfg);
 	}
 
-	linphone_account_params_set_publish_enabled(cfg->edit, val);
+	linphone_account_params_enable_publish(cfg->edit, val);
 	linphone_proxy_config_done(cfg);
 }
 
@@ -258,13 +256,13 @@ void linphone_proxy_config_set_dial_escape_plus(LinphoneProxyConfig *cfg, bool_t
 		linphone_proxy_config_edit(cfg);
 	}
 
-	linphone_account_params_set_dial_escape_plus_enabled(cfg->edit, val);
+	linphone_account_params_enable_dial_escape_plus(cfg->edit, val);
 	linphone_proxy_config_done(cfg);
 }
 
 bool_t linphone_proxy_config_get_dial_escape_plus(const LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params = cfg->edit ? cfg->edit : linphone_account_get_params(cfg->account);
-	return linphone_account_params_get_dial_escape_plus_enabled(params);
+	return linphone_account_params_dial_escape_plus_enabled(params);
 }
 
 void linphone_proxy_config_enable_quality_reporting(LinphoneProxyConfig *cfg, bool_t val) {
@@ -272,14 +270,14 @@ void linphone_proxy_config_enable_quality_reporting(LinphoneProxyConfig *cfg, bo
 		linphone_proxy_config_edit(cfg);
 	}
 
-	linphone_account_params_set_quality_reporting_enabled(cfg->edit, val);
+	linphone_account_params_enable_quality_reporting(cfg->edit, val);
 	linphone_proxy_config_done(cfg);
 }
 
 bool_t linphone_proxy_config_quality_reporting_enabled(LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params =
 	    cfg->edit ? cfg->edit : ((cfg->account) ? linphone_account_get_params(cfg->account) : NULL);
-	return (params ? linphone_account_params_get_quality_reporting_enabled(params)
+	return (params ? linphone_account_params_quality_reporting_enabled(params)
 	               : !!linphone_config_get_default_int(linphone_core_get_config(linphone_proxy_config_get_core(cfg)),
 	                                                   "proxy", "quality_reporting_enabled", false));
 }
@@ -400,17 +398,19 @@ const LinphoneAddress *linphone_proxy_config_get_identity_address(const Linphone
 
 const char *linphone_proxy_config_get_identity(const LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params = cfg->edit ? cfg->edit : linphone_account_get_params(cfg->account);
-	return linphone_account_params_get_identity(params);
+	const LinphoneAddress *address = linphone_account_params_get_identity_address(params);
+	return linphone_address_as_string_uri_only(address);
 }
 
 bool_t linphone_proxy_config_publish_enabled(const LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params = cfg->edit ? cfg->edit : linphone_account_get_params(cfg->account);
-	return linphone_account_params_get_publish_enabled(params);
+	return linphone_account_params_publish_enabled(params);
 }
 
 const char *linphone_proxy_config_get_server_addr(const LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params = cfg->edit ? cfg->edit : linphone_account_get_params(cfg->account);
-	return linphone_account_params_get_server_addr(params);
+	const LinphoneAddress *address = linphone_account_params_get_server_address(params);
+	return linphone_address_as_string_uri_only(address);
 }
 
 /**
@@ -423,7 +423,7 @@ int linphone_proxy_config_get_expires(const LinphoneProxyConfig *cfg) {
 
 bool_t linphone_proxy_config_register_enabled(const LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params = cfg->edit ? cfg->edit : linphone_account_get_params(cfg->account);
-	return linphone_account_params_get_register_enabled(params);
+	return linphone_account_params_register_enabled(params);
 }
 
 void linphone_proxy_config_set_contact_parameters(LinphoneProxyConfig *cfg, const char *contact_params) {
@@ -780,13 +780,15 @@ void linphone_proxy_config_set_conference_factory_uri(LinphoneProxyConfig *cfg, 
 		linphone_proxy_config_edit(cfg);
 	}
 
-	linphone_account_params_set_conference_factory_uri(cfg->edit, uri);
+	const LinphoneAddress *uri_address = linphone_address_new(uri);
+	linphone_account_params_set_conference_factory_address(cfg->edit, uri_address);
 	linphone_proxy_config_done(cfg);
 }
 
 const char *linphone_proxy_config_get_conference_factory_uri(const LinphoneProxyConfig *cfg) {
 	const LinphoneAccountParams *params = cfg->edit ? cfg->edit : linphone_account_get_params(cfg->account);
-	return linphone_account_params_get_conference_factory_uri(params);
+	const LinphoneAddress *address = linphone_account_params_get_conference_factory_address(params);
+	return linphone_address_as_string_uri_only(address);
 }
 
 bool_t linphone_proxy_config_is_push_notification_allowed(const LinphoneProxyConfig *cfg) {

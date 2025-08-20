@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -110,17 +110,16 @@ LinphoneAccount *linphone_account_creator_create_account_in_core(const LinphoneA
 		snprintf(buff, sizeof(buff), "%d", dial_prefix_number);
 		linphone_account_params_set_international_prefix(params, buff);
 	}
-	if (linphone_account_params_get_server_addr(params) == NULL && creator->domain != NULL) {
+	if (linphone_account_params_get_server_address(params) == NULL && creator->domain != NULL) {
 		char *url = ms_strdup_printf("sip:%s", creator->domain);
 		LinphoneAddress *proxy_addr = linphone_address_new(url);
 		if (proxy_addr) {
 			linphone_address_set_transport(proxy_addr, creator->transport);
-			char *proxy_addr_str = linphone_address_as_string_uri_only(proxy_addr);
-			linphone_account_params_set_server_addr(params, proxy_addr_str);
-			bctbx_free(proxy_addr_str);
+			linphone_account_params_set_server_address(params, proxy_addr);
 			linphone_address_unref(proxy_addr);
 		} else {
-			linphone_account_params_set_server_addr(params, creator->domain);
+			const LinphoneAddress *domain_address = linphone_address_new(creator->domain);
+			linphone_account_params_set_server_address(params, domain_address);
 		}
 		ms_free(url);
 	}
