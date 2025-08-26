@@ -285,6 +285,7 @@ private:
 	int checkServerConfiguration(const std::shared_ptr<Address> &remoteContactAddress,
 	                             std::shared_ptr<LinphonePrivate::MediaSession> &session);
 	bool allSupportMixerToClientExtension() const;
+	void handleMixerToClientFlag(const std::shared_ptr<CallSession> &session);
 
 	void addLocalEndpoint();
 	void removeLocalEndpoint();

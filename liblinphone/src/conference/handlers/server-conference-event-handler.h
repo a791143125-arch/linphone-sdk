@@ -76,13 +76,13 @@ public:
 	std::shared_ptr<Content> getNotifyForId(int notifyId, const std::shared_ptr<EventSubscribe> &ev);
 
 	// protected:
-	void notifyAllExcept(NotifyContext context, const std::shared_ptr<Participant> &exceptParticipant);
-	void notifyAllExceptDevice(NotifyContext context, const std::shared_ptr<ParticipantDevice> &exceptDevice);
-	void notifyAll(NotifyContext context);
-	void notifyOnlyAdmins(NotifyContext context);
-	void notifyAllParticipants(NotifyContext context,
+	void notifyAllExcept(const NotifyContext &context, const std::shared_ptr<Participant> &exceptParticipant);
+	void notifyAllExceptDevice(const NotifyContext &context, const std::shared_ptr<ParticipantDevice> &exceptDevice);
+	void notifyAll(const NotifyContext &context);
+	void notifyOnlyAdmins(const NotifyContext &context);
+	void notifyAllParticipants(const NotifyContext &context,
 	                           const std::function<bool(const std::shared_ptr<Participant> &)> &filter);
-	void notifyAllDevices(NotifyContext context,
+	void notifyAllDevices(const NotifyContext &context,
 	                      const std::function<bool(const std::shared_ptr<ParticipantDevice> &)> &filter);
 	void notifyFullState(const std::shared_ptr<Content> &notify, const std::shared_ptr<ParticipantDevice> &device);
 	void notifyAllExcept(const std::shared_ptr<Content> &notify, const std::shared_ptr<Participant> &exceptParticipant);
@@ -95,7 +95,7 @@ public:
 	void notifyAllDevices(const std::shared_ptr<Content> &notify,
 	                      const std::function<bool(const std::shared_ptr<ParticipantDevice> &)> &filter);
 	std::shared_ptr<Content> createNotifyFullState(const std::shared_ptr<EventSubscribe> &ev,
-	                                               const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
+	                                               const std::shared_ptr<ParticipantDevice> &toDevice = nullptr);
 	std::shared_ptr<Content> createNotifyMultipart(int notifyId);
 
 	// Conference
@@ -104,20 +104,21 @@ public:
 
 	// Participant
 	std::string createNotifyParticipantAdded(const std::shared_ptr<Address> &pAddress,
-	                                         const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
+	                                         const std::shared_ptr<ParticipantDevice> &toDevice = nullptr);
 	std::string createNotifyParticipantAdminStatusChanged(const std::shared_ptr<Address> &pAddress, bool isAdmin);
 	std::string createNotifyParticipantRemoved(const std::shared_ptr<Address> &pAddress);
 
 	// Participant device
 	std::string createNotifyParticipantDeviceAdded(const std::shared_ptr<Address> &pAddress,
 	                                               const std::shared_ptr<Address> &dAddress,
-	                                               const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
+	                                               const std::shared_ptr<ParticipantDevice> &toDevice = nullptr);
 	std::string createNotifyParticipantDeviceRemoved(const std::shared_ptr<Address> &pAddress,
 	                                                 const std::shared_ptr<Address> &dAddress);
 	std::string createNotifyParticipantDeviceDataChanged(const std::shared_ptr<Address> &pAddress,
 	                                                     const std::shared_ptr<Address> &dAddress,
-	                                                     const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
+	                                                     const std::shared_ptr<ParticipantDevice> &toDevice = nullptr);
 
+	void notifyMixerToClientFlagChanged(const std::shared_ptr<ParticipantDevice> &toDevice);
 	static void notifyResponseCb(LinphoneEvent *lev);
 
 	/*
@@ -260,9 +261,10 @@ private:
 	std::string createNotifyEphemeralLifetime(const long &lifetime, const long &notReadLifetime);
 	std::string createNotifyEphemeralMode(const EventLog::Type &type);
 	std::shared_ptr<Content> makeContent(const std::string &xml);
-	std::shared_ptr<Content> makeContent(NotifyContext context, const std::shared_ptr<ParticipantDevice> &toDevice);
-	void notifyParticipant(NotifyContext context, const std::shared_ptr<Participant> &participant);
-	void notifyParticipantDevice(NotifyContext context, const std::shared_ptr<ParticipantDevice> &device);
+	std::shared_ptr<Content> makeContent(const NotifyContext &context,
+	                                     const std::shared_ptr<ParticipantDevice> &toDevice);
+	void notifyParticipant(const NotifyContext &context, const std::shared_ptr<Participant> &participant);
+	void notifyParticipantDevice(const NotifyContext &context, const std::shared_ptr<ParticipantDevice> &device);
 	void notifyParticipant(const std::shared_ptr<Content> &notify, const std::shared_ptr<Participant> &participant);
 	void notifyParticipantDevice(const std::shared_ptr<Content> &content,
 	                             const std::shared_ptr<ParticipantDevice> &device);
@@ -272,7 +274,7 @@ private:
 	void addProtocols(const std::shared_ptr<ParticipantDevice> &device, Xsd::ConferenceInfo::EndpointType &endpoint);
 	void addMediaCapabilities(const std::shared_ptr<ParticipantDevice> &device,
 	                          Xsd::ConferenceInfo::EndpointType &endpoint,
-	                          const std::shared_ptr<ParticipantDevice> toDevice = nullptr);
+	                          const std::shared_ptr<ParticipantDevice> &toDevice = nullptr);
 	void addEndpointSessionInfo(const std::shared_ptr<ParticipantDevice> &device,
 	                            Xsd::ConferenceInfo::EndpointType &endpoint);
 	void addEndpointCallInfo(const std::shared_ptr<ParticipantDevice> &device,
@@ -287,6 +289,27 @@ private:
 	std::shared_ptr<Conference> getConference() const;
 	L_DISABLE_COPY(ServerConferenceEventHandler);
 };
+
+inline std::ostream &operator<<(std::ostream &str, const ServerConferenceEventHandler::NotifyContext &context) {
+	str << "Context with event " << context.type;
+	const auto &participantAddress = context.participantAddress;
+	if (participantAddress) {
+		str << "\n- participant " << *participantAddress;
+	}
+	const auto &deviceAddress = context.deviceAddress;
+	if (deviceAddress) {
+		str << "\n- device " << *deviceAddress;
+	}
+	const auto &subject = context.subject;
+	if (!subject.empty()) {
+		str << "\n- subject " << subject;
+	}
+	const auto &capabilities = context.capabilities;
+	for (const auto &[capabilityType, enable] : capabilities) {
+		str << "\n- " << capabilityType << " capability is " << (enable ? "" : "not") << " enabled";
+	}
+	return str;
+}
 
 LINPHONE_END_NAMESPACE
 

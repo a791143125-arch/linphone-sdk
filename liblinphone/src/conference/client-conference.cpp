@@ -486,7 +486,7 @@ bool ClientConference::isIn() const {
 	const auto &focusContactAddress = session->getRemoteContactAddress();
 	return (((callState == CallSession::State::UpdatedByRemote) || (callState == CallSession::State::Updating) ||
 	         (callState == CallSession::State::StreamsRunning)) &&
-	        focusContactAddress->hasUriParam(Conference::sConfIdParameter));
+	        focusContactAddress && focusContactAddress->hasUriParam(Conference::sConfIdParameter));
 }
 
 void ClientConference::setUtf8Subject(const std::string &subject) {

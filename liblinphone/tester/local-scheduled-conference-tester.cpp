@@ -4181,7 +4181,7 @@ static void create_conference_with_codec_mismatch_base(bool_t organizer_codec_mi
 					LinphoneParticipantDevice *d = (LinphoneParticipantDevice *)bctbx_list_get_data(d_it);
 					BC_ASSERT_PTR_NOT_NULL(d);
 					if (d) {
-						check_muted({focus, marie, pauline, laure, michelle, berthe}, d, {});
+						check_muted({focus, marie, pauline, laure, michelle, berthe}, d, {}, confAddr);
 					}
 				}
 				bctbx_list_free_with_data(participant_device_list, (void (*)(void *))linphone_participant_device_unref);
@@ -5759,7 +5759,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes() {
 					LinphoneCall *c1 = linphone_core_get_call_by_remote_address2(mgr->lc, focus.getCMgr()->identity);
 					if (c1) {
 						auto mutedMgrIt = std::find(mutedMgrs.cbegin(), mutedMgrs.cend(), mgr);
-						BC_ASSERT_TRUE(linphone_call_get_microphone_muted(c1) == (mutedMgrIt != mutedMgrs.cend()));
+						BC_ASSERT_TRUE(!!linphone_call_get_microphone_muted(c1) == (mutedMgrIt != mutedMgrs.cend()));
 					}
 				}
 
@@ -5770,7 +5770,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes() {
 						LinphoneParticipantDevice *device = (LinphoneParticipantDevice *)bctbx_list_get_data(d_it);
 						BC_ASSERT_PTR_NOT_NULL(device);
 						if (device) {
-							check_muted({focus, marie, pauline, laure}, device, mutedMgrs);
+							check_muted({focus, marie, pauline, laure}, device, mutedMgrs, confAddr);
 						}
 					}
 					bctbx_list_free_with_data(participant_device_list,
@@ -5854,10 +5854,14 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		ClientConference marie("marie_rc", focus.getConferenceFactoryAddress());
 		ClientConference pauline("pauline_rc", focus.getConferenceFactoryAddress());
 		ClientConference laure("laure_tcp_rc", focus.getConferenceFactoryAddress());
+		ClientConference berthe("empty_rc", focus.getConferenceFactoryAddress());
+		ClientConference lise("lise_rc", focus.getConferenceFactoryAddress());
 
 		focus.registerAsParticipantDevice(marie);
 		focus.registerAsParticipantDevice(pauline);
 		focus.registerAsParticipantDevice(laure);
+		focus.registerAsParticipantDevice(berthe);
+		focus.registerAsParticipantDevice(lise);
 
 		setup_conference_info_cbs(marie.getCMgr());
 
@@ -5865,7 +5869,8 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		linphone_config_set_int(linphone_core_get_config(marie.getLc()), "rtp", "use_volumes", 0);
 		linphone_core_set_conference_participant_list_type(focus.getLc(), LinphoneConferenceParticipantListTypeOpen);
 
-		for (auto mgr : {focus.getCMgr(), marie.getCMgr(), pauline.getCMgr(), laure.getCMgr()}) {
+		for (auto mgr :
+		     {focus.getCMgr(), marie.getCMgr(), pauline.getCMgr(), laure.getCMgr(), berthe.getCMgr(), lise.getCMgr()}) {
 			LinphoneVideoActivationPolicy *pol =
 			    linphone_factory_create_video_activation_policy(linphone_factory_get());
 			linphone_video_activation_policy_set_automatically_accept(pol, TRUE);
@@ -5876,6 +5881,24 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 			linphone_core_set_video_device(mgr->lc, liblinphone_tester_mire_id);
 			linphone_core_enable_video_capture(mgr->lc, TRUE);
 			linphone_core_enable_video_display(mgr->lc, TRUE);
+
+			if (!linphone_core_get_default_account(mgr->lc)) {
+				LinphoneAccountParams *params = linphone_core_create_account_params(mgr->lc);
+				LinphoneAddress *primary_contact = linphone_core_get_primary_contact_parsed(mgr->lc);
+				linphone_address_set_username(primary_contact, "anonymous");
+				linphone_account_params_set_identity_address(params, primary_contact);
+				linphone_address_unref(primary_contact);
+				linphone_account_params_set_register_enabled(params, FALSE);
+				LinphoneAddress *server_address =
+				    linphone_factory_create_address(linphone_factory_get(), "<sip:sip.example.org;transport=tcp>");
+				linphone_account_params_set_server_address(params, server_address);
+				linphone_address_unref(server_address);
+				LinphoneAccount *account = linphone_core_create_account(mgr->lc, params);
+				linphone_core_add_account(mgr->lc, account);
+				linphone_core_set_default_account(mgr->lc, account);
+				linphone_account_params_unref(params);
+				linphone_account_unref(account);
+			}
 		}
 
 		long availability_before_s = -1;
@@ -5888,9 +5911,11 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		coresList = bctbx_list_append(coresList, marie.getLc());
 		coresList = bctbx_list_append(coresList, pauline.getLc());
 		coresList = bctbx_list_append(coresList, laure.getLc());
+		coresList = bctbx_list_append(coresList, berthe.getLc());
+		coresList = bctbx_list_append(coresList, lise.getLc());
 
-		std::list<LinphoneCoreManager *> participants{pauline.getCMgr()};
-		std::list<LinphoneCoreManager *> members{pauline.getCMgr()};
+		std::list<LinphoneCoreManager *> participants{pauline.getCMgr(), berthe.getCMgr(), lise.getCMgr()};
+		std::list<LinphoneCoreManager *> members{pauline.getCMgr(), berthe.getCMgr(), lise.getCMgr()};
 		auto conferenceMgrs = members;
 		conferenceMgrs.push_back(focus.getCMgr());
 
@@ -5905,7 +5930,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		bctbx_list_t *participants_info = NULL;
 		std::map<LinphoneCoreManager *, LinphoneParticipantInfo *> participantList;
 		LinphoneParticipantRole role = LinphoneParticipantRoleSpeaker;
-		for (auto &p : {pauline.getCMgr(), laure.getCMgr()}) {
+		for (auto &p : {pauline.getCMgr(), laure.getCMgr(), lise.getCMgr()}) {
 			participantList.insert(
 			    std::make_pair(p, add_participant_info_to_list(&participants_info, p->identity, role, -1)));
 		}
@@ -5916,7 +5941,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		BC_ASSERT_PTR_NOT_NULL(confAddr);
 		char *conference_address_str = (confAddr) ? linphone_address_as_string(confAddr) : ms_strdup("sip:");
 		// Chat room creation to send ICS
-		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneChatRoomStateCreated, 2,
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneChatRoomStateCreated, 3,
 		                             liblinphone_tester_sip_timeout));
 
 		stats focus_stat = focus.getStats();
@@ -5935,16 +5960,23 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		LinphoneConference *fconference = linphone_core_search_conference_2(focus.getLc(), confAddr);
 		BC_ASSERT_PTR_NOT_NULL(fconference);
 
-		check_call_establishment({focus, marie, pauline, laure}, members, std::make_pair(focus.getCMgr(), focus_stat),
-		                         member_stats_list, marie.getCMgr(), confAddr, security_level,
-		                         LinphoneMediaEncryptionNone, FALSE, FALSE, TRUE);
+		check_call_establishment({focus, marie, pauline, laure, berthe, lise}, members,
+		                         std::make_pair(focus.getCMgr(), focus_stat), member_stats_list, marie.getCMgr(),
+		                         confAddr, security_level, LinphoneMediaEncryptionNone, FALSE, FALSE, TRUE);
+		LinphoneAddress *berthe_identity = linphone_address_new(linphone_core_get_identity(berthe.getLc()));
+		participantList.insert(
+		    std::make_pair(berthe.getCMgr(), add_participant_info_to_list(&participants_info, berthe_identity,
+		                                                                  LinphoneParticipantRoleSpeaker, -1)));
+		linphone_address_unref(berthe_identity);
 		std::map<LinphoneCoreManager *, LinphoneParticipantInfo *> memberList =
 		    fill_member_list(members, participantList, marie.getCMgr(), participants_info);
-		wait_for_conference_streams({focus, marie, pauline, laure}, conferenceMgrs, focus.getCMgr(), memberList,
-		                            confAddr, enable_video, security_level);
+		wait_for_conference_streams({focus, marie, pauline, laure, berthe, lise}, conferenceMgrs, focus.getCMgr(),
+		                            memberList, confAddr, enable_video, security_level);
 
 		// wait a bit longer to detect side effect if any
-		CoreManagerAssert({focus, marie, pauline, laure}).waitUntil(chrono::seconds(2), [] { return false; });
+		CoreManagerAssert({focus, marie, pauline, laure, berthe, lise}).waitUntil(chrono::seconds(2), [] {
+			return false;
+		});
 
 		for (auto mgr : conferenceMgrs) {
 			LinphoneConference *conference = linphone_core_search_conference_2(mgr->lc, confAddr);
@@ -5970,7 +6002,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 		}
 
 		std::list<LinphoneCoreManager *> mutedMgrs;
-		for (auto muteMgr : participants) {
+		for (auto muteMgr : members) {
 			mutedMgrs.push_back(muteMgr);
 			ms_message("%s mutes its microphone", linphone_core_get_identity(muteMgr->lc));
 			LinphoneConference *muted_participant_conference = linphone_core_search_conference_2(muteMgr->lc, confAddr);
@@ -5989,7 +6021,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 					LinphoneCall *c1 = linphone_core_get_call_by_remote_address2(mgr->lc, focus.getCMgr()->identity);
 					if (c1) {
 						auto mutedMgrIt = std::find(mutedMgrs.cbegin(), mutedMgrs.cend(), mgr);
-						BC_ASSERT_TRUE(linphone_call_get_microphone_muted(c1) == (mutedMgrIt != mutedMgrs.cend()));
+						BC_ASSERT_TRUE(!!linphone_call_get_microphone_muted(c1) == (mutedMgrIt != mutedMgrs.cend()));
 					}
 				}
 
@@ -6000,7 +6032,7 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 						LinphoneParticipantDevice *device = (LinphoneParticipantDevice *)bctbx_list_get_data(d_it);
 						BC_ASSERT_PTR_NOT_NULL(device);
 						if (device) {
-							check_muted({focus, marie, pauline, laure}, device, mutedMgrs);
+							check_muted({focus, marie, pauline, laure, berthe, lise}, device, mutedMgrs, confAddr);
 						}
 					}
 					bctbx_list_free_with_data(participant_device_list,
@@ -6009,8 +6041,8 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 			}
 		}
 
-		wait_for_conference_streams({focus, marie, pauline, laure}, conferenceMgrs, focus.getCMgr(), memberList,
-		                            confAddr, enable_video, security_level);
+		wait_for_conference_streams({focus, marie, pauline, laure, berthe, lise}, conferenceMgrs, focus.getCMgr(),
+		                            memberList, confAddr, enable_video, security_level);
 
 		for (auto mgr : {marie.getCMgr(), laure.getCMgr()}) {
 			ms_message("%s is dialing conference %s", linphone_core_get_identity(mgr->lc),
@@ -6026,13 +6058,13 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 			linphone_core_invite_address_with_params_2(mgr->lc, confAddr, new_params, NULL, nullptr);
 			linphone_call_params_unref(new_params);
 
-			check_call_establishment({focus, marie, pauline, laure}, members,
+			check_call_establishment({focus, marie, pauline, laure, berthe, lise}, members,
 			                         std::make_pair(focus.getCMgr(), focus_stat), one_member_stats_list,
 			                         marie.getCMgr(), confAddr, security_level, LinphoneMediaEncryptionNone, FALSE,
 			                         FALSE, TRUE);
 			memberList = fill_member_list(members, participantList, marie.getCMgr(), participants_info);
-			wait_for_conference_streams({focus, marie, pauline, laure}, conferenceMgrs, focus.getCMgr(), memberList,
-			                            confAddr, TRUE, security_level);
+			wait_for_conference_streams({focus, marie, pauline, laure, berthe, lise}, conferenceMgrs, focus.getCMgr(),
+			                            memberList, confAddr, TRUE, security_level);
 		}
 
 		if (fconference) {
@@ -6089,7 +6121,6 @@ static void create_scheduled_conference_with_client_not_supporting_volumes_joini
 
 		bctbx_list_free_with_data(participants_info, (bctbx_list_free_func)linphone_participant_info_unref);
 		ms_free(conference_address_str);
->>>>>>> 2735012ecc (Send a Notify to each participant that doesn't have the Mixer To Client RTP header extension negotiated when someones mutes/unmutes itself)
 		linphone_address_unref(confAddr);
 		bctbx_list_free(coresList);
 	}

@@ -1047,7 +1047,7 @@ void Conference::notifySpeakingDevice(uint32_t ssrc, bool isSpeaking) {
 
 int Conference::participantDeviceMuted(const std::shared_ptr<ParticipantDevice> &device, bool muted) {
 	_linphone_participant_device_notify_is_muted(device->toC(), muted);
-	lInfo() << *device << " in " << *this << " has " << (device->getIsMuted() ? "muted" : "unmuted") << " itself";
+	lInfo() << *device << " in " << *this << " has " << (muted ? "muted" : "unmuted") << " itself";
 	notifyParticipantDeviceMuted(time(nullptr), false, device->getParticipant(), device);
 	mPendingParticipantsMutes.erase(device->getSsrc(LinphoneStreamTypeAudio));
 	return 0;

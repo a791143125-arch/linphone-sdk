@@ -2474,8 +2474,8 @@ void MediaSessionPrivate::addConferenceParticipantStreams(std::shared_ptr<SalMed
 
 						auto &newStream = participantLabel.empty() ? md->streams[static_cast<size_t>(idx)]
 						                                           : addStreamToMd(md, static_cast<int>(idx), oldMd);
+						newStream.setContent(contentAttrValue);
 						if (dev) {
-							newStream.setContent(contentAttrValue);
 							fillConferenceParticipantStream(newStream, oldMd, md, dev, pth, encs, type, s.getMid());
 						} else {
 							SalStreamConfiguration cfg;
@@ -2484,6 +2484,7 @@ void MediaSessionPrivate::addConferenceParticipantStreams(std::shared_ptr<SalMed
 							newStream.type = type;
 							newStream.rtp_port = 0;
 							newStream.rtcp_port = 0;
+							newStream.label = participantLabel;
 							newStream.disable();
 							lWarning() << *q << ": New stream added at index " << idx
 							           << " as disabled and inactive because no device has been found with label "
@@ -6282,10 +6283,12 @@ bool MediaSession::isMixerToClientExtensionNegotiated() const {
 	L_D();
 	if (d->op) {
 		const std::shared_ptr<SalMediaDescription> &md = d->op->getFinalMediaDescription();
-		const auto audioStream = md->findBestStream(SalAudio);
-		if (audioStream.has_value()) {
-			const auto &audioStreamCfg = (*audioStream)->getActualConfiguration();
-			return audioStreamCfg.getMixerToClientExtensionId() > 0;
+		if (md) {
+			const auto audioStream = md->findBestStream(SalAudio);
+			if (audioStream.has_value()) {
+				const auto &audioStreamCfg = (*audioStream)->getActualConfiguration();
+				return audioStreamCfg.getMixerToClientExtensionId() > 0;
+			}
 		}
 	}
 	return false;

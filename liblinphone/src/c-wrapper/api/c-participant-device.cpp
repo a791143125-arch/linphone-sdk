@@ -158,6 +158,10 @@ LinphoneParticipant *linphone_participant_device_get_participant(const LinphoneP
 	return bellesip::toC(ParticipantDevice::toCpp(participant_device)->getParticipant());
 }
 
+const char *linphone_participant_device_get_call_id(const LinphoneParticipantDevice *participant_device) {
+	return L_STRING_TO_C(ParticipantDevice::toCpp(participant_device)->getCallId());
+}
+
 bool_t linphone_participant_device_is_mixer_to_client_negotiated(const LinphoneParticipantDevice *participant_device) {
 	return ParticipantDevice::toCpp(participant_device)->isMixerToClientExtensionNegotiated();
 }

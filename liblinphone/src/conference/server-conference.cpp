@@ -3165,6 +3165,25 @@ bool ServerConference::checkClientCompatibility(const shared_ptr<Call> &call,
 	return true; // The client is compatible
 }
 
+void ServerConference::handleMixerToClientFlag(const std::shared_ptr<CallSession> &session) {
+	auto sessionDevice = findParticipantDevice(session);
+	if (sessionDevice) {
+		bool mMixerToClientExtensionNegotiatedBefore = sessionDevice->isMixerToClientExtensionNegotiated();
+		sessionDevice->updateMixerToClientExtensionNegotiated();
+		if (mMixerToClientExtensionNegotiatedBefore != sessionDevice->isMixerToClientExtensionNegotiated()) {
+#ifdef HAVE_ADVANCED_IM
+			if (mEventHandler) {
+				lInfo()
+				    << *session << " in " << *this << " linked to " << *sessionDevice
+				    << " changed mixer to client extension support, therefore sending NOTIFYs to update audio stream "
+				       "direction of muted participant devices";
+				mEventHandler->notifyMixerToClientFlagChanged(sessionDevice);
+			}
+#endif // HAVE_ADVANCED_IM
+		}
+	}
+}
+
 void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSession> &session,
                                                  CallSession::State state,
                                                  BCTBX_UNUSED(const std::string &message)) {
@@ -3355,6 +3374,7 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
 						} else {
 							participantDeviceJoined(session);
 						}
+						handleMixerToClientFlag(session);
 					} else {
 						lError() << *device << ", which associated to call " << *cppCall
 						         << ", has already been added to " << *this

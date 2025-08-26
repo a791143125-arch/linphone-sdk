@@ -51,14 +51,16 @@ ParticipantDevice::ParticipantDevice(const std::shared_ptr<Participant> &partici
                                      const std::string &name)
     : mParticipant(participant), mName(name), mSession(session) {
 	std::shared_ptr<Address> gruu;
-	if (mSession && mSession->getRemoteContactAddress()) {
+	if (mSession) {
 		gruu = mSession->getRemoteContactAddress();
-	} else {
+	}
+	if (!gruu) {
 		gruu = Address::create(participant->getAddress()->getUri());
 	}
 	setAddress(gruu);
 	updateMediaCapabilities();
 	updateStreamAvailabilities();
+	updateMixerToClientExtensionNegotiated();
 }
 
 ParticipantDevice::ParticipantDevice(const std::shared_ptr<Participant> &participant,
@@ -253,7 +255,7 @@ void ParticipantDevice::setUserData(void *ud) {
 	mUserData = ud;
 }
 
-const std::string &ParticipantDevice::getCallId() const{
+const std::string &ParticipantDevice::getCallId() const {
 	if (mCallId.empty() && mSession) {
 		const auto &log = mSession->getLog();
 		mCallId = log->getCallId();
@@ -948,13 +950,17 @@ void ParticipantDevice::setDisconnectionData(bool initiated, int code, LinphoneR
 	}
 }
 
-bool ParticipantDevice::isMixerToClientExtensionNegotiated() const {
+void ParticipantDevice::updateMixerToClientExtensionNegotiated() {
 	if (mSession) {
 		const auto mMediaSession = dynamic_pointer_cast<MediaSession>(mSession);
-		return (mMediaSession && mMediaSession->isMixerToClientExtensionNegotiated());
+		mMixerToClientExtensionNegotiated = (mMediaSession && mMediaSession->isMixerToClientExtensionNegotiated());
+	} else {
+		mMixerToClientExtensionNegotiated = false;
 	}
+}
 
-	return false;
+bool ParticipantDevice::isMixerToClientExtensionNegotiated() const {
+	return mMixerToClientExtensionNegotiated;
 }
 
 LinphoneParticipantDeviceCbsIsSpeakingChangedCb ParticipantDeviceCbs::getIsSpeakingChanged() const {

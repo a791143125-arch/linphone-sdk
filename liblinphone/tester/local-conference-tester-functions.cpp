@@ -1154,11 +1154,20 @@ bool does_all_participants_have_matching_ekt(std::list<LinphoneCoreManager *> me
 
 void check_muted(std::initializer_list<std::reference_wrapper<CoreManager>> coreMgrs,
                  const LinphoneParticipantDevice *device,
-                 std::list<LinphoneCoreManager *> mutedMgrs) {
+                 std::list<LinphoneCoreManager *> mutedMgrs,
+                 const LinphoneAddress *confAddr) {
 	const LinphoneAddress *device_address = linphone_participant_device_get_address(device);
+	const char *device_call_id = linphone_participant_device_get_call_id(device);
 	bool_t expect_mute = FALSE;
 	for (const auto &mgr : mutedMgrs) {
-		expect_mute |= (linphone_address_weak_equal(device_address, mgr->identity));
+		LinphoneCall *participant_call = linphone_core_get_call_by_remote_address2(mgr->lc, confAddr);
+		if (device_call_id && participant_call) {
+			SalOp *op = linphone_call_get_op(participant_call);
+			const char *manager_call_id = L_STRING_TO_C(op->getCallId());
+			expect_mute |= (strcmp(device_call_id, manager_call_id) == 0);
+		} else {
+			expect_mute |= (linphone_address_weak_equal(device_address, mgr->identity));
+		}
 	}
 
 	BC_ASSERT_TRUE(CoreManagerAssert(coreMgrs).waitUntil(chrono::seconds(10), [&device, &expect_mute] {
@@ -2483,7 +2492,7 @@ void create_conference_base(time_t start_time,
 							BC_ASSERT_PTR_NOT_NULL(device);
 							if (device) {
 								check_muted({focus, marie, pauline, laure, michelle, berthe}, device,
-								            {pauline.getCMgr()});
+								            {pauline.getCMgr()}, confAddr);
 								linphone_participant_device_set_user_data(device, mgr->lc);
 								LinphoneParticipantDeviceCbs *cbs =
 								    linphone_factory_create_participant_device_cbs(linphone_factory_get());
@@ -2688,7 +2697,7 @@ void create_conference_base(time_t start_time,
 							BC_ASSERT_PTR_NOT_NULL(device);
 							if (device) {
 								check_muted({focus, marie, pauline, laure, michelle, berthe}, device,
-								            {marie.getCMgr(), pauline.getCMgr()});
+								            {marie.getCMgr(), pauline.getCMgr()}, confAddr);
 							}
 						}
 						bctbx_list_free_with_data(participant_device_list,
@@ -2764,7 +2773,7 @@ void create_conference_base(time_t start_time,
 							BC_ASSERT_PTR_NOT_NULL(device);
 							if (device) {
 								check_muted({focus, marie, pauline, laure, michelle, berthe}, device,
-								            {pauline.getCMgr()});
+								            {pauline.getCMgr()}, confAddr);
 							}
 						}
 						bctbx_list_free_with_data(participant_device_list,

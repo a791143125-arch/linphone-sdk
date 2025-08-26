@@ -419,7 +419,8 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 
 void check_muted(std::initializer_list<std::reference_wrapper<CoreManager>> coreMgrs,
                  const LinphoneParticipantDevice *device,
-                 std::list<LinphoneCoreManager *> mutedMgrs);
+                 std::list<LinphoneCoreManager *> mutedMgrs,
+                 const LinphoneAddress *confAddr);
 
 void two_overlapping_conferences_base(bool_t same_organizer, bool_t is_dialout);
 

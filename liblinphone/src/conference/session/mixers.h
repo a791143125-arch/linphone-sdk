@@ -37,11 +37,11 @@ class MS2VideoStream;
 /**
  * Generic listener for mixer session.
  */
-class MixerSessionListener {
+class LINPHONE_PUBLIC MixerSessionListener {
 public:
 	virtual ~MixerSessionListener() = default;
 	/*
-	 * Notifies when the participant, referred to by its ssrc, as muted/unmuted itself.
+	 * Notifies when the participant, referred to by its ssrc, has muted/unmuted itself.
 	 */
 	virtual void onMuted(uint32_t ssrc, bool muted) = 0;
 };
@@ -58,7 +58,7 @@ public:
 	virtual void onActiveTalkerChanged(StreamsGroup *sg) = 0;
 
 	/*
-	 * Notifies when the participant, referred to by its ssrc, as muted/unmuted itself.
+	 * Notifies when the participant, referred to by its ssrc, has muted/unmuted itself.
 	 */
 	virtual void onMuted(uint32_t ssrc, bool muted) = 0;
 };
