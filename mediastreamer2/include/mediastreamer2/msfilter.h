@@ -76,21 +76,22 @@ struct _MSFilterMethod {
  **/
 enum _MSFilterInterfaceId {
 	MSFilterInterfaceBegin = 16384,
-	MSFilterPlayerInterface,        /**<Player interface, used to control playing of files.*/
-	MSFilterRecorderInterface,      /**<Recorder interface, used to control recording of stream into files.*/
-	MSFilterVideoDisplayInterface,  /**<Video display interface, used to control the rendering of raw pictures
-	                                   onscreen.*/
-	MSFilterEchoCancellerInterface, /**Echo canceller interface, used to control echo canceller implementations.*/
-	MSFilterVideoDecoderInterface,  /**<Video decoder interface*/
-	MSFilterVideoCaptureInterface,  /**<Video capture interface*/
-	MSFilterAudioDecoderInterface,  /**<Audio Decoder interface*/
-	MSFilterVideoEncoderInterface,  /**<Video encoder interface*/
-	MSFilterAudioCaptureInterface,  /**<Interface for audio capture filters*/
-	MSFilterAudioPlaybackInterface, /**Interface for audio playback filters.*/
-	MSFilterAudioEncoderInterface,  /**<Video encoder interface*/
-	MSFilterVADInterface,           /**<Voice activity detection interface*/
-	MSFilterVoidInterface,          /**<Void source/sink interface*/
-	MSFilterScreenSharingInterface, /**<Screen sharing interface*/
+	MSFilterPlayerInterface,          /**<Player interface, used to control playing of files.*/
+	MSFilterRecorderInterface,        /**<Recorder interface, used to control recording of stream into files.*/
+	MSFilterVideoDisplayInterface,    /**<Video display interface, used to control the rendering of raw pictures
+	                                     onscreen.*/
+	MSFilterEchoCancellerInterface,   /**Echo canceller interface, used to control echo canceller implementations.*/
+	MSFilterVideoDecoderInterface,    /**<Video decoder interface*/
+	MSFilterVideoCaptureInterface,    /**<Video capture interface*/
+	MSFilterAudioDecoderInterface,    /**<Audio Decoder interface*/
+	MSFilterVideoEncoderInterface,    /**<Video encoder interface*/
+	MSFilterAudioCaptureInterface,    /**<Interface for audio capture filters*/
+	MSFilterAudioPlaybackInterface,   /**Interface for audio playback filters.*/
+	MSFilterAudioEncoderInterface,    /**<Video encoder interface*/
+	MSFilterVADInterface,             /**<Voice activity detection interface*/
+	MSFilterVoidInterface,            /**<Void source/sink interface*/
+	MSFilterScreenSharingInterface,   /**<Screen sharing interface*/
+	MSFilterNoiseSuppressorInterface, /**Noise suppressor in audio interface*/
 };
 
 /**

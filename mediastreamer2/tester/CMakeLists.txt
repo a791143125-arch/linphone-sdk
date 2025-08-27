@@ -45,9 +45,12 @@ if(TurboJpeg_FOUND)
 	list(APPEND MS2_LIBS_FOR_TESTER ${TurboJpeg_TARGET})
 endif()
 
-
 if(ZLIB_FOUND)
 	list(APPEND MS2_LIBS_FOR_TESTER ${ZLIB_TARGET})
+endif()
+
+if(RNNOISE_FOUND)
+	list(APPEND MS2_LIBS_FOR_TESTER ${RNNOISE_TARGET})
 endif()
 
 set(SOUND_FILES

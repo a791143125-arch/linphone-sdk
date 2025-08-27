@@ -123,6 +123,7 @@ linphonesdk_dependent_option("WASAPI" "Windows Audio Session API (WASAPI) sound 
 linphonesdk_option("WebRTC AEC" "WebRTC echo canceller support." ON)
 linphonesdk_option("WebRTC VAD" "WebRTC voice activation detector support." ON)
 linphonesdk_option("WebRTC noise suppressor" "WebRTC noise suppression support." ON)
+linphonesdk_option("RNNoise" "Noise suppression in audio with RNNoise support." ON)
 
 # Activation of video related features
 linphonesdk_option("Video" "Ability to capture and display video." ON)
@@ -203,6 +204,8 @@ else()
 	set(ENABLE_SPEEX_CODEC OFF CACHE BOOL "" FORCE)
 	set(ENABLE_SPEEX_DSP OFF CACHE BOOL "" FORCE)
 endif()
+
+set(ENABLE_RNNOISE ON CACHE BOOL "" FORCE)
 
 if(ENABLE_AMRNB OR ENABLE_AMRWB)
 	set(ENABLE_AMR ON CACHE BOOL "" FORCE)
