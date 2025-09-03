@@ -19,6 +19,7 @@
  */
 
 #include "bctoolbox/defs.h"
+#include "mediastreamer2/mscommon.h"
 #include "mediastreamer2/msfilter.h"
 #include "ortp/port.h"
 
@@ -47,6 +48,10 @@
 
 #ifdef ENABLE_BAUDOT
 #include "mediastreamer2/baudot.h"
+#endif
+
+#ifdef AUDIO_TRANSCRIPTION_ENABLED
+#include "mediastreamer2/mstranscript.h"
 #endif
 
 #ifdef __ANDROID__
@@ -102,6 +107,9 @@ static void notify_active_speaker_changed(AudioStream *as) {
 		if (ssrc != 0 && ssrc != as->active_speaker_ssrc) {
 			as->active_speaker_cb(as->active_speaker_user_pointer, ssrc);
 			as->active_speaker_ssrc = ssrc;
+			// printf("SSRC CHANGED : %u &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n",
+			//    as->active_speaker_ssrc);
+			// printf("AUDIOSTREAM POINTER : %p ###################################################\n", as);
 		}
 	}
 }
@@ -378,6 +386,9 @@ static void audio_stream_free(AudioStream *stream) {
 	if (stream->av_recorder.video_input) ms_filter_destroy(stream->av_recorder.video_input);
 	if (stream->vaddtx) ms_filter_destroy(stream->vaddtx);
 	if (stream->outbound_mixer) ms_filter_destroy(stream->outbound_mixer);
+	if (stream->transcript) ms_filter_destroy(stream->transcript);
+	if (stream->tee_transcript) ms_filter_destroy(stream->tee_transcript);
+	if (stream->resampler_transcript) ms_filter_destroy(stream->resampler_transcript);
 	if (stream->recorder_file) ms_free(stream->recorder_file);
 	if (stream->rtp_io_session) rtp_session_destroy(stream->rtp_io_session);
 	if (stream->captcard) ms_snd_card_unref(stream->captcard);
@@ -1194,6 +1205,11 @@ void audio_stream_set_active_speaker_callback(AudioStream *s, AudioStreamActiveS
 	s->active_speaker_user_pointer = user_pointer;
 }
 
+void audio_stream_set_transcription_callback(AudioStream *s, MSFilterNotifyFunc cb, void *user_pointer) {
+	s->transcription_cb = cb;
+	s->transcription_api_pointer = user_pointer;
+}
+
 static int request_stream_volume(BCTBX_UNUSED(MSFilter *filter), void *user_data) {
 	AudioStream *as = (AudioStream *)user_data;
 	MSFilter *volume_filter = as->volsend;
@@ -1771,6 +1787,41 @@ int audio_stream_start_from_io(AudioStream *stream,
 		stream->local_mixer = ms_factory_create_filter(stream->ms.factory, MS_AUDIO_MIXER_ID);
 	}
 
+#ifdef AUDIO_TRANSCRIPTION_ENABLED
+	if (stream->use_transcription) {
+		MSFilterDesc *filter_desc = ms_factory_lookup_filter_by_name(stream->ms.factory, "MSTranscript");
+		if (filter_desc) {
+			stream->transcript = ms_factory_create_filter_from_desc(stream->ms.factory, filter_desc);
+			char *model_path = ms_strdup(stream->transcription_model_path);
+			ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_SET_MODEL_PATH, model_path);
+			free(model_path);
+			ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_SET_AUDIO_STREAM, stream);
+			ms_filter_add_notify_callback(stream->transcript, stream->transcription_cb,
+			                              stream->transcription_api_pointer, TRUE);
+
+			enum transcript_method transcription_method = stream->transcription_method;
+			// enum transcript_method transcription_method = VOSK;
+			if (ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_INIT_MODEL, &transcription_method) == -1) {
+				ms_filter_destroy(stream->transcript);
+				stream->transcript = NULL;
+				ms_message("Transcription filter destroyed.");
+			} else {
+				stream->tee_transcript = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
+				stream->resampler_transcript = ms_factory_create_filter(stream->ms.factory, MS_RESAMPLE_ID);
+				int from_rate = stream->sample_rate, to_rate = 16000;
+				int from_channels = stream->nchannels, to_channels = 1;
+
+				ms_filter_call_method(stream->resampler_transcript, MS_FILTER_SET_SAMPLE_RATE, &from_rate);
+				ms_filter_call_method(stream->resampler_transcript, MS_FILTER_SET_OUTPUT_SAMPLE_RATE, &to_rate);
+				ms_filter_call_method(stream->resampler_transcript, MS_FILTER_SET_NCHANNELS, &from_channels);
+				ms_filter_call_method(stream->resampler_transcript, MS_FILTER_SET_OUTPUT_NCHANNELS, &to_channels);
+			}
+		} else {
+			ms_error("Cannot enable audio transcription, no filter found");
+		}
+	}
+#endif
+
 	if (stream->ms.local_mix_conference == TRUE) {
 		rtp_session_signal_connect(stream->ms.sessions.rtp_session, "new_incoming_ssrc_found_in_bundle",
 		                           on_incoming_ssrc_in_bundle, stream);
@@ -1826,6 +1877,7 @@ int audio_stream_start_from_io(AudioStream *stream,
 	if (stream->volrecv) ms_connection_helper_link(&h, stream->volrecv, 0, 0);
 	if (stream->recv_tee) ms_connection_helper_link(&h, stream->recv_tee, 0, 0);
 	if (stream->spk_equalizer) ms_connection_helper_link(&h, stream->spk_equalizer, 0, 0);
+	if (stream->tee_transcript) ms_connection_helper_link(&h, stream->tee_transcript, 0, 0);
 	if (stream->ec) ms_connection_helper_link(&h, stream->ec, 0, 0);
 	if (stream->write_resampler) ms_connection_helper_link(&h, stream->write_resampler, 0, 0);
 	if (stream->write_encoder) ms_connection_helper_link(&h, stream->write_encoder, 0, 0);
@@ -1837,6 +1889,11 @@ int audio_stream_start_from_io(AudioStream *stream,
 		ms_filter_link(stream->outbound_mixer, 1, stream->recorder_mixer, 0);
 		ms_filter_link(stream->recv_tee, 1, stream->recorder_mixer, 1);
 		ms_filter_link(stream->recorder_mixer, 0, stream->recorder, 0);
+	}
+
+	if (stream->transcript) {
+		ms_filter_link(stream->tee_transcript, 1, stream->resampler_transcript, 0);
+		ms_filter_link(stream->resampler_transcript, 0, stream->transcript, 0);
 	}
 
 	/*to make sure all preprocess are done before befre processing audio*/
@@ -2272,6 +2329,32 @@ void audio_stream_enable_mic(AudioStream *stream, bool_t enabled) {
 	else audio_stream_set_mic_gain(stream, 0);
 }
 
+void audio_stream_enable_transcription(AudioStream *stream, bool_t enabled) {
+	stream->use_transcription = enabled;
+}
+
+void audio_stream_activate_transcription(AudioStream *stream, bool_t activate) {
+	if (stream->transcript) {
+		ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_ENABLE, &activate);
+	} else {
+		ms_warning("No transcript filter, cannot activate/desactivate transcription.");
+	}
+}
+
+void audio_stream_set_transcription_model_path(AudioStream *stream, const char *model_path) {
+	stream->transcription_model_path = model_path;
+}
+
+void audio_stream_set_transcription_method(AudioStream *stream, const char *method) {
+	if (strcmp("vosk", method) == 0) {
+		stream->transcription_method = VOSK;
+	} else if (strcmp("whispercpp_overlap", method) == 0) {
+		stream->transcription_method = WHISPER_CPP_OVERLAP;
+	} else {
+		ms_error("Wrong transcription method used. Valid transcription methods: vosk, whispercpp_overlap.");
+	}
+}
+
 void audio_stream_set_mic_gain_db(AudioStream *stream, float gain_db) {
 	audio_stream_set_rtp_output_gain_db(stream, gain_db);
 }
@@ -2456,6 +2539,7 @@ void audio_stream_stop(AudioStream *stream) {
 			if (stream->volrecv != NULL) ms_connection_helper_unlink(&h, stream->volrecv, 0, 0);
 			if (stream->recv_tee) ms_connection_helper_unlink(&h, stream->recv_tee, 0, 0);
 			if (stream->spk_equalizer != NULL) ms_connection_helper_unlink(&h, stream->spk_equalizer, 0, 0);
+			if (stream->tee_transcript) ms_connection_helper_unlink(&h, stream->tee_transcript, 0, 0);
 			if (stream->ec != NULL) ms_connection_helper_unlink(&h, stream->ec, 0, 0);
 			if (stream->write_resampler != NULL) ms_connection_helper_unlink(&h, stream->write_resampler, 0, 0);
 			if (stream->write_encoder != NULL) ms_connection_helper_unlink(&h, stream->write_encoder, 0, 0);
@@ -2467,6 +2551,11 @@ void audio_stream_stop(AudioStream *stream) {
 				ms_filter_unlink(stream->outbound_mixer, 1, stream->recorder_mixer, 0);
 				ms_filter_unlink(stream->recv_tee, 1, stream->recorder_mixer, 1);
 				ms_filter_unlink(stream->recorder_mixer, 0, stream->recorder, 0);
+			}
+
+			if (stream->transcript) {
+				ms_filter_unlink(stream->tee_transcript, 1, stream->resampler_transcript, 0);
+				ms_filter_unlink(stream->resampler_transcript, 0, stream->transcript, 0);
 			}
 			/*dismantle the remote play part*/
 			close_av_player(stream);

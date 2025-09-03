@@ -160,6 +160,12 @@ struct sound_config {
 	bool_t mic_enabled;
 };
 
+struct transcription_config {
+	const char *model_path;
+	const char *method;
+	bool_t enable_transcription;
+};
+
 struct codecs_config {
 	MSList *audio_codecs; /* list of audio codecs in order of preference*/
 	MSList *video_codecs;
@@ -449,6 +455,8 @@ class Core;
 	codecs_config_t codecs_conf;                                                                                       \
 	ui_config_t ui_conf;                                                                                               \
 	autoreplier_config_t autoreplier_conf;                                                                             \
+	transcription_config_t transcription_conf;                                                                         \
+	LinphoneTranscription *transcription;                                                                              \
 	LinphoneAccount *default_account;                                                                                  \
 	MSList *friends_lists;                                                                                             \
 	MSList *auth_info;                                                                                                 \

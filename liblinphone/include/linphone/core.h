@@ -3631,6 +3631,68 @@ LINPHONE_PUBLIC MSFactory *linphone_core_get_ms_factory(LinphoneCore *core);
 LINPHONE_PUBLIC LinphoneStatus linphone_core_play_local(LinphoneCore *core, const char *audiofile);
 
 /**
+ * Returns TRUE if transcription is enabled.
+ * @param core #LinphoneCore object @notnil
+ * @return A boolean value telling whether transcription is enabled or disabled
+ * @ingroup media_parameters
+ **/
+LINPHONE_PUBLIC bool_t linphone_core_transcription_enabled(const LinphoneCore *core);
+
+/**
+ * Enables or disables transcription.
+ * @param core #LinphoneCore object @notnil
+ * @param enable A boolean value telling whether transcription is to be enabled or disabled.
+ * @ingroup media_parameters
+ **/
+LINPHONE_PUBLIC void linphone_core_enable_transcription(LinphoneCore *core, bool_t enable);
+
+/**
+ * Set the model path of the model used for transcription
+ * @param core #LinphoneCore object @notnil
+ * @param model_path path to the model (absolute)
+ * @ingroup media_parameters
+ */
+LINPHONE_PUBLIC void linphone_core_set_transcription_model_path(LinphoneCore *core, const char *model_path);
+
+/**
+ * get the path to the transcription model.
+ * @return the path to the transcription model.
+ * @ingroup media_parameters
+ */
+LINPHONE_PUBLIC const char *linphone_core_get_transcription_model_path(const LinphoneCore *core);
+
+/**
+ * Gets the transcription object if it exists.
+ * @param core The #LinphoneCore object @notnil
+ * @return the #LinphonePushNotificationConfig if it exists, NULL otherwise. @maybenil
+ * @ingroup initializing
+ **/
+LINPHONE_PUBLIC LinphoneTranscription *linphone_core_get_transcription(const LinphoneCore *core);
+
+/**
+ * Sets the reference to transcription object.
+ * @param core The #LinphoneCore object @notnil
+ * @return the #LinphonePushNotificationConfig if it exists, NULL otherwise. @maybenil
+ * @ingroup initializing
+ **/
+LINPHONE_PUBLIC void linphone_core_set_transcription(LinphoneCore *core, LinphoneTranscription *ref);
+
+/**
+ * Set the transcription method (Between implemented ones like whispercpp or vosk)
+ * @param core #LinphoneCore object @notnil
+ * @param method method used (absolute or relative?)
+ * @ingroup media_parameters
+ */
+LINPHONE_PUBLIC void linphone_core_set_transcription_method(LinphoneCore *core, const char *method);
+
+/**
+ * get the transcription method used.
+ * @return the method used.
+ * @ingroup media_parameters
+ */
+LINPHONE_PUBLIC const char *linphone_core_get_transcription_method(const LinphoneCore *core);
+
+/**
  * Enables or disables echo cancellation. Value is saved and used for subsequent calls.
  * This actually controls software echo cancellation only.
  * When 'enable' is set to FALSE, software echo cancellation is disabled, but hardware one, if available, remains

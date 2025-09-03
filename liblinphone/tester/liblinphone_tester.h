@@ -53,6 +53,7 @@ extern test_suite_t call_test_suite;
 extern test_suite_t call2_test_suite;
 extern test_suite_t call_not_established_test_suite;
 extern test_suite_t push_incoming_call_test_suite;
+extern test_suite_t transcription_test_suite;
 
 #if VIDEO_ENABLED
 extern test_suite_t call_video_test_suite;

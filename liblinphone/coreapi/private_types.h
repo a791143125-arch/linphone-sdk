@@ -64,4 +64,6 @@ typedef struct _EchoTester EchoTester;
 typedef struct _LinphoneXmlRpcArg LinphoneXmlRpcArg;
 
 typedef struct _LinphoneUpdateCheck LinphoneUpdateCheck;
+
+typedef struct transcription_config transcription_config_t;
 #endif /* _PRIVATE_TYPES_H_ */

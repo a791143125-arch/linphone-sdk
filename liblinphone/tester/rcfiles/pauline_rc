@@ -65,3 +65,11 @@ test_env=1
 [storage]
 call_logs_db_uri=null
 friends_db_uri=null
+
+[transcription]
+enabled=1
+model_path=/home/antoine/Documents/linphone_sdk/linphone-sdk/external/whispercpp/models/ggml-base.en-q8_0.bin
+method=whispercpp_overlap
+; model_path=/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-en-us-0.22-lgraph
+; method=vosk
+

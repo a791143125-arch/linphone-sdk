@@ -361,6 +361,7 @@ void MS2AudioStream::configureConference() {
 		}
 	}
 }
+
 void MS2AudioStream::render(const OfferAnswerContext &params, CallSession::State targetState) {
 	const auto &stream = params.getResultStreamDescription();
 
@@ -611,6 +612,11 @@ void MS2AudioStream::render(const OfferAnswerContext &params, CallSession::State
 			auto features = audio_stream_get_features(mStream);
 			features |= AUDIO_STREAM_FEATURE_VAD;
 			audio_stream_set_features(mStream, features);
+		}
+
+		if (linphone_core_transcription_enabled(getCCore())) {
+			audio_stream_set_active_speaker_callback(mStream, &MS2AudioStream::sAudioStreamActiveSpeakerCb, this);
+			linphone_transcription_set_audiostream(linphone_core_get_transcription(getCCore()), mStream);
 		}
 
 		audio_stream_set_audio_route_changed_callback(mStream, &MS2AudioStream::audioRouteChangeCb, &getCore());

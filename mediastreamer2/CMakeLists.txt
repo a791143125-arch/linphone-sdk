@@ -107,6 +107,7 @@ option(ENABLE_OPUS "Build mediastreamer2 with the OPUS codec." YES)
 option(ENABLE_SPEEX_CODEC "Build mediastreamer2 with the SPEEX codec." YES)
 option(ENABLE_SPEEX_DSP "Build mediastreamer2 with the SPEEX DSP support." YES)
 cmake_dependent_option(ENABLE_RESAMPLE "Build mediastreamer2 with the resampling capability." YES "ENABLE_SPEEX_DSP" NO)
+option(ENABLE_AUDIO_TRANSCRIPTION "Build mediastreamer2 with audio transcription model." NO)
 
 option(ENABLE_VIDEO "Build mediastreamer2 with video support." YES)
 option(ENABLE_QT_GL "Enable Qt OpenGL rendering support." OFF)
@@ -429,6 +430,19 @@ if(ENABLE_JAVA_WRAPPER AND NOT ANDROID)
 	find_package(JNI REQUIRED)
 endif()
 
+if(ENABLE_AUDIO_TRANSCRIPTION)
+	find_package(Whisper REQUIRED)
+	find_package(Vosk REQUIRED)
+	if(NOT Whisper_FOUND)
+		message(WARNING "Could not find whisper.cpp library, mediastreamer2 will be compiled without whisper.cpp.")
+	elseif(NOT Vosk_FOUND)
+		message(WARNING "Could not find vosk library, mediastreamer2 will be compiled without vosk.")
+
+	else()
+		set(AUDIO_TRANSCRIPTION_ENABLED 1)
+	endif()
+endif()
+
 include_directories(
 	include
 	src/audiofilters
@@ -597,6 +611,12 @@ if(Aom_FOUND)
 endif()
 if(ZLIB_FOUND)
 	list(APPEND LINK_LIBS ${ZLIB_TARGET})
+endif()
+if(Whisper_FOUND)
+	list(APPEND LINK_LIBS ${Whisper_TARGET})
+endif()
+if(Vosk_FOUND)
+	list(APPEND LINK_LIBS ${Vosk_TARGET})
 endif()
 if(ENABLE_ANDROIDSND)
 	include_directories(
@@ -844,6 +864,12 @@ if(LibYUV_FOUND)
 endif()
 if(ZXing_FOUND)
 	install(FILES "cmake/FindZXing.cmake" DESTINATION ${CMAKE_MODULES_INSTALL_DIR})
+endif()
+if(Whisper_FOUND)
+	install(FILES "cmake/FindWhisper.cmake" DESTINATION ${CMAKE_MODULES_INSTALL_DIR})
+endif()
+if(Vosk_FOUND)
+	install(FILES "cmake/FindVosk.cmake" DESTINATION ${CMAKE_MODULES_INSTALL_DIR})
 endif()
 
 install(EXPORT ${PROJECT_NAME}Targets

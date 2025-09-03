@@ -1067,6 +1067,16 @@ typedef void (*LinphoneConferenceSchedulerCbsInvitationsSentCb)(LinphoneConferen
                                                                 const bctbx_list_t *failed_invitations);
 
 /**
+ * For a test (will be removed)
+ */
+typedef void (*LinphoneTranscriptionCb)(void);
+
+/**
+ * Callback used to display transcription (what the app should provide)
+ */
+typedef void (*LinphoneTranscriptionDisplayCb)(LinphoneTranscription *transcription);
+
+/**
  * @}
  **/
 

@@ -317,6 +317,7 @@ set(SOURCE_FILES_CXX
 	call_flexfec_tester.cpp
 	call_ice_tester.cpp
 	call_secure_tester.cpp
+	call_with_transcription.cpp
 	capability_negotiation_tester.cpp
 	clonable-object-tester.cpp
 	conference-info-tester.cpp
