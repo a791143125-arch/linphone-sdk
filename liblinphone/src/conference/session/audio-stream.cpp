@@ -242,6 +242,13 @@ void MS2AudioStream::configureAudioStream() {
 			ms_free(statestr);
 		}
 	}
+	if (linphone_core_transcription_enabled(getCCore())) {
+		audio_stream_enable_transcription(mStream, true);
+		const char *model_path = linphone_core_get_transcription_model_path(getCCore());
+		const char *method = linphone_core_get_transcription_method(getCCore());
+		audio_stream_set_transcription_model_path(mStream, model_path);
+		audio_stream_set_transcription_method(mStream, method);
+	}
 	audio_stream_enable_automatic_gain_control(mStream, linphone_core_agc_enabled(getCCore()));
 	bool_t enabled = !!linphone_config_get_int(linphone_core_get_config(getCCore()), "sound", "noisegate", 0);
 	audio_stream_enable_noise_gate(mStream, enabled);
