@@ -20,10 +20,10 @@
 
 #include "mediastreamer2/vosk-transcript.h"
 #include "bctoolbox/list.h"
+#include "jsoncpp/json/json.h"
 #include "mediastreamer2/mscommon.h"
 #include "mediastreamer2/mstranscript.h"
 #include <cstdint>
-#include <json.hpp>
 #include <string>
 #include <unistd.h>
 #include <vosk_api.h>
@@ -74,18 +74,22 @@ std::vector<MSTranscription> VoskTranscript::process(MSFilter *f) {
 				}
 			}
 
-			nlohmann::json result = nlohmann::json::parse(sentence);
+			Json::CharReaderBuilder reader;
+			Json::Value result;
+			std::string errs;
 
-			// std::cout << sentence << std::endl;
+			std::istringstream s(sentence);
+			if (!Json::parseFromStream(reader, s, &result, &errs)) {
+				throw std::runtime_error("Failed to parse JSON: " + errs);
+			}
 
-			// std::istringstream stream(sentence);
-			// std::string word;
+			const Json::Value &result_field = result["result"];
+			for (const auto &item : result_field) {
+				std::string word = item["word"].asString();
+				float end = item["end"].asFloat();
+				float start = item["start"].asFloat();
+				float confidence = item["conf"].asFloat();
 
-			for (const auto &item : result["result"]) {
-				std::string word = item["word"];
-				float end = item["end"];
-				float start = item["start"];
-				float confidence = item["conf"];
 				MSTranscription transcription = default_transcription_object();
 				strncpy(transcription.transcribed_word, word.c_str(), sizeof(transcription.transcribed_word));
 				transcription.transcribed_word[sizeof(transcription.transcribed_word) - 1] =
@@ -111,13 +115,23 @@ std::vector<MSTranscription> VoskTranscript::process(MSFilter *f) {
 					sentence[i] = '.';
 				}
 			}
-			nlohmann::json result = nlohmann::json::parse(sentence);
 
-			for (const auto &item : result["partial_result"]) {
-				std::string word = item["word"];
-				float end = item["end"];
-				float start = item["start"];
-				float confidence = item["conf"];
+			Json::CharReaderBuilder reader;
+			Json::Value result;
+			std::string errs;
+
+			std::istringstream s(sentence);
+			if (!Json::parseFromStream(reader, s, &result, &errs)) {
+				throw std::runtime_error("Failed to parse JSON: " + errs);
+			}
+
+			const Json::Value &result_field = result["partial_result"];
+			for (const auto &item : result_field) {
+				std::string word = item["word"].asString();
+				float end = item["end"].asFloat();
+				float start = item["start"].asFloat();
+				float confidence = item["conf"].asFloat();
+
 				MSTranscription transcription = default_transcription_object();
 				strncpy(transcription.transcribed_word, word.c_str(), sizeof(transcription.transcribed_word));
 				transcription.transcribed_word[sizeof(transcription.transcribed_word) - 1] =
@@ -141,7 +155,6 @@ std::vector<MSTranscription> VoskTranscript::process(MSFilter *f) {
 		// 		}
 		// 	}
 		// }
-
 		for (uint8_t i = 0; i < mCurrentIteration.size(); i++) {
 			if (mCurrentIteration[i].timestamp > mLastTime &&
 			    (mLastWord != std::string(mCurrentIteration[i].transcribed_word))) {
@@ -171,13 +184,23 @@ std::vector<MSTranscription> VoskTranscript::postProcess(BCTBX_UNUSED(MSFilter *
 			sentence[i] = '.';
 		}
 	}
-	nlohmann::json result = nlohmann::json::parse(sentence);
 
-	for (const auto &item : result["result"]) {
-		std::string word = item["word"];
-		float end = item["end"];
-		float start = item["start"];
-		float confidence = item["conf"];
+	Json::CharReaderBuilder reader;
+	Json::Value result;
+	std::string errs;
+
+	std::istringstream s(sentence);
+	if (!Json::parseFromStream(reader, s, &result, &errs)) {
+		throw std::runtime_error("Failed to parse JSON: " + errs);
+	}
+
+	const Json::Value &result_field = result["result"];
+	for (const auto &item : result_field) {
+		std::string word = item["word"].asString();
+		float end = item["end"].asFloat();
+		float start = item["start"].asFloat();
+		float confidence = item["conf"].asFloat();
+
 		MSTranscription transcription = default_transcription_object();
 		strncpy(transcription.transcribed_word, word.c_str(), sizeof(transcription.transcribed_word));
 		transcription.transcribed_word[sizeof(transcription.transcribed_word) - 1] = '\0'; // Ensure null-termination
