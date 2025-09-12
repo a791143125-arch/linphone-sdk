@@ -70,11 +70,11 @@ public:
 	~VoskTranscript();
 
 private:
+	std::vector<MSTranscription> jsonToMSTranscript(std::string sentence, bool_t isPartial);
+
 	MSBufferizer *mBuf = NULL; /** Buffer containing raw audio from the packets. */
 	VoskModel *mModel;
 	VoskRecognizer *mRecognizer;
-	std::vector<MSTranscription> mLastIteration;
-	std::vector<MSTranscription> mCurrentIteration;
 	std::string mLastWord = "";
 	float mLastTime = 0;
 };

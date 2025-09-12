@@ -107,9 +107,6 @@ static void notify_active_speaker_changed(AudioStream *as) {
 		if (ssrc != 0 && ssrc != as->active_speaker_ssrc) {
 			as->active_speaker_cb(as->active_speaker_user_pointer, ssrc);
 			as->active_speaker_ssrc = ssrc;
-			// printf("SSRC CHANGED : %u &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n",
-			//    as->active_speaker_ssrc);
-			// printf("AUDIOSTREAM POINTER : %p ###################################################\n", as);
 		}
 	}
 }
@@ -1205,7 +1202,7 @@ void audio_stream_set_active_speaker_callback(AudioStream *s, AudioStreamActiveS
 	s->active_speaker_user_pointer = user_pointer;
 }
 
-void audio_stream_set_transcription_callback(AudioStream *s, MSFilterNotifyFunc cb, void *user_pointer) {
+void audio_stream_set_transcription_callback(AudioStream *s, AudioTranscriptionCallback cb, void *user_pointer) {
 	s->transcription_cb = cb;
 	s->transcription_api_pointer = user_pointer;
 }
@@ -1795,9 +1792,6 @@ int audio_stream_start_from_io(AudioStream *stream,
 			char *model_path = ms_strdup(stream->transcription_model_path);
 			ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_SET_MODEL_PATH, model_path);
 			free(model_path);
-			ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_SET_AUDIO_STREAM, stream);
-			ms_filter_add_notify_callback(stream->transcript, stream->transcription_cb,
-			                              stream->transcription_api_pointer, TRUE);
 
 			enum transcript_method transcription_method = stream->transcription_method;
 			// enum transcript_method transcription_method = VOSK;
@@ -1806,6 +1800,9 @@ int audio_stream_start_from_io(AudioStream *stream,
 				stream->transcript = NULL;
 				ms_message("Transcription filter destroyed.");
 			} else {
+				ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_SET_AUDIO_STREAM, stream);
+				ms_filter_add_notify_callback(stream->transcript, stream->transcription_cb,
+				                              stream->transcription_api_pointer, TRUE);
 				stream->tee_transcript = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
 				stream->resampler_transcript = ms_factory_create_filter(stream->ms.factory, MS_RESAMPLE_ID);
 				int from_rate = stream->sample_rate, to_rate = 16000;
@@ -2333,11 +2330,11 @@ void audio_stream_enable_transcription(AudioStream *stream, bool_t enabled) {
 	stream->use_transcription = enabled;
 }
 
-void audio_stream_activate_transcription(AudioStream *stream, bool_t activate) {
+void audio_stream_start_transcription(AudioStream *stream, bool_t start) {
 	if (stream->transcript) {
-		ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_ENABLE, &activate);
+		ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_START, &start);
 	} else {
-		ms_warning("No transcript filter, cannot activate/desactivate transcription.");
+		ms_warning("No transcript filter, cannot start/stop transcription.");
 	}
 }
 

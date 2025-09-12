@@ -156,6 +156,9 @@ static bool_t async_transcript_process(void *data) {
 		std::cout << "SSRC CHANGED    SSRC : " << get_ssrc(f)
 		          << "       TIMESTAMP : " << transcript->sizeOfDataSinceBeg / (16000 * 2.) << std::endl;
 		transcript->currentSsrc = get_ssrc(f);
+		auto it = transcript->ssrc_map.lower_bound(transcript->sizeOfDataSinceBeg / (16000 * 2.) - 2);
+		transcript->ssrc_map.erase(transcript->ssrc_map.begin(), it);
+		std::cout << "MAP SIZE : " << transcript->ssrc_map.size() << std::endl;
 	}
 	transcriptions = obj->process(f);
 	event_sender(f, transcriptions);
@@ -236,7 +239,7 @@ static int ms_transcript_init_model(MSFilter *f, void *arg) {
 			return -1;
 		}
 		transcript->transcriptionObj = new WhisperCPPOverlapTranscript(
-		    transcript->modelPath, 16000, transcript->chunk_duration_whisper, transcript->overlap_duration_whisper);
+		    transcript->modelPath, 16000, transcript->chunk_duration, transcript->overlap_duration);
 	} else if (transcriptionSolution == VOSK) {
 		if (transcript->modelPath.empty()) {
 			ms_error("No model_path initialized, please use ms_filter_call_method(transcript_filter, "
@@ -258,23 +261,23 @@ static int ms_transcript_init_model(MSFilter *f, void *arg) {
 
 static int ms_transcript_set_overlap_duration(MSFilter *f, void *arg) {
 	MSTranscript *transcript = static_cast<MSTranscript *>(f->data);
-	transcript->overlap_duration_whisper = *(float *)arg;
+	transcript->overlap_duration = *(float *)arg;
 	return 0;
 }
 
 static int ms_transcript_set_chunk_duration(MSFilter *f, void *arg) {
 	MSTranscript *transcript = static_cast<MSTranscript *>(f->data);
-	transcript->chunk_duration_whisper = *(float *)arg;
+	transcript->chunk_duration = *(float *)arg;
 	return 0;
 }
 
-static int ms_transcript_enable_transcription(MSFilter *f, void *arg) {
+static int ms_transcript_start_transcription(MSFilter *f, void *arg) {
 	MSTranscript *transcript = static_cast<MSTranscript *>(f->data);
 	transcript->enable = *(bool_t *)arg;
 	if (transcript->enable) {
-		ms_message("Transcription enabled");
+		ms_message("Transcription started");
 	} else {
-		ms_message("Transcription disabled");
+		ms_message("Transcription stopped");
 	}
 	return 0;
 }
@@ -294,7 +297,7 @@ static int ms_transcript_set_audio_stream(MSFilter *f, void *arg) {
 
 static MSFilterMethod transcript_methods[] = {{MS_TRANSCRIPT_SET_MODEL_PATH, ms_transcript_set_model_path},
                                               {MS_TRANSCRIPT_INIT_MODEL, ms_transcript_init_model},
-                                              {MS_TRANSCRIPT_ENABLE, ms_transcript_enable_transcription},
+                                              {MS_TRANSCRIPT_START, ms_transcript_start_transcription},
                                               {MS_TRANSCRIPT_FILE_DURATION, ms_transcript_set_file_duration},
                                               {MS_TRANSCRIPT_SET_CHUNK_DURATION, ms_transcript_set_chunk_duration},
                                               {MS_TRANSCRIPT_SET_OVERLAP_DURATION, ms_transcript_set_overlap_duration},

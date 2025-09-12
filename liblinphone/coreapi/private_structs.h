@@ -163,7 +163,7 @@ struct sound_config {
 struct transcription_config {
 	const char *model_path;
 	const char *method;
-	bool_t enable_transcription;
+	bool_t enabled;
 };
 
 struct codecs_config {

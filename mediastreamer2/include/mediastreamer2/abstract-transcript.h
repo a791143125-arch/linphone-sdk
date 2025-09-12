@@ -23,11 +23,9 @@
 
 #include "mediastreamer2/mediastream.h"
 #include "mediastreamer2/msasync.h"
-#include <cstdint>
 #include <map>
 #include <mediastreamer2/msfilter.h>
 #include <mediastreamer2/mstranscript.h>
-#include <queue>
 #include <vector>
 
 typedef struct MSTranscript {
@@ -38,8 +36,8 @@ typedef struct MSTranscript {
 	MSBufferizer *buf;
 	bool_t enable = true;
 	int fileDuration = -1;
-	float overlap_duration_whisper = 1.0f;
-	float chunk_duration_whisper = 3.0f;
+	float overlap_duration = 1.0f; // For whisper.cpp
+	float chunk_duration = 3.0f;   // For whisper.cpp
 	AudioStream *audio_stream = NULL;
 	uint32_t sizeOfDataSinceBeg = 0;
 	uint32_t currentSsrc = 0;

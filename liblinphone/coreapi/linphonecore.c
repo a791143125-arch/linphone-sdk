@@ -2176,13 +2176,13 @@ static void rtp_config_read(LinphoneCore *lc) {
 }
 
 void linphone_core_enable_transcription(LinphoneCore *lc, bool_t val) {
-	lc->transcription_conf.enable_transcription = val;
+	lc->transcription_conf.enabled = val;
 	if (linphone_core_ready(lc)) linphone_config_set_int(lc->config, "transcription", "enabled", val);
 	linphone_core_set_transcription(lc, linphone_transcription_new(lc));
 }
 
 bool_t linphone_core_transcription_enabled(const LinphoneCore *lc) {
-	return lc->transcription_conf.enable_transcription;
+	return lc->transcription_conf.enabled;
 }
 
 LinphoneTranscription *linphone_core_get_transcription(const LinphoneCore *core) {

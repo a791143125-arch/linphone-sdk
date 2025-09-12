@@ -339,16 +339,16 @@ static bool test_base(test_config *config) {
 	transcript = ms_factory_create_filter_from_desc(msFactory, filter_desc);
 	if (!BC_ASSERT_PTR_NOT_NULL(transcript)) goto end;
 	char full_path[512];
-	snprintf(full_path, sizeof(full_path), "%s/ggml-%s.bin", MODEL_PATH, MODEL_NAME);
-	// snprintf(full_path, sizeof(full_path),
-	//          "/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-en-us-0.22-lgraph");
+	// snprintf(full_path, sizeof(full_path), "%s/ggml-%s.bin", MODEL_PATH, MODEL_NAME);
+	snprintf(full_path, sizeof(full_path),
+	         "/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-en-us-0.22-lgraph");
 	// snprintf(full_path, sizeof(full_path),
 	//          "/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-small-fr-0.22");
 	ms_filter_call_method(transcript, MS_TRANSCRIPT_SET_CHUNK_DURATION, &config->chunk_size_whisper);
 	ms_filter_call_method(transcript, MS_TRANSCRIPT_SET_OVERLAP_DURATION, &config->overlap_size_whisper);
 	ms_filter_call_method(transcript, MS_TRANSCRIPT_SET_MODEL_PATH, full_path);
-	enum transcript_method transcription_method = WHISPER_CPP_OVERLAP;
-	// enum transcript_method transcription_method = VOSK;
+	// enum transcript_method transcription_method = WHISPER_CPP_OVERLAP;
+	enum transcript_method transcription_method = VOSK;
 	if (ms_filter_call_method(transcript, MS_TRANSCRIPT_INIT_MODEL, &transcription_method) == -1) {
 		ms_filter_destroy(transcript);
 		transcript = NULL;

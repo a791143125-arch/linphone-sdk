@@ -21,7 +21,6 @@
 #ifndef MEDIASTREAM_H
 #define MEDIASTREAM_H
 
-#include "mediastreamer2/mstranscript.h"
 #include "ortp/port.h"
 #include <ortp/event.h>
 #include <ortp/nack.h>
@@ -38,6 +37,7 @@
 #include <mediastreamer2/msscreensharing.h>
 #include <mediastreamer2/mssndcard.h>
 #include <mediastreamer2/msticker.h>
+#include <mediastreamer2/mstranscript.h>
 #include <mediastreamer2/msvideo.h>
 #include <mediastreamer2/msvideoqualitycontroller.h>
 #include <mediastreamer2/mswebcam.h>
@@ -538,6 +538,11 @@ typedef void (*MSAudioRouteChangedCallback)(void *audioStream,
                                             bool_t needReloadSoundDevices,
                                             char *newInputPort,
                                             char *newOutputPort);
+
+typedef void (*AudioTranscriptionCallback)(void *linphone_transcription,
+                                           struct _MSFilter *transcript_filter,
+                                           unsigned int id,
+                                           void *event);
 struct _AudioStream {
 	MediaStream ms;
 	MSSndCard *playcard;
@@ -604,7 +609,7 @@ struct _AudioStream {
 	MSFilter *transcript;
 	MSFilter *tee_transcript;
 	MSFilter *resampler_transcript;
-	MSFilterNotifyFunc transcription_cb;
+	AudioTranscriptionCallback transcription_cb;
 	void *transcription_api_pointer;
 
 	bool_t mic_eq_active;
@@ -1260,15 +1265,16 @@ MS2_PUBLIC void audio_stream_enable_transcription(AudioStream *stream, bool_t en
 MS2_PUBLIC void audio_stream_set_transcription_model_path(AudioStream *stream, const char *model_path);
 
 /**
- * Set the method of transcription frem implemented ones ( "vosk" or "whispercpp_overlap").
+ * Set the method of transcription from implemented ones ( "vosk" or "whispercpp_overlap").
  * @param[in] stream The AudioStream object.
- * @param[in] method Ttranscription method.
+ * @param[in] method Transcription method.
  */
 MS2_PUBLIC void audio_stream_set_transcription_method(AudioStream *stream, const char *model_path);
 
-MS2_PUBLIC void audio_stream_set_transcription_callback(AudioStream *s, MSFilterNotifyFunc cb, void *user_pointer);
+MS2_PUBLIC void
+audio_stream_set_transcription_callback(AudioStream *s, AudioTranscriptionCallback cb, void *user_pointer);
 
-MS2_PUBLIC void audio_stream_activate_transcription(AudioStream *stream, bool_t activate);
+MS2_PUBLIC void audio_stream_start_transcription(AudioStream *stream, bool_t activate);
 
 /**
  * @}

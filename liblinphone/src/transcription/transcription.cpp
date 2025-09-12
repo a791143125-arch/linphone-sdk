@@ -120,7 +120,7 @@ void Transcription::activate(bool_t activate) {
 		return;
 	}
 	if (mStream->transcript) {
-		ms_filter_call_method(mStream->transcript, MS_TRANSCRIPT_ENABLE, &activate);
+		ms_filter_call_method(mStream->transcript, MS_TRANSCRIPT_START, &activate);
 	} else {
 		ms_warning("No transcription filter in the audio stream, cannot activate/desactivate transcription.");
 	}
@@ -144,6 +144,8 @@ Sentence Transcription::initSentence(MSTranscription transcription) {
 
 void Transcription::addWordToSentence(MSTranscription transcription) {
 	if (!getNameBySsrc(transcription.ssrc).empty()) mCurrentName = getNameBySsrc(transcription.ssrc);
+	std::cout << "Name : " << mCurrentName << std::endl;
+
 	if (mSentences.empty()) {
 		mLastId++;
 		Sentence sentence = Transcription::initSentence(transcription);
