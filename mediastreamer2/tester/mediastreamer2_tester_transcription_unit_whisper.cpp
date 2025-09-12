@@ -343,7 +343,7 @@ static void test_tokens_simple() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 1, int, "%i");
 	if (vectorOfWords.size() == 1) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foobar", 8);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foobar", 8);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 2, float, "%f");
 	}
 }
@@ -361,10 +361,10 @@ static void test_tokens_two_words() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 2, int, "%i");
 	if (vectorOfWords.size() == 2) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foobar", 8);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foobar", 8);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 2, float, "%f");
 
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, " hello", 7);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, "hello", 7);
 		BC_ASSERT_EQUAL(vectorOfWords[1].timestamp, 4, float, "%f");
 	}
 }
@@ -383,9 +383,9 @@ static void test_tokens_two_special_tokens() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 2, int, "%i");
 	if (vectorOfWords.size() == 2) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foobar", 8);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foobar", 8);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 2, float, "%f");
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, " hello", 7);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, "hello", 7);
 		BC_ASSERT_EQUAL(vectorOfWords[1].timestamp, 5, float, "%f");
 	}
 }
@@ -401,7 +401,7 @@ static void test_tokens_underscore_special_token() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 1, int, "%i");
 	if (vectorOfWords.size() == 1) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foobar", 8);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foobar", 8);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 2, float, "%f");
 	}
 }
@@ -425,11 +425,11 @@ static void test_tokens_punctuation_no_timestamp() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 3, int, "%i");
 	if (vectorOfWords.size() == 3) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foobar.", 9);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foobar.", 9);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 2, float, "%f");
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, " foobar!", 9);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, "foobar!", 9);
 		BC_ASSERT_EQUAL(vectorOfWords[1].timestamp, 5, float, "%f");
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[2].transcribed_word, " foobar?", 9);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[2].transcribed_word, "foobar?", 9);
 		BC_ASSERT_EQUAL(vectorOfWords[2].timestamp, 8, float, "%f");
 	}
 }
@@ -449,9 +449,9 @@ static void test_tokens_two_special_tokens_in_a_row() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 2, int, "%i");
 	if (vectorOfWords.size() == 2) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foobar", 8);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foobar", 8);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 2, float, "%f");
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, " hello", 7);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, "hello", 7);
 		BC_ASSERT_EQUAL(vectorOfWords[1].timestamp, 6, float, "%f");
 	}
 }
@@ -474,7 +474,7 @@ static void test_tokens_long_word() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 1, int, "%i");
 	if (vectorOfWords.size() == 1) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " abcdefghijklmnopqrstuvwxyz", 28);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "abcdefghijklmnopqrstuvwxyz", 28);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 9, float, "%f");
 	}
 }
@@ -490,9 +490,9 @@ static void test_tokens_two_short_words() {
 	vectorOfWords = tester.tokens_into_words(vectorOfTokens);
 	BC_ASSERT_EQUAL(vectorOfWords.size(), 2, int, "%i");
 	if (vectorOfWords.size() == 2) {
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, " foo", 5);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[0].transcribed_word, "foo", 5);
 		BC_ASSERT_EQUAL(vectorOfWords[0].timestamp, 1, float, "%f");
-		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, " bar", 5);
+		BC_ASSERT_NSTRING_EQUAL(vectorOfWords[1].transcribed_word, "bar", 5);
 		BC_ASSERT_EQUAL(vectorOfWords[1].timestamp, 2, float, "%f");
 	}
 }
@@ -751,7 +751,7 @@ static test_t tests[] = {
     TEST_NO_TAG("large overlap buffer", test_large_overlap_buffer),
 };
 extern "C" {
-test_suite_t whispercpp_overlap_unit_test_suite = {"unit whispercpp overlap",
+test_suite_t whispercpp_overlap_unit_test_suite = {"Unit Whispercpp Overlap",
                                                    tester_before_all,
                                                    tester_after_all,
                                                    NULL,

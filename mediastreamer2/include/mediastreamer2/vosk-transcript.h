@@ -71,12 +71,15 @@ public:
 
 private:
 	std::vector<MSTranscription> jsonToMSTranscript(std::string sentence, bool_t isPartial);
+	std::vector<MSTranscription> selectWordsToPrint(std::vector<MSTranscription> currentIteration);
 
 	MSBufferizer *mBuf = NULL; /** Buffer containing raw audio from the packets. */
 	VoskModel *mModel;
 	VoskRecognizer *mRecognizer;
 	std::string mLastWord = "";
 	float mLastTime = 0;
+
+	friend class VoskTester; /** This class is to be used only for tests */
 };
 
 #endif

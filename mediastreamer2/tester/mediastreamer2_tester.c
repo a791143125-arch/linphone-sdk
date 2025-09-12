@@ -109,6 +109,7 @@ void mediastreamer2_tester_init(void (*ftester_printf)(int level, const char *fm
 #ifdef AUDIO_TRANSCRIPTION_ENABLED
 	bc_tester_add_suite(&audio_transcription_test_suite);
 	bc_tester_add_suite(&whispercpp_overlap_unit_test_suite);
+	bc_tester_add_suite(&vosk_unit_test_suite);
 #endif
 #ifdef VIDEO_ENABLED
 	bc_tester_add_suite(&video_stream_test_suite);

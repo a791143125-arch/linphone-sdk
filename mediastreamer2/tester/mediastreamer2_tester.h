@@ -60,6 +60,7 @@ extern test_suite_t baudot_test_suite;
 #ifdef AUDIO_TRANSCRIPTION_ENABLED
 extern test_suite_t audio_transcription_test_suite;
 extern test_suite_t whispercpp_overlap_unit_test_suite;
+extern test_suite_t vosk_unit_test_suite;
 #endif
 
 #if TARGET_OS_MAC || TARGET_OS_IPHONE

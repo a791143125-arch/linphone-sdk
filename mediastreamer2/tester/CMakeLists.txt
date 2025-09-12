@@ -156,7 +156,8 @@ set(SOURCE_FILES_CXX
 
 if(AUDIO_TRANSCRIPTION_ENABLED)
 	list(APPEND SOURCE_FILES_C mediastreamer2_audio_transcription_tester.c)
-	list(APPEND SOURCE_FILES_CXX mediastreamer2_tester_transcription_unit.cpp)
+	list(APPEND SOURCE_FILES_CXX mediastreamer2_tester_transcription_unit_whisper.cpp)
+	list(APPEND SOURCE_FILES_CXX mediastreamer2_tester_transcription_unit_vosk.cpp)
 endif()
 
 if(ZLIB_FOUND)
