@@ -609,24 +609,25 @@ static void english_talk_clean(void) {
 	test_on_audio_directory("sounds/audio_clean/transcript_whispercpp.txt", "audio_clean", false);
 }
 
-static void english_talk_dirty(void) {
-	test_on_audio_directory("sounds/audio_dirty/transcript_whispercpp.txt", "audio_dirty", false);
+static void english_talk_accent(void) {
+	test_on_audio_directory("sounds/audio_with_accent/transcript_whispercpp.txt", "audio_with_accent", false);
 }
 
 static void english_talk_noisy(void) {
 	test_on_audio_directory("sounds/audio_noisy/transcript_whispercpp.txt", "audio_noisy", true);
 }
 
-static void english_talk_noisy_dirty(void) {
-	test_on_audio_directory("sounds/audio_noisy_dirty/transcript_whispercpp.txt", "audio_noisy_dirty", true);
+static void english_talk_noisy_accent(void) {
+	test_on_audio_directory("sounds/audio_noisy_with_accent/transcript_whispercpp.txt", "audio_noisy_with_accent",
+	                        true);
 }
 
 static void french_talk(void) {
 	test_on_audio_directory("sounds/audio_fr/transcript_vosk.txt", "audio_fr", false);
 }
 
-static void french_talk_dirty(void) {
-	test_on_audio_directory("sounds/audio_sale/transcript_vosk.txt", "audio_sale", false);
+static void french_talk_accent(void) {
+	test_on_audio_directory("sounds/audio_avec_accent/transcript_vosk.txt", "audio_avec_accent", false);
 }
 
 static void vosk_test_basic(void) {
@@ -675,11 +676,11 @@ static void vosk_test_basic(void) {
 static test_t tests[] = {
     TEST_NO_TAG("english talk", english_talk),
     TEST_NO_TAG("english talk clean", english_talk_clean),
-    TEST_NO_TAG("english talk dirty", english_talk_dirty),
+    TEST_NO_TAG("english talk accent", english_talk_accent),
     TEST_NO_TAG("english talk noisy", english_talk_noisy),
-    TEST_NO_TAG("english talk noisy dirty", english_talk_noisy_dirty),
+    TEST_NO_TAG("english talk noisy accent", english_talk_noisy_accent),
     TEST_NO_TAG("french talk", french_talk),
-    TEST_NO_TAG("french talk dirty", french_talk_dirty),
+    TEST_NO_TAG("french talk accent", french_talk_accent),
     TEST_NO_TAG("accumulating end delay", test_end_delay),
     TEST_NO_TAG("vosk basic", vosk_test_basic),
 };

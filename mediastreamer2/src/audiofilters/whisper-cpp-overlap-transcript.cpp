@@ -22,7 +22,6 @@
 #include "mediastreamer2/abstract-transcript.h"
 #include "mediastreamer2/mscommon.h"
 #include "mediastreamer2/mstranscript.h"
-#include <algorithm>
 
 WhisperCPPOverlapTranscript::WhisperCPPOverlapTranscript(std::string modelPath, int samplerate)
     : AbstractTranscript(modelPath, samplerate), kChunkDuration(3.0f), kOverlapDuration(1.0f) {
