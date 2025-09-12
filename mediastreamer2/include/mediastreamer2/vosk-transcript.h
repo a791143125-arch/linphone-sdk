@@ -35,27 +35,27 @@ class VoskTranscript : public AbstractTranscript {
 
 public:
 	/**
-	 * @brief TODO
+	 * @brief initialise the transcription model.
 	 * @param f Associated MSFilter (MSTranscript here).
 	 */
 	int init(MSFilter *f) override;
 
 	/**
-	 * @brief	TODO
+	 * @brief	Deals with the transcription. It is called as soon as the previous transcription is done.
 	 * @param f Associated MSFilter (MSTranscript here).
 	 * @return
 	 */
 	std::vector<MSTranscription> process(MSFilter *f) override;
 
 	/**
-	 * @brief	TODO
+	 * @brief	Deals with the transcription of the end of the audio.
 	 * @param f Associated MSFilter (MSTranscript here).
 	 * @return
 	 */
 	std::vector<MSTranscription> postProcess(MSFilter *f) override;
 
 	/**
-	 * @brief	TODO
+	 * @brief	Frees the model
 	 * @param f Associated MSFilter (MSTranscript here).
 	 */
 	void uninit(MSFilter *f) override;
@@ -70,14 +70,26 @@ public:
 	~VoskTranscript();
 
 private:
+	/**
+	 * @brief	Transform the json output of vosk into a vector of MSTranscription containing the transcribed words.
+	 * @param sentence Associated MSFilter (MSTranscript here).
+	 * @param isPartial Associated MSFilter (MSTranscript here).
+	 * @return	A vector of MSTranscriptions
+	 */
 	std::vector<MSTranscription> jsonToMSTranscript(std::string sentence, bool_t isPartial);
+
+	/**
+	 * @brief	Marks as correction the words that corrects words already transcribed. Does not marks the new words.
+	 * @param currentIteration Contains all the transcriptions received this iteration.
+	 * @return	A vector of MSTranscriptions marked as corrections or not.
+	 */
 	std::vector<MSTranscription> selectWordsToPrint(std::vector<MSTranscription> currentIteration);
 
 	MSBufferizer *mBuf = NULL; /** Buffer containing raw audio from the packets. */
 	VoskModel *mModel;
 	VoskRecognizer *mRecognizer;
-	std::string mLastWord = "";
-	float mLastTime = 0;
+	std::string mLastWord = ""; /** Last word validated. */
+	float mLastTime = 0;        /** Timestamp of the last word validated */
 
 	friend class VoskTester; /** This class is to be used only for tests */
 };
