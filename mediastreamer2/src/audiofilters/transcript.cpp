@@ -84,7 +84,6 @@ int get_packets(MSFilter *f, MSBufferizer *buf) {
 		ms_bufferizer_put(buf, m);
 		transcript->sizeOfDataSinceBeg += buf->size - size_before;
 	}
-	// std::cout << "SIZE SINCE BEGENING : " << transcript->sizeOfDataSinceBeg << std::endl;
 	return 0;
 };
 
@@ -110,9 +109,7 @@ uint32_t get_ssrc(MSFilter *f) {
 	MSTranscript *transcript = static_cast<MSTranscript *>(f->data);
 	uint32_t ret = 0;
 	if (transcript->audio_stream) {
-		// std::cout << "IN THE IF : " << transcript->audio_stream->active_speaker_ssrc << std::endl;
 		ret = transcript->audio_stream->active_speaker_ssrc;
-		// std::cout << "ppoointer : " << transcript->audio_stream << std::endl;
 	}
 	return ret;
 }
@@ -153,12 +150,9 @@ static bool_t async_transcript_process(void *data) {
 	std::vector<MSTranscription> transcriptions;
 	if (get_ssrc(f) != transcript->currentSsrc) {
 		transcript->ssrc_map[transcript->sizeOfDataSinceBeg / (16000 * 2.)] = get_ssrc(f);
-		std::cout << "SSRC CHANGED    SSRC : " << get_ssrc(f)
-		          << "       TIMESTAMP : " << transcript->sizeOfDataSinceBeg / (16000 * 2.) << std::endl;
 		transcript->currentSsrc = get_ssrc(f);
 		auto it = transcript->ssrc_map.lower_bound(transcript->sizeOfDataSinceBeg / (16000 * 2.) - 2);
 		transcript->ssrc_map.erase(transcript->ssrc_map.begin(), it);
-		std::cout << "MAP SIZE : " << transcript->ssrc_map.size() << std::endl;
 	}
 	transcriptions = obj->process(f);
 	event_sender(f, transcriptions);
@@ -188,7 +182,6 @@ void transcript_process(MSFilter *f) {
 	}
 	get_packets(f, transcript->buf);
 	ms_worker_thread_add_task(transcript->wth, async_transcript_process, f);
-	// std::cout << "SSRC : " << get_ssrc(f) << std::endl;
 }
 
 void transcript_post_process(MSFilter *f) {

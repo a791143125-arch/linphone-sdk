@@ -44,21 +44,10 @@
 
 using namespace LinphonePrivate;
 
-// TEMPORARY, I want to move the definition of this callback in transcription.cpp and link it to the audiostream
-// memeber of the class
 static void
 segment_transcribed_cb(void *data, BCTBX_UNUSED(MSFilter *f), BCTBX_UNUSED(unsigned int event_id), void *event) {
 	MSTranscriptEvent *receivedTranscription = NULL;
 	receivedTranscription = (MSTranscriptEvent *)event;
-	// MSTranscription transcription;
-	// transcription.timestamp = receivedTranscription->transcription.timestamp;
-	// strncpy(transcription.transcribed_word, receivedTranscription->transcription.transcribed_word,
-	//         sizeof(transcription.transcribed_word));
-	// transcription.is_final = receivedTranscription->transcription.is_final;
-	// transcription.end_of_sentence = receivedTranscription->transcription.end_of_sentence;
-	// transcription.ssrc = receivedTranscription->transcription.ssrc;
-	// transcription.correction = receivedTranscription->transcription.correction;
-	// transcription.beggining = receivedTranscription->transcription.beggining;
 	LinphoneTranscription *ptr = static_cast<LinphoneTranscription *>(data);
 	linphone_transcription_add(ptr, receivedTranscription->transcription);
 }
@@ -91,13 +80,10 @@ Transcription &Transcription::operator=(const Transcription &other) {
 
 void Transcription::addTranscription(MSTranscription transcription) {
 	mTranscriptions.push(transcription);
-	// mCb();
 	processTranscriptionsForApp();
 	if (mModified) {
 		mCbDisplay(this->toC());
 		mModified = false;
-		// std::cout << "NB of Corrections for cuurrent sentence : " << mSentences[mLastId].corrected.size() <<
-		// std::endl;
 	}
 }
 
@@ -144,7 +130,6 @@ Sentence Transcription::initSentence(MSTranscription transcription) {
 
 void Transcription::addWordToSentence(MSTranscription transcription) {
 	if (!getNameBySsrc(transcription.ssrc).empty()) mCurrentName = getNameBySsrc(transcription.ssrc);
-	std::cout << "Name : " << mCurrentName << std::endl;
 
 	if (mSentences.empty()) {
 		mLastId++;
@@ -154,11 +139,9 @@ void Transcription::addWordToSentence(MSTranscription transcription) {
 	           strlen(mSentences[mLastId].sentence) + strlen(transcription.transcribed_word) + 1 >
 	               mMaxLenghtOfSentence ||
 	           mCurrentName != mSentences[mLastId].name) {
-		std::cout << "LAST ID : " << mLastId << std::endl;
 		mLastId++;
 		Sentence sentence = Transcription::initSentence(transcription);
 		mSentences[mLastId] = sentence;
-		// printf("IS FINISHED : %i\n", mSentences[mLastId].finished);
 	} else {
 		size_t spaceLeft = 500 - strlen(mSentences[mLastId].sentence) - 2;
 		strncat(mSentences[mLastId].sentence, transcription.transcribed_word, spaceLeft);
@@ -179,18 +162,9 @@ bool_t Transcription::verifyIfCorrection(MSTranscription tr) {
 			MSTranscription transcription = sentence.second.words[i];
 			float startOld = transcription.beggining;
 			float endOld = transcription.timestamp;
-			// std::cout << "start current : " << startCurrent << "   end curret : " << endCurrent
-			//           << "  start old : " << startOld << "  end old : " << endOld << std::endl;
 			if (startCurrent <= endOld && endCurrent >= startOld) { // ATTENTION AU CAS OU IL Y A QUE TIMESTAMP de fin
 				if ((std::min(endCurrent, endOld) - std::max(startCurrent, startOld)) / (endOld - startOld) >= 0.8) {
 					if (std::string(transcription.transcribed_word) != std::string(tr.transcribed_word)) {
-						std::cout << "HEEEEY" << std::endl;
-						std::cout << "intervalle : "
-						          << (std::min(endCurrent, endOld) - std::max(startCurrent, startOld)) /
-						                 (endOld - startOld)
-						          << std::endl;
-						std::cout << "OLD : " << transcription.transcribed_word << "CORRECTED : " << tr.transcribed_word
-						          << std::endl;
 						sentence.second.words[i] = tr;
 						sentence.second.corrected.push_back(i);
 						modified = true;
@@ -228,7 +202,6 @@ const char *Transcription::getSentenceById(uint32_t sentenceId) {
 	mSentences[sentenceId].sentence[0] = '\0';
 	strncat(mSentences[sentenceId].sentence, sentence.c_str(), mMaxLenghtOfSentence);
 	return mSentences[sentenceId].sentence;
-	// return mSentences[sentenceId].sentence;
 }
 
 const char *Transcription::getNameById(uint32_t sentenceId) {

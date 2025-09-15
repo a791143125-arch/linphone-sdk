@@ -125,19 +125,6 @@ std::vector<MSTranscription> VoskTranscript::process(MSFilter *f) {
 		}
 
 		res = selectWordsToPrint(currentIteration);
-
-		// for (uint8_t i = 0; i < currentIteration.size(); i++) {
-		// 	if (currentIteration[i].timestamp > mLastTime &&
-		// 	    (mLastWord != std::string(currentIteration[i].transcribed_word))) {
-		// 		res.push_back(currentIteration[i]);
-		// 		mLastTime = currentIteration[i].timestamp;
-		// 		mLastWord = std::string(currentIteration[i].transcribed_word);
-		// 	} else {
-		// 		currentIteration[i].correction = true;
-		// 		res.push_back(currentIteration[i]);
-		// 	}
-		// }
-		// currentIteration.clear();
 	}
 	return res;
 }
@@ -151,20 +138,6 @@ std::vector<MSTranscription> VoskTranscript::postProcess(BCTBX_UNUSED(MSFilter *
 	currentIteration = jsonToMSTranscript(sentence, false);
 
 	res = selectWordsToPrint(currentIteration);
-
-	// for (uint8_t i = 0; i < currentIteration.size(); i++) {
-	// 	if (currentIteration[i].timestamp > mLastTime) {
-	// 		if (mLastWord != std::string(currentIteration[i].transcribed_word)) {
-	// 			res.push_back(currentIteration[i]);
-	// 			mLastTime = currentIteration[i].timestamp;
-	// 			mLastWord = std::string(currentIteration[i].transcribed_word);
-	// 		} else {
-	// 			currentIteration[i].correction = true;
-	// 			res.push_back(currentIteration[i]);
-	// 		}
-	// 	}
-	// }
-
 	return res;
 }
 

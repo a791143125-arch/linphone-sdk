@@ -25,8 +25,8 @@
 #include "linphone/core.h"
 #include "linphone/types.h"
 #include "mediastreamer2/msutils.h"
+#include "mediastreamer2/msvolume.h"
 #include "tester_utils.h"
-#include "transcription/transcription.h"
 #include <cstdint>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -39,11 +39,7 @@
 #endif
 #endif
 
-void print_test() {
-	printf("HEEEEEEEEEEEELOOOOOOOOOOOOOOOOOOOOOOOOOO WARUDOOOOO!!!!!\n");
-}
-
-// cb that i give the api to display the transcription
+// cb that I give using the api to display the transcription
 void transcription_cb(LinphoneTranscription *transcription) {
 	uint32_t lastId = linphone_transcription_get_last_sentence_id(transcription);
 	uint32_t id = 1;
@@ -93,7 +89,11 @@ static void call_with_file_player(void) {
 		pt = linphone_core_get_payload_type(marie->lc, "speex", 16000, 1);
 		if (!pt) {
 			ms_warning("speex 16000 not available, skip test");
-			goto end;
+			linphone_core_manager_destroy(marie);
+			linphone_core_manager_destroy(pauline); // FIXME comment this to keep transcription files, but core dump
+			bc_free(recordpath);
+			bc_free(hellopath);
+			return;
 		}
 		// linphone_payload_type_set_recv_fmtp(pt, "stereo=1;sprop-stereo=1");
 		linphone_payload_type_set_normal_bitrate(pt, 60);
@@ -116,10 +116,15 @@ static void call_with_file_player(void) {
 		linphone_core_set_play_file(pauline->lc, NULL);
 		linphone_core_set_record_file(pauline->lc, recordpath);
 		LinphoneTranscription *transcription = linphone_core_get_transcription(pauline->lc);
-		linphone_transcription_add_cb(transcription, print_test);
 		linphone_transcription_set_display_cb(transcription, transcription_cb);
 		BC_ASSERT_TRUE((call_ok = call(marie, pauline)));
-		if (!call_ok) goto end;
+		if (!call_ok) {
+			linphone_core_manager_destroy(marie);
+			linphone_core_manager_destroy(pauline); // FIXME comment this to keep transcription files, but core dump
+			bc_free(recordpath);
+			bc_free(hellopath);
+			return;
+		};
 		player = linphone_call_get_player(linphone_core_get_current_call(marie->lc));
 		BC_ASSERT_PTR_NOT_NULL(player);
 		if (player) {
@@ -151,7 +156,6 @@ static void call_with_file_player(void) {
 		remove(recordpath);
 	}
 
-end:
 	linphone_core_manager_destroy(marie);
 	linphone_core_manager_destroy(pauline); // FIXME comment this to keep transcription files, but core dump
 	bc_free(recordpath);

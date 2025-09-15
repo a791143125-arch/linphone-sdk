@@ -122,7 +122,8 @@ std::vector<MSTranscription> WhisperCPPOverlapTranscript::tokensIntoWords(std::v
 		} else if (!(word[0] == '[' || word[0] == '_')) {
 			if (!ispunct(word[0])) {
 				endWord = dtw;
-			} else {
+			}
+			if ((word[0] == '.' || word[0] == '?' || word[0] == '!')) {
 				end_of_sentence = true;
 			}
 			if (completeWord == "") {
@@ -217,7 +218,6 @@ bool_t WhisperCPPOverlapTranscript::transcriptProcessAsync() {
 		ms_error("Whisper failed on chunck.");
 		return -1;
 	}
-	// mAudioF32.clear();
 
 	std::string text = "";
 	if (!mStartOfTranscription) text = whisper_full_get_segment_text(mCtx, 0);
