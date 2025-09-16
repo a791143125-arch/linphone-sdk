@@ -91,3 +91,6 @@
 [submodule "external/hidapi"]
 	path = external/hidapi
 	url = https://github.com/libusb/hidapi.git
+[submodule "external/usrsctp"]
+	path = external/usrsctp
+	url = https://github.com/sctplab/usrsctp.git
