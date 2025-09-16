@@ -23,6 +23,7 @@
 #include <mutex>
 #include <queue>
 
+#include "dtls_srtp.hpp"
 #include "mediastreamer2/dtls_srtp.h"
 #include "mediastreamer2/mediastream.h"
 #include "private.h"
@@ -77,10 +78,12 @@ enum class DtlsStatus : uint8_t {
 	FingerprintVerified = 4,
 	HandshakeFailed = 0xFF,
 };
+
 } // anonymous namespace
 
 struct _MSDtlsSrtpContext {
 	MSMediaStreamSessions *mStreamSessions;
+	RtpSession *mRtpSession;
 	MSDtlsSrtpRole mRole;         /**< can be unset(at init on caller side), client or server */
 	std::string mPeerFingerprint; /**< used to store peer fingerprint passed through SDP */
 	int mtu;
@@ -98,17 +101,13 @@ struct _MSDtlsSrtpContext {
 	uint64_t rtp_time_reference; /**< an epoch in ms, used to manage retransmission when we are client */
 	bool retry_sending;          /**< a flag to set a retry after failed packet sending */
 	std::mutex mtx;              /**< lock any operation on this context */
+	MsDtlsRecvCallback mRecvCb;  /**< callback for data received after handshake */
 
 	_MSDtlsSrtpContext() = delete;
 	_MSDtlsSrtpContext(MSMediaStreamSessions *sessions, MSDtlsSrtpParams *params)
-	    : mStreamSessions(sessions), mRole(params->role), mtu(params->mtu),
-	      mVerifyCertificate(params->verify_certificate), mPeerUri(std::string(params->peer_uri)) {
-		rtp_time_reference = 0;
-		retry_sending = false;
-
-		mChannelStatus = DtlsStatus::ContextNotReady;
-		mSrtpProtectionProfile = MS_CRYPTO_SUITE_INVALID;
-	};
+	    : mStreamSessions(sessions), mRtpSession(sessions->rtp_session), mRole(params->role), mtu(params->mtu),
+	      mChannelStatus(DtlsStatus::ContextNotReady), mVerifyCertificate(params->verify_certificate), mPeerUri(std::string(params->peer_uri)),
+	      mSrtpProtectionProfile(MS_CRYPTO_SUITE_INVALID), rtp_time_reference(0), retry_sending(false) {}
 	~_MSDtlsSrtpContext() = default;
 
 	int initialiseDtlsCryptoContext(MSDtlsSrtpParams *params);
@@ -118,9 +117,9 @@ struct _MSDtlsSrtpContext {
 	void setChannelStatus(DtlsStatus status, MSDtlsError error = MS_DTLS_ERROR_NONE);
 	void setKeyMaterial();
 	void resetKeyMaterial();
-	int processDtlsPacket(mblk_t *msg);
 	bool isDtlsPacket(mblk_t *msg);
 	bool isPeerCerticateMatchHisUri();
+	int processDtlsHandshakePacket(mblk_t *msg);
 };
 
 namespace {
@@ -292,13 +291,13 @@ void schedule_rtp(struct _RtpTransportModifier *t) {
  */
 int ms_dtls_srtp_rtp_sendData(void *ctx, const unsigned char *data, size_t length) {
 	MSDtlsSrtpContext *context = (MSDtlsSrtpContext *)ctx;
-	RtpSession *session = context->mStreamSessions->rtp_session;
+	RtpSession *session = context->mRtpSession;
 	RtpTransport *rtpt = NULL;
 	mblk_t *msg;
 	int ret;
 
 	ms_message("DTLS Send RTP packet len %d sessions: %p rtp session %p", (int)length, context->mStreamSessions,
-	           context->mStreamSessions->rtp_session);
+	           context->mRtpSession);
 
 	/* get RTP transport from session */
 	rtp_session_get_transports(session, &rtpt, NULL);
@@ -312,7 +311,7 @@ int ms_dtls_srtp_rtp_sendData(void *ctx, const unsigned char *data, size_t lengt
 	/* sending failed - allow to retry at the next schedule tick */
 	if (ret < 0) {
 		ms_warning("DTLS Send RTP packet len %d sessions: %p rtp session %p failed returns %d", (int)length,
-		           context->mStreamSessions, context->mStreamSessions->rtp_session, ret);
+		           context->mStreamSessions, context->mRtpSession, ret);
 		context->retry_sending = true;
 		return BCTBX_ERROR_NET_WANT_WRITE;
 	}
@@ -348,14 +347,31 @@ int ms_dtls_srtp_rtp_process_on_receive(struct _RtpTransportModifier *t, mblk_t 
 		return (int)msgdsize(msg);
 	}
 
-	std::lock_guard<std::mutex> lock(ctx->mtx);
+	std::unique_lock<std::mutex> lock(ctx->mtx);
 	if (ctx->mChannelStatus == DtlsStatus::HandshakeFailed) {
 		ms_message("DTLS RTP received a message but we are in failed state: ignore");
 		return 0;
 	}
 
-	/* process it */
-	int ret = ctx->processDtlsPacket(msg);
+	/* handshake is already over, use ssl_read to process it */
+	if (ctx->mChannelStatus >= DtlsStatus::HandshakeOver) {
+		size_t msgLength = msgdsize(msg);
+		ctx->mRtpIncomingBuffer.emplace(msg->b_rptr, msg->b_rptr + msgLength);
+		unsigned char *buf = (unsigned char *)ms_malloc(msgLength + 1);
+		int32_t ret = bctbx_ssl_read(ctx->mDtlsCryptoContext.ssl, buf, msgLength);
+		ms_message("DTLS reads RTP packet len %d sessions: %p rtp session %p return %s0x%0x", (int)msgLength,
+		           ctx->mStreamSessions, ctx->mRtpSession, ret > 0 ? "+" : "-", ret > 0 ? ret : -ret);
+		if (ret > 0 && ctx->mRecvCb != nullptr) {
+			lock.unlock();
+			ctx->mRecvCb(buf, ret);
+		}
+		ms_free(buf);
+		return 0;
+	}
+
+
+	/* handshake is on going, use ssl_handshake it */
+	int ret = ctx->processDtlsHandshakePacket(msg);
 	if (ret == BCTBX_ERROR_FATAL_ALERT_MSG) {
 		/* something went wrong with the handshake - abort */
 		ctx->resetKeyMaterial();
@@ -552,7 +568,7 @@ void MSDtlsSrtpContext::createSslContext() {
 
 void MSDtlsSrtpContext::start() {
 	ms_message("DTLS start stream on stream sessions [%p], RTCP mux is %s, MTU is %d, role is %s", mStreamSessions,
-	           rtp_session_rtcp_mux_enabled(mStreamSessions->rtp_session) ? "enabled" : "disabled", mtu,
+	           rtp_session_rtcp_mux_enabled(mRtpSession) ? "enabled" : "disabled", mtu,
 	           mRole == MSDtlsSrtpRoleIsServer ? "server"
 	                                           : (mRole == MSDtlsSrtpRoleIsClient ? "client" : "unset role"));
 
@@ -590,6 +606,7 @@ void MSDtlsSrtpContext::setChannelStatus(DtlsStatus status, MSDtlsError error) {
 	if (status == mChannelStatus) {
 		return;
 	}
+	mChannelStatus = status;
 	/* Check if we're are ready: rtp_channel done and rtcp mux on */
 	if ((status == DtlsStatus::FingerprintVerified) && (rtp_session_rtcp_mux_enabled(mStreamSessions->rtp_session))) {
 		OrtpEventData *eventData;
@@ -613,7 +630,6 @@ void MSDtlsSrtpContext::setChannelStatus(DtlsStatus status, MSDtlsError error) {
 		rtp_session_dispatch_event(mStreamSessions->rtp_session, ev);
 		ms_message("DTLS Event dispatched to all: handshake failed");
 	}
-	mChannelStatus = status;
 }
 
 /* Get keys from context and set then in the SRTP context according to the given stream type
@@ -664,7 +680,7 @@ void MSDtlsSrtpContext::resetKeyMaterial() {
  * @param[in] 		msg	the incoming message
  * @return	the value returned by the bctoolbox function processing the packet(ssl_handshake)
  */
-int MSDtlsSrtpContext::processDtlsPacket(mblk_t *msg) {
+int MSDtlsSrtpContext::processDtlsHandshakePacket(mblk_t *msg) {
 	size_t msgLength = msgdsize(msg);
 	bctbx_ssl_context_t *ssl = mDtlsCryptoContext.ssl;
 	int ret = 0;
@@ -693,7 +709,7 @@ int MSDtlsSrtpContext::processDtlsPacket(mblk_t *msg) {
 	 * rtp_session_update_remote_sock_addr(rtp_session, msg,is_rtp,FALSE);*/
 
 	ms_message("DTLS Receive RTP packet len %d sessions: %p rtp session %p", (int)msgLength, mStreamSessions,
-	           mStreamSessions->rtp_session);
+	           mRtpSession);
 
 	/* UGLY PATCH CLIENT HELLO PACKET PARSING */
 	/* Parse the DTLS packet to check if we have a Client Hello packet fragmented at DTLS level but all set in one
@@ -768,7 +784,7 @@ int MSDtlsSrtpContext::processDtlsPacket(mblk_t *msg) {
 					} else {                                           // message is malformed in a nasty way
 						ms_warning("DTLS Received RTP packet len %d sessions: %p rtp session %p is malformed in an "
 						           "agressive way",
-						           (int)msgLength, mStreamSessions, mStreamSessions->rtp_session);
+						           (int)msgLength, mStreamSessions, mRtpSession);
 						base_index = msgLength; // get out of the while
 						ms_free(reassembled_packet);
 						reassembled_packet = NULL;
@@ -803,8 +819,7 @@ int MSDtlsSrtpContext::processDtlsPacket(mblk_t *msg) {
 		/* process the packet and store result */
 		ret = bctbx_ssl_handshake(ssl);
 		ms_message("DTLS Handshake process RTP packet len %d sessions: %p rtp session %p return %s0x%0x",
-		           (int)msgLength, mStreamSessions, mStreamSessions->rtp_session, ret > 0 ? "+" : "-",
-		           ret > 0 ? ret : -ret);
+		           (int)msgLength, mStreamSessions, mRtpSession, ret > 0 ? "+" : "-", ret > 0 ? ret : -ret);
 
 		/* if we are client, manage the retransmission timer */
 		if (mRole == MSDtlsSrtpRoleIsClient) {
@@ -814,8 +829,8 @@ int MSDtlsSrtpContext::processDtlsPacket(mblk_t *msg) {
 		/* we need a buffer to store the message read even if we don't use it */
 		unsigned char *buf = (unsigned char *)ms_malloc(msgLength + 1);
 		ret = bctbx_ssl_read(ssl, buf, msgLength);
-		ms_message("DTLS Handshake read RTP packet len %d sessions: %p rtp session %p return %s0x%0x", (int)msgLength,
-		           mStreamSessions, mStreamSessions->rtp_session, ret > 0 ? "+" : "-", ret > 0 ? ret : -ret);
+		ms_message("DTLS Handshake read RTP packet len %d sessions: %p rtp session %p return %s0x%0x and discard it as Handshake is over, this shall not happend when datachannel is in use", (int)msgLength,
+		           mStreamSessions, mRtpSession, ret > 0 ? "+" : "-", ret > 0 ? ret : -ret);
 		ms_free(buf);
 	}
 
@@ -825,7 +840,7 @@ int MSDtlsSrtpContext::processDtlsPacket(mblk_t *msg) {
 		err_str[0] = '\0';
 		bctbx_strerror(ret, err_str, 512);
 		ms_warning("DTLS Handshake returns -0x%x : %s [on sessions: %p rtp session %p]", -ret, err_str, mStreamSessions,
-		           mStreamSessions->rtp_session);
+		           mRtpSession);
 	}
 	return ret;
 }
@@ -893,6 +908,9 @@ extern "C" void ms_dtls_srtp_set_stream_sessions(MSDtlsSrtpContext *dtls_context
                                                  MSMediaStreamSessions *stream_sessions) {
 	if (dtls_context != NULL) {
 		dtls_context->mStreamSessions = stream_sessions;
+		if (stream_sessions) {
+			dtls_context->mRtpSession = stream_sessions->rtp_session;
+		}
 	}
 }
 
@@ -975,6 +993,7 @@ extern "C" MSDtlsSrtpContext *ms_dtls_srtp_context_new(MSMediaStreamSessions *se
 		return NULL;
 	}
 
+	context->mRecvCb = nullptr;
 	context->mChannelStatus = DtlsStatus::ContextReady;
 	return context;
 }
@@ -999,6 +1018,38 @@ extern "C" void ms_dtls_srtp_start(MSDtlsSrtpContext *context) {
 }
 
 extern "C" void ms_dtls_srtp_context_destroy(MSDtlsSrtpContext *ctx) {
+	ms_message("DTLS-SRTP context destroy %p", ctx);
+	if (ctx == NULL) {
+		ms_warning("DTLS-SRTP context destroy but no context given\n");
+		return;
+	}
+	if (ctx->mDtlsCryptoContext.ssl != NULL && ctx->mChannelStatus >= DtlsStatus::HandshakeOver) {
+		bctbx_ssl_close_notify(ctx->mDtlsCryptoContext.ssl);
+	}
+
 	delete ctx;
 	ms_message("DTLS-SRTP context destroyed");
+}
+
+bool ms_dtls_srtp_set_recv_cb(MSDtlsSrtpContext *ctx, MsDtlsRecvCallback recv_cb) {
+	if (!ctx) {
+		return false;
+	}
+	ctx->mRecvCb = recv_cb;
+	return true;
+}
+
+bool ms_dtls_srtp_send(MSDtlsSrtpContext *ctx, const unsigned char *message, size_t msg_len) {
+	if (!ctx || !(ctx->mChannelStatus >= DtlsStatus::HandshakeOver)) {
+		return false;
+	}
+
+	int ret;
+	do {
+		std::lock_guard lock(ctx->mtx);
+		// mCurrentDscp = message->dscp;
+		ret = bctbx_ssl_write(ctx->mDtlsCryptoContext.ssl, message, msg_len);
+	} while (ret == BCTBX_ERROR_NET_WANT_WRITE);
+
+	return (ret > 0);
 }

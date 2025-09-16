@@ -22,6 +22,7 @@
 #define _SAL_STREAM_CONFIGURATION_H_
 
 #include <list>
+#include <optional>
 #include <vector>
 
 #include "ortp/rtpsession.h"
@@ -55,6 +56,7 @@ typedef struct SalSrtpCryptoAlgo {
 	std::string master_key;
 } SalSrtpCryptoAlgo;
 
+
 LINPHONE_BEGIN_NAMESPACE
 
 class SalMediaDescription;
@@ -65,6 +67,55 @@ class MS2Stream;
 class IceService;
 class SalCallOp;
 class OfferAnswerEngine;
+
+// As defined in RFC8864 section 5.1
+class SalDataChannelMap {
+	private:
+	std::vector<std::string> dcsa;
+	std::string label;
+	std::string subprotocol;
+	std::optional<uint32_t> max_retr;
+	std::optional<uint32_t> max_time;
+	uint16_t stream_id;
+	std::optional<uint16_t> priority;
+	std::optional<bool> ordered;
+
+	void parseParam(const std::string& s);
+
+	public:
+	// factory function from string
+	static std::optional<SalDataChannelMap> from_string(const std::string &attrValue);
+	// build an empty dcmap attribute with only a stream id
+	explicit SalDataChannelMap(uint16_t id) : stream_id(id) {};
+
+	// export to SDP formated strings
+	std::string toSdpDcmapAttr() const; // return stream-id and a ; separated list of all optional value set
+	std::vector<std::string> toSdpDcsaAttrs() const; // return a vector of stream_id dcsa attribute
+	
+	// subprotocol validation: return true if the dcmap setting is supported
+	bool isSupported() const;
+
+	// set/get
+	void setLabel(const std::string &s);
+	void setSubprotocol(const std::string &s);
+	void setMaxRetr(uint32_t value);
+	void setMaxTime(uint32_t value);
+	void setPriority(uint16_t value);
+	void setOrdered(bool value);
+	uint16_t getId() const;
+	const std::string &getLabel() const;
+	const std::string &getSubprotocol() const;
+	std::optional<uint32_t> getMaxRetr() const;
+	std::optional<uint32_t> getMaxTime() const;
+	std::optional<uint16_t> getPriority() const;
+	std::optional<bool> getOrdered() const;
+
+	bool operator==(const SalDataChannelMap &other) const;
+	SalDataChannelMap(const SalDataChannelMap&) = default;
+	SalDataChannelMap(SalDataChannelMap&&) = default;
+	SalDataChannelMap& operator=(const SalDataChannelMap&) = default;
+	SalDataChannelMap& operator=(SalDataChannelMap&&) = default;
+};
 
 class LINPHONE_PUBLIC SalStreamConfiguration {
 	friend class SalStreamDescription;
@@ -79,8 +130,10 @@ class LINPHONE_PUBLIC SalStreamConfiguration {
 public:
 	SalStreamConfiguration();
 	SalStreamConfiguration(const SalStreamConfiguration &other);
+	SalStreamConfiguration(SalStreamConfiguration&& other) noexcept;
 	virtual ~SalStreamConfiguration();
 	SalStreamConfiguration &operator=(const SalStreamConfiguration &other);
+	SalStreamConfiguration &operator=(SalStreamConfiguration &&other) noexcept;
 	int equal(const SalStreamConfiguration &other) const;
 	bool operator==(const SalStreamConfiguration &other) const;
 	bool operator!=(const SalStreamConfiguration &other) const;
@@ -94,6 +147,7 @@ public:
 	/*these are switch case, so that when a new proto is added we can't forget to modify this function*/
 	bool hasSrtp() const;
 	bool hasDtls() const;
+	bool hasDataChannel() const;
 	bool hasZrtp() const;
 	bool hasLimeIk() const;
 
@@ -124,6 +178,12 @@ public:
 	const std::list<std::list<unsigned int>> &getAcapIndexes() const;
 	const unsigned int &getTcapIndex() const;
 
+	uint16_t getSctpLocalPort() const;
+	uint16_t getSctpRemotePort() const;
+	void setSctpLocalPort(uint16_t port);
+	void setSctpRemotePort(uint16_t port);
+	const std::vector<SalDataChannelMap> &getDataChannelMap() const;
+
 	static std::string cryptoToSdpValue(const SalSrtpCryptoAlgo &crypto);
 	static SalSrtpCryptoAlgo fillStrpCryptoAlgoFromString(const std::string &value);
 
@@ -141,10 +201,11 @@ private:
 	int max_rate = 0;
 	bool bundle_only = false;
 	bool implicit_rtcp_fb = false;
-	bool pad[2]; /* Use me */
+	bool delete_media_attributes = false;
+	bool delete_session_attributes = false;
 	OrtpRtcpFbConfiguration rtcp_fb{};
 	OrtpRtcpXrConfiguration rtcp_xr{};
-	SalCustomSdpAttribute *custom_sdp_attributes = nullptr;
+//	SalCustomSdpAttribute *custom_sdp_attributes = nullptr;
 	std::string mid;               /* Media line identifier for RTP bundle mode */
 	int mid_rtp_ext_header_id = 0; /* Identifier for the MID field in the RTP extension header */
 	int mixer_to_client_extension_id = 0;
@@ -159,9 +220,10 @@ private:
 	std::string dtls_fingerprint;
 	SalDtlsRole dtls_role = SalDtlsRoleInvalid;
 	int ttl = 0; /*for multicast -1 to disable*/
+	std::vector<SalDataChannelMap> dcmap;
+	uint16_t sctp_local_port = 5000;
+	uint16_t sctp_remote_port = 0;
 
-	bool delete_media_attributes = false;
-	bool delete_session_attributes = false;
 	unsigned int tcapIndex = 0;
 	std::list<std::list<unsigned int>> acapIndexes;
 

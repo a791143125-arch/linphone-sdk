@@ -137,6 +137,10 @@ public:
 	float sentFps = 0.f;
 	LinphoneVideoDefinition *sentVideoDefinition = nullptr;
 
+	bool dataChannelEnabled = false;
+	std::vector<SalDataChannelMap> dcmaps;
+	uint16_t dataChannelSctpPort = 5000; // default port is 5000
+
 	bool fecEnabled = false;
 	std::shared_ptr<PayloadType> usedFecCodec;
 

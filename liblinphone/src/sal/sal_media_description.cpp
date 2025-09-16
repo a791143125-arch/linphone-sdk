@@ -545,6 +545,7 @@ int SalMediaDescription::findIdxBestStream(SalStreamType type) const {
 	if (idx == -1) idx = findIdxStream(SalProtoRtpSavp, type);
 	if (idx == -1) idx = findIdxStream(SalProtoRtpAvpf, type);
 	if (idx == -1) idx = findIdxStream(SalProtoRtpAvp, type);
+	if (idx == -1) idx = findIdxStream(SalProtoUdpDtlsSctp, type);
 	return idx;
 }
 
@@ -738,6 +739,16 @@ bool SalMediaDescription::hasDtls() const {
 	}
 	return true;
 }
+
+bool SalMediaDescription::hasDataChannel() const {
+	if (streams.empty()) return false;
+	for (const auto &stream : streams) {
+		if (!stream.enabled()) continue;
+		if (stream.hasDataChannel() != true) return false;
+	}
+	return true;
+}
+
 
 bool SalMediaDescription::hasZrtp() const {
 	if (streams.empty()) return false;

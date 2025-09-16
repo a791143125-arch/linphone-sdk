@@ -147,6 +147,7 @@ linphonesdk_option("Advanced IM" "Enable advanced instant messaging such as grou
 linphonesdk_option("Xercesc" "Enable XERCESC support." ON)
 linphonesdk_option("Assets" "Enable packaging of assets (ringtones) when building the SDK." ON)
 linphonesdk_option("Daemon" "Enable Linphone Daemon." ON)
+linphonesdk_option("Datachannel" "WebRTC datachannel support." OFF)
 linphonesdk_option("DB Storage" "Enable the database storage." ON)
 linphonesdk_dependent_option("DNS_SERVICE" "Enable Apple DNS Service. Available on Mac and iOS. Incompatible with ENABLE_MDNS=ON." ON "APPLE" OFF)
 linphonesdk_option("Example Plugin" "Enable build of the liblinphone example plugin." OFF)

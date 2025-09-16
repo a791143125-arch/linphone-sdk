@@ -271,8 +271,8 @@ void MS2Stream::fillLocalMediaDescription(OfferAnswerContext &ctx) {
 	auto &localDesc = const_cast<SalStreamDescription &>(ctx.getLocalStreamDescription());
 	localDesc.rtp_addr = getPublicIp();
 	localDesc.rtcp_addr = getPublicIp();
-	if (localDesc.rtp_port == SAL_STREAM_DESCRIPTION_PORT_TO_BE_DETERMINED && !localDesc.getPayloads().empty()) {
-		/* Don't fill ports if no codecs are defined. The stream is not valid and should be disabled.*/
+	if (localDesc.rtp_port == SAL_STREAM_DESCRIPTION_PORT_TO_BE_DETERMINED && (!localDesc.getPayloads().empty() || localDesc.hasDataChannel())) {
+		/* Don't fill ports if no codecs are defined unless it is an application stream. The stream is not valid and should be disabled.*/
 		if (linphone_core_zero_rtp_port_for_stream_inactive_enabled(getCCore()) &&
 		    (localDesc.getDirection() == SalStreamInactive)) {
 			localDesc.rtp_port = 0;
@@ -880,6 +880,10 @@ void MS2Stream::applyJitterBufferParams(RtpSession *session) {
 			params.nom_size = linphone_core_get_video_jittcomp(getCCore());
 			params.adaptive = linphone_core_video_adaptive_jittcomp_enabled(getCCore());
 			break;
+		case SalApplication: // disable jitter buffer for application
+			params.nom_size = 0;
+			params.adaptive = false;
+			break;
 		default:
 			lError() << "applyJitterBufferParams(): should not happen";
 			break;
@@ -1059,6 +1063,7 @@ void MS2Stream::configureRtpTransport(RtpSession *session) {
 				rtcpFuncData = getCCore()->rtptf->video_rtcp_func_data;
 				break;
 			case SalText:
+			case SalApplication:
 				break;
 			case SalOther:
 				break;
@@ -1441,6 +1446,8 @@ void MS2Stream::stop() {
 		case SalText:
 			statsType = LINPHONE_CALL_STATS_TEXT;
 			break;
+		case SalApplication:
+			break;
 		default:
 			break;
 	}
@@ -1582,6 +1589,9 @@ void MS2Stream::handleEvents() {
 			case MSText:
 				text_stream_iterate((TextStream *)ms);
 				break;
+			case MSApplication:
+				application_stream_iterate((ApplicationStream *)ms);
+				break;
 			default:
 				lError() << "handleStreamEvents(): unsupported stream type";
 				return;
@@ -1616,7 +1626,28 @@ void MS2Stream::handleEvents() {
 				}
 				break;
 			case ORTP_EVENT_SRTP_ENCRYPTION_CHANGED:
+				encryptionChanged();
+				break;
 			case ORTP_EVENT_DTLS_ENCRYPTION_CHANGED:
+				if (ms_datachannel_supported()) {
+					if (evd->info.dtls_info.dtls_stream_encrypted) {
+						// Check we are the bundle owner and there is a application stream in the bundle
+						if (bundleEnabled() && mBundleOwner) {
+							auto sd = getMediaSessionPrivate().getResultDesc()->findBestStream(SalApplication);
+							if (sd) {
+								const auto &cfg = (*sd)->getActualConfiguration();
+								auto dcmaps = cfg.getDataChannelMap();
+
+								MSDataChannelParams params{cfg.getSctpLocalPort(), cfg.getSctpRemotePort()};
+								for (const auto&dcmap : dcmaps) {
+									// ordered default to true when not present
+									params.channels.try_emplace(dcmap.getId(), dcmap.getSubprotocol(), dcmap.getLabel(), dcmap.getMaxRetr(), dcmap.getMaxTime(), dcmap.getOrdered().value_or(true));
+								}
+								ms->sessions.datachannel_context = ms_datachannel_create(ms->sessions.dtls_context, std::move(params));
+							}
+						}
+					}
+				}
 				encryptionChanged();
 				break;
 			case ORTP_EVENT_ICE_CHECK_LIST_DEFAULT_CANDIDATE_VERIFIED:

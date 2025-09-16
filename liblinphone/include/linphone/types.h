@@ -1192,7 +1192,8 @@ typedef enum _LinphoneStreamType {
 	LinphoneStreamTypeAudio = 0,
 	LinphoneStreamTypeVideo = 1,
 	LinphoneStreamTypeText = 2,
-	LinphoneStreamTypeUnknown = 3 /* WARNING: Make sure this value remains the last one in the list */
+	LinphoneStreamTypeApplication = 3,
+	LinphoneStreamTypeUnknown = 4 /* WARNING: Make sure this value remains the last one in the list */
 } LinphoneStreamType;
 
 /**

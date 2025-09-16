@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of mediastreamer2
  * (see https://gitlab.linphone.org/BC/public/mediastreamer2).
@@ -78,16 +78,17 @@ MS2_PUBLIC MSDtlsSrtpContext *ms_dtls_srtp_context_new(struct _MSMediaStreamSess
                                                        MSDtlsSrtpParams *params);
 
 /**
- * Start the DTLS-SRTP channel: send DTLS ClientHello if we are client
- * @param[in/out]	context		the DTLS-SRTP context
- */
-MS2_PUBLIC void ms_dtls_srtp_start(MSDtlsSrtpContext *context);
-
-/**
  * Free ressources used by DTLS-SRTP context
  * @param[in/out]	context		the DTLS-SRTP context
  */
 MS2_PUBLIC void ms_dtls_srtp_context_destroy(MSDtlsSrtpContext *ctx);
+
+#ifdef __cplusplus
+/**
+ * Start the DTLS-SRTP channel: send DTLS ClientHello if we are client
+ * @param[in/out]	context		the DTLS-SRTP context
+ */
+MS2_PUBLIC void ms_dtls_srtp_start(MSDtlsSrtpContext *context);
 
 /**
  * Reset DTLS context to renegotiate keys and carry out once again SSL handshake next time DTLS starts
@@ -118,9 +119,7 @@ MS2_PUBLIC MSDtlsSrtpRole ms_dtls_srtp_get_role(const MSDtlsSrtpContext *context
  * INVITE(including the heading hash algorithm name)
  */
 MS2_PUBLIC void ms_dtls_srtp_set_peer_fingerprint(MSDtlsSrtpContext *context, const char *peer_fingerprint);
-
-#ifdef __cplusplus
-}
-#endif
+} // extern "C"
+#endif // __cplusplus
 
 #endif /* ms_dtls_srtp_h */

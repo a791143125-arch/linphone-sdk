@@ -531,6 +531,8 @@ LinphoneStreamType sal_stream_type_to_linphone(SalStreamType type) {
 			return LinphoneStreamTypeVideo;
 		case SalText:
 			return LinphoneStreamTypeText;
+		case SalApplication:
+			return LinphoneStreamTypeApplication;
 		case SalOther:
 			return LinphoneStreamTypeUnknown;
 	}
@@ -545,6 +547,8 @@ SalStreamType linphone_stream_type_to_sal(LinphoneStreamType type) {
 			return SalVideo;
 		case LinphoneStreamTypeText:
 			return SalText;
+		case LinphoneStreamTypeApplication:
+			return SalApplication;
 		case LinphoneStreamTypeUnknown:
 			return SalOther;
 	}

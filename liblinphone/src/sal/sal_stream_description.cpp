@@ -141,6 +141,8 @@ void SalStreamDescription::fillStreamDescriptionFromSdp(const SalMediaDescriptio
 		type = SalVideo;
 	} else if (mtype.compare("text") == 0) {
 		type = SalText;
+	} else if (mtype.compare("application") == 0) {
+		type = SalApplication;
 	} else {
 		type = SalOther;
 		typeother = mtype;
@@ -161,6 +163,11 @@ void SalStreamDescription::fillStreamDescriptionFromSdp(const SalMediaDescriptio
 	}
 
 	createActualCfg(salMediaDesc, sdp, media_desc);
+
+	// Application stream does not have any rctp elements
+	if (type == SalApplication) {
+		return;
+	}
 
 	/* Get media specific RTCP attribute */
 	rtcp_addr = rtp_addr;
@@ -592,6 +599,8 @@ void SalStreamDescription::setProtoInCfg(SalStreamConfiguration &cfg, const std:
 			proto = SalProtoUdpTlsRtpSavp;
 		} else if (protoAsString.compare("UDP/TLS/RTP/SAVPF") == 0) {
 			proto = SalProtoUdpTlsRtpSavpf;
+		} else if (protoAsString.compare("UDP/DTLS/SCTP") == 0) {
+			proto = SalProtoUdpDtlsSctp;
 		} else {
 			proto = SalProtoOther;
 			protoOther = protoAsString;
@@ -637,7 +646,7 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 	setProtoInCfg(actualCfg, protoStr);
 	/* Read DTLS specific attributes : check is some are found in the stream description otherwise copy the session
 	 * description one(which are at least set to Invalid) */
-	if (((actualCfg.proto == SalProtoUdpTlsRtpSavpf) || (actualCfg.proto == SalProtoUdpTlsRtpSavp))) {
+	if (((actualCfg.proto == SalProtoUdpTlsRtpSavpf) || (actualCfg.proto == SalProtoUdpTlsRtpSavp)) || (actualCfg.proto == SalProtoUdpDtlsSctp)) {
 		attribute = belle_sdp_media_description_get_attribute(media_desc, "setup");
 		if (attribute && (value = belle_sdp_attribute_get_value(attribute)) != NULL) {
 			if (strncmp(value, "actpass", 7) == 0) {
@@ -684,6 +693,66 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 	actualCfg.dir = dir;
 
 	actualCfg.payloads.clear();
+
+	// Parse attributes specific to application stream
+	if (type == SalApplication) {
+		// When parsing an application stream, check we have a webrtc-datachannel as format.
+		auto fmts = belle_sdp_media_get_media_formats(media);
+		if (belle_sip_list_size(fmts) != 1 || (long)(intptr_t)(fmts->data) != BELLE_SDP_FMT_WEBRTC_DATACHANNEL) {
+			lWarning()<<"Parsing application stream : unsuppored payload - only webrtc-datachannel is supported";
+			// do not try to parse dcmap or sctp-port as this application stream is of unsupported type
+			actualCfg.disable();
+			addActualConfiguration(actualCfg);
+			return;
+		}
+
+		// We shall have a sctp port (this one is not a negotiation, we have remote and local one)
+		if ((attribute = belle_sdp_media_description_get_attribute(media_desc, "sctp-port")) != NULL) {
+			if ((value = belle_sdp_attribute_get_value(attribute)) != NULL) {
+				try {
+					unsigned long int_value = std::stoul(value);
+					if (int_value > UINT16_MAX) {
+						lError()<<"Application stream remote sctp-port invalid:"<<int_value;
+						actualCfg.disable();
+						addActualConfiguration(actualCfg);
+						return;
+					} else {
+						actualCfg.setSctpRemotePort(static_cast<uint16_t>(int_value));
+					}
+				} catch (const std::exception& e) {
+					lError()<<"Application stream remote sctp-port invalid:"<<value<<" exception: "<<e.what();
+					actualCfg.disable();
+					addActualConfiguration(actualCfg);
+					return;
+				}
+			}
+		} else {
+			lError()<<"Application stream but no sctp-port provided in SDP";
+			actualCfg.disable();
+			addActualConfiguration(actualCfg);
+			return;
+		}
+
+		// application stream are webrtc datachannel only: parse the dcmap (and dcsa) attributes
+		// TODO: we also need to parse dcsa attributes - do we need to support it?
+		auto dcmaps = belle_sdp_media_description_find_attributes_with_name(media_desc, "dcmap");
+		for (auto dcmap = dcmaps; dcmap != NULL; dcmap = dcmap->next) {
+			if ((value = belle_sdp_attribute_get_value(static_cast<belle_sdp_attribute_t *>(dcmap->data))) != NULL) {
+				auto parsedDcmap = SalDataChannelMap::from_string(value);
+				if (parsedDcmap != std::nullopt) {
+					actualCfg.dcmap.push_back(std::move(*parsedDcmap));
+				} else {
+					lWarning()<<"ignore unsupported/invalid dcmap attribute :"<<value;
+				}
+			}
+		}
+		belle_sip_list_free_with_data(dcmaps, (void (*)(void *))belle_sip_object_unref);
+
+		// when parsing application stream : no payload, no rtcp, no lime Ik, no crypto or zrtp
+		addActualConfiguration(actualCfg);
+		return;
+	}
+
 	/* Get media payload types */
 	sdpParsePayloadTypes(actualCfg, media_desc);
 
@@ -978,6 +1047,10 @@ bool SalStreamDescription::hasDtls() const {
 	return getChosenConfiguration().hasDtls();
 }
 
+bool SalStreamDescription::hasDataChannel() const {
+	return getChosenConfiguration().hasDataChannel();
+}
+
 bool SalStreamDescription::hasZrtp() const {
 	return getChosenConfiguration().hasZrtp();
 }
@@ -1131,6 +1204,7 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 
 	media_desc = belle_sdp_media_description_create(L_STRING_TO_C(getTypeAsString()), rtp_port, 1,
 	                                                L_STRING_TO_C(getProtoAsString()), NULL);
+
 	if (!actualCfg.payloads.empty()) {
 		for (const auto &pt : actualCfg.payloads) {
 			mime_param = belle_sdp_mime_parameter_create(pt->mime_type, payload_type_get_number(pt), pt->clock_rate,
@@ -1144,8 +1218,14 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 		}
 	} else {
 		/* to comply with SDP we cannot have an empty payload type number list */
-		/* as it happens only when mline is declined with a zero port, it does not matter to put whatever codec*/
-		belle_sip_list_t *format = belle_sip_list_append(NULL, 0);
+		bctbx_list_t *format = NULL;
+		if (actualCfg.hasDataChannel()) {
+			/* when this stream is of type application -> we only support webrtc datachannel with this type of stream */
+			format = bctbx_list_append(format, (void *)(intptr_t)BELLE_SDP_FMT_WEBRTC_DATACHANNEL);
+		} else {
+			/* as it happens only when mline is declined with a zero port, it does not matter to put whatever codec*/
+			format = bctbx_list_append(format, 0);
+		}
 		belle_sdp_media_set_media_formats(belle_sdp_media_description_get_media(media_desc), format);
 	}
 
@@ -1204,10 +1284,30 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 	}
 	if (dirStr) belle_sdp_media_description_add_attribute(media_desc, belle_sdp_attribute_create(dirStr, NULL));
 
+	addMidAttributesToSdp(actualCfg, media_desc);
+
+	/* when this stream is a application - webrtc datachannel: do not include any rtp/rtcp relevant attributes */
+	if (actualCfg.hasDataChannel()) {
+		// insert datachannel related attributes (sctp-port, dcmap, dcsa)
+		std::string sctpAttrValue = std::to_string(actualCfg.getSctpLocalPort());
+		belle_sdp_media_description_add_attribute(
+		    media_desc, belle_sdp_attribute_create("sctp-port", sctpAttrValue.c_str()));
+		// loop on dcmap attributes
+		for (const auto &dcmapAttr : actualCfg.getDataChannelMap()) {
+			belle_sdp_media_description_add_attribute(
+			    media_desc, belle_sdp_attribute_create("dcmap", dcmapAttr.toSdpDcmapAttr().c_str()));
+			// add dcsa attributes if any
+			for (const auto &dcsaAttr : dcmapAttr.toSdpDcsaAttrs()) {
+				belle_sdp_media_description_add_attribute(
+				    media_desc, belle_sdp_attribute_create("dcsa", dcsaAttr.c_str()));
+			}
+		}
+		return media_desc;
+	}
+
 	if (actualCfg.rtcp_mux) {
 		belle_sdp_media_description_add_attribute(media_desc, belle_sdp_attribute_create("rtcp-mux", NULL));
 	}
-	addMidAttributesToSdp(actualCfg, media_desc);
 
 	if (actualCfg.mixer_to_client_extension_id != 0) {
 		char *value = bctbx_strdup_printf("%i urn:ietf:params:rtp-hdrext:csrc-audio-level",
@@ -1390,7 +1490,7 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 
 void SalStreamDescription::addDtlsAttributesToMediaDesc(const SalStreamConfiguration &cfg,
                                                         belle_sdp_media_description_t *media_desc) const {
-	if ((cfg.proto == SalProtoUdpTlsRtpSavpf) || (cfg.proto == SalProtoUdpTlsRtpSavp)) {
+	if ((cfg.proto == SalProtoUdpTlsRtpSavpf) || (cfg.proto == SalProtoUdpTlsRtpSavp) || (cfg.proto == SalProtoUdpDtlsSctp)) {
 		if ((cfg.dtls_role != SalDtlsRoleInvalid) && (!cfg.dtls_fingerprint.empty())) {
 			const auto setupAttrValue = SalStreamConfiguration::getSetupAttributeForDtlsRole(cfg.dtls_role);
 			if (!setupAttrValue.empty()) {

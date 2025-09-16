@@ -177,6 +177,22 @@ MS2_PUBLIC int ms_media_stream_sessions_set_srtp_recv_key(MSMediaStreamSessions 
                                                           MSSrtpKeySource source);
 
 /**
+ * Set srtp receiver key for the given Srtp Context.
+ *
+ * @param[in/out]	ctx		The srtp context we want to set the key in
+ * @param[in]		suite		The srtp crypto suite to use
+ * @param[in]		key		Srtp master key and master salt
+ * @param[in]		key_length	key buffer length
+ * @param[in]		source		algorithm used to exchange this key
+ * @return	0 on success, error code otherwise
+ */
+MS2_PUBLIC int ms_srtp_context_set_srtp_recv_key(MSSrtpCtx *ctx,
+                                                          MSCryptoSuite suite,
+                                                          const uint8_t *key,
+                                                          size_t key_length,
+                                                          MSSrtpKeySource source);
+
+/**
  * Set srtp inner receiver key for the given media stream.
  * This is used for double encryption only (RFC8723)
  * If no outer srtp session exists on the stream returns an error
@@ -230,7 +246,7 @@ MS2_PUBLIC int ms_media_stream_sessions_set_srtp_send_key_b64(MSMediaStreamSessi
  * If no srtp session exists on the stream it is created, if it already exists srtp policy is created/modified for the
  * sender side of the stream.
  *
- * @param[in/out]	stream		The mediastream to operate on
+ * @param[in/out]	sessions	The sessions associated to the current media stream
  * @param[in]		suite		The srtp crypto suite to use
  * @param[in]		key		Srtp master key and master salt
  * @param[in]		key_length	key buffer length
@@ -245,11 +261,29 @@ MS2_PUBLIC int ms_media_stream_sessions_set_srtp_send_key(MSMediaStreamSessions 
                                                           MSSrtpKeySource source);
 
 /**
+ * Set srtp sender key for the given Srtp Context.
+ *
+ * @param[in/out]	ctx		The srtp context we want to set the key in
+ * @param[in]		suite		The srtp crypto suite to use
+ * @param[in]		key		Srtp master key and master salt
+ * @param[in]		key_length	key buffer length
+ * @param[in]		stream_type	Srtp suite is applied to RTP stream, RTCP stream or both
+ * @param[in]		source		algorithm used to exchange this key
+ * @return	0 on success, error code otherwise
+ */
+MS2_PUBLIC int ms_srtp_context_set_srtp_send_key(MSSrtpCtx *ctx,
+                                                          MSCryptoSuite suite,
+                                                          const uint8_t *key,
+                                                          size_t key_length,
+                                                          MSSrtpKeySource source);
+
+
+/**
  * Set srtp inner sender key for the given media stream.
  * This is used for double encryption only (RFC8723)
  * If no outer srtp session exists on the stream returns an error
  *
- * @param[in/out]	stream		The mediastream to operate on
+ * @param[in/out]	sessions	The sessions associated to the current media stream
  * @param[in]		suite		The srtp crypto suite to use
  * @param[in]		key		Srtp master key and master salt
  * @param[in]		key_length	key buffer length
@@ -268,7 +302,7 @@ MS2_PUBLIC int ms_media_stream_sessions_set_srtp_inner_send_key(MSMediaStreamSes
  * This is used for double encryption only (RFC8723)
  * If no outer srtp session exists on the stream returns an error
  *
- * @param[in/out]	stream		The mediastream to operate on
+ * @param[in/out]	sessions	The sessions associated to the current media stream
  * @param[in]		suite		The srtp crypto suite to use
  * @param[in]		key		Srtp master key and master salt in a base 64 NULL terminated string
  * @param[in]		stream_type	Srtp suite is applied to RTP stream, RTCP stream or both
@@ -290,7 +324,7 @@ MS2_PUBLIC int ms_media_stream_sessions_set_srtp_inner_send_key_b64(MSMediaStrea
  *   - MS_EKT_DISABLED_WITH_TRANSFER: We are a relay and double encryption is on. EKT is not enabled(so no EKT tag at
  * the end of RPT packets) but we must manage the OHB - this mode is used mostly for testing.
  *
- * @param[in/out]	stream		The mediastream to operate on
+ * @param[in/out]	sessions	The sessions associated to the current media stream
  * @param[in]		mode		One of disabled, enabled or transfer
  * @return	0 on success, error code otherwise
  */
@@ -302,7 +336,7 @@ MS2_PUBLIC int ms_media_stream_sessions_set_ekt_mode(MSMediaStreamSessions *sess
  * EKT is stored in reception context to decrypt incoming ekt tag (more than one can be used in reception as peers mays
  * not update all together)
  *
- * @param[in/out]	stream		The mediastream to operate on
+ * @param[in/out]	sessions	The sessions associated to the current media stream
  * @param[in]		ekt		The parameter set holding all information needed to generate, dispatch and decrypt incoming
  * Srtp master key Data is copied internally and caller can dispose of it at anytime after this call
  * @return	0 on success, error code otherwise
@@ -322,6 +356,15 @@ MS2_PUBLIC const char *ms_crypto_suite_to_string(MSCryptoSuite suite);
  * @param[in/out]	context		the DTLS-SRTP context
  */
 MS2_PUBLIC void ms_srtp_context_delete(MSSrtpCtx *session);
+
+/**
+ * Init a SRTP context and set it in the MSMediaStreamSessions
+ * Optional, if not called, the context is created when needed
+ * does nothing if the SRTP context is already set in session
+ *
+ * @param[in/out]	sessions	The sessions associated to the current media stream
+ */
+MS2_PUBLIC void ms_srtp_context_create(MSMediaStreamSessions *session);
 
 /**
  * Set Ekt tag period - default is 100ms

@@ -132,6 +132,7 @@ public:
 	bool supportZrtp() const;
 	bool hasSrtp() const;
 	bool hasDtls() const;
+	bool hasDataChannel() const;
 	bool hasZrtp() const;
 	bool hasLimeIk() const;
 

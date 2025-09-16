@@ -869,6 +869,35 @@ linphone_call_params_get_input_audio_device(const LinphoneCallParams *params);
  */
 LINPHONE_PUBLIC const LinphoneAudioDevice *
 linphone_call_params_get_output_audio_device(const LinphoneCallParams *params);
+/**
+ * Enable application stream.
+ * @param params #LinphoneCallParams object @notnil
+ * @param enabled A boolean value telling whether to enable application or not.
+ **/
+LINPHONE_PUBLIC void linphone_call_params_enable_datachannel(LinphoneCallParams *params, bool_t enabled);
+
+/**
+ * add a datachannel configuration giving its dcmap attribute. Note: this enables the datachannel
+ * @param params #LinphoneCallParams object @notnil
+ * @param dcmap the dcmap attribute configuring the datachannel. See RFC8864 for syntax
+ * @return true when the channel was added successfully: dcmap is valid
+ */
+LINPHONE_PUBLIC bool_t linphone_call_params_add_datachannel(LinphoneCallParams *params, const char *dcmap);
+
+/**
+ * set the sctp port to be used for datachannel transport.
+ * Note: default value is 5000, this setting has no effect if datachannel is disabled
+ * @param params #LinphoneCallParams object @notnil
+ * @param port the local sctp port used
+ */
+LINPHONE_PUBLIC void linphone_call_params_set_datachannel_sctp_port(LinphoneCallParams *params, uint16_t port);
+
+/**
+ * Tell whether datachannel is enabled or not.
+ * @param params #LinphoneCallParams object @notnil
+ * @return A boolean value telling whether datachannel is enabled or not.
+ **/
+LINPHONE_PUBLIC bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *params);
 
 /************ */
 /* DEPRECATED */

@@ -126,9 +126,12 @@ const char *sal_stream_type_to_string(SalStreamType type) {
 			return "video";
 		case SalText:
 			return "text";
-		default:
+		case SalApplication:
+			return "application";
+		case SalOther:
 			return "other";
 	}
+	return "unknown";
 }
 
 const char *sal_media_proto_to_string(SalMediaProto type) {
@@ -145,9 +148,12 @@ const char *sal_media_proto_to_string(SalMediaProto type) {
 			return "RTP/SAVPF";
 		case SalProtoUdpTlsRtpSavpf:
 			return "UDP/TLS/RTP/SAVPF";
-		default:
+		case SalProtoUdpDtlsSctp:
+			return "UDP/DTLS/SCTP";
+		case SalProtoOther:
 			return "unknown";
 	}
+	return "unknown";
 }
 
 SalMediaProto sal_media_proto_from_string(const char *type) {
@@ -157,6 +163,7 @@ SalMediaProto sal_media_proto_from_string(const char *type) {
 	else if (strcmp(type, "RTP/AVPF") == 0) return SalProtoRtpAvpf;
 	else if (strcmp(type, "RTP/SAVPF") == 0) return SalProtoRtpSavpf;
 	else if (strcmp(type, "UDP/TLS/RTP/SAVPF") == 0) return SalProtoUdpTlsRtpSavpf;
+	else if (strcmp(type, "UDP/DTLS/SCTP") == 0) return SalProtoUdpDtlsSctp;
 	else return SalProtoOther;
 }
 
@@ -172,7 +179,7 @@ SalMediaProto linphone_media_encryption_to_sal_media_proto(const LinphoneMediaEn
 LinphoneMediaEncryption sal_media_proto_to_linphone_media_encryption(const SalMediaProto proto,
                                                                      const bool_t haveZrtpHash) {
 	if ((proto == SalProtoRtpSavpf) || (proto == SalProtoRtpSavp)) return LinphoneMediaEncryptionSRTP;
-	if ((proto == SalProtoUdpTlsRtpSavpf) || (proto == SalProtoUdpTlsRtpSavp)) return LinphoneMediaEncryptionDTLS;
+	if ((proto == SalProtoUdpTlsRtpSavpf) || (proto == SalProtoUdpTlsRtpSavp) || (proto == SalProtoUdpDtlsSctp)) return LinphoneMediaEncryptionDTLS;
 	if (haveZrtpHash) return LinphoneMediaEncryptionZRTP;
 	return LinphoneMediaEncryptionNone;
 }

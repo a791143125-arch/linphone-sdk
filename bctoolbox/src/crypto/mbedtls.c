@@ -920,6 +920,9 @@ int32_t bctbx_ssl_session_reset(bctbx_ssl_context_t *ssl_ctx) {
 }
 
 int32_t bctbx_ssl_write(bctbx_ssl_context_t *ssl_ctx, const unsigned char *buf, size_t buf_length) {
+	if (buf_length > (size_t)(mbedtls_ssl_get_max_out_record_payload(&(ssl_ctx->ssl_ctx)))) {
+		return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+	}
 	int ret = mbedtls_ssl_write(&(ssl_ctx->ssl_ctx), buf, buf_length);
 	/* remap some output code */
 	if (ret == MBEDTLS_ERR_SSL_WANT_WRITE) {

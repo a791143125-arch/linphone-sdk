@@ -42,6 +42,7 @@
 #include <mediastreamer2/mswebcam.h>
 #include <mediastreamer2/qualityindicator.h>
 #include <mediastreamer2/zrtp.h>
+#include <mediastreamer2/ms_datachannel.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +126,7 @@ struct _MSMediaStreamSessions {
 	MSSrtpCtx *srtp_context;
 	MSZrtpContext *zrtp_context;
 	MSDtlsSrtpContext *dtls_context;
+	MSDataChannelHandle *datachannel_context;
 	MSTicker *ticker;
 	bctbx_list_t *auxiliary_sessions; /**< a list of RtpSessions created by the mediastream on new SSRC
 	                                        multiplexed in a bundle */
@@ -1997,6 +1999,88 @@ MS2_PUBLIC void text_stream_unprepare_text(TextStream *stream);
 /**
  * @}
  **/
+
+/**
+ * @addtogroup application_stream_api
+ * @{
+ **/
+
+struct _ApplicationStream {
+	MediaStream ms;
+	MSFilter *source;
+	MSFilter *sink;
+};
+
+typedef struct _ApplicationStream ApplicationStream;
+
+/**
+ * Creates a ApplicationStream object listening on a RTP port.
+ * @param loc_rtp_port the local UDP port to listen for RTP packets.
+ * @param loc_rtcp_port the local UDP port to listen for RTCP packets
+ * @param ipv6 TRUE if ipv6 must be used.
+ * @param factory
+ * @return a new ApplicationStream.
+ **/
+MS2_PUBLIC ApplicationStream *application_stream_new(MSFactory *factory, int loc_rtp_port, int loc_rtcp_port, bool_t ipv6);
+
+/**
+ * Creates a ApplicationStream object from initialized MSMediaStreamSessions.
+ * @param sessions the MSMediaStreamSessions
+ * @param factory
+ * @return a new ApplicationStream
+ **/
+MS2_PUBLIC ApplicationStream *application_stream_new_with_sessions(MSFactory *factory, const MSMediaStreamSessions *sessions);
+
+/**
+ * Creates a ApplicationStream object listening on a RTP port for a dedicated address.
+ * @param loc_ip the local ip to listen for RTP packets. Can be ::, O.O.O.O or any ip4/6 addresses
+ * @param [in] loc_rtp_port the local UDP port to listen for RTP packets.
+ * @param [in] loc_rtcp_port the local UDP port to listen for RTCP packets
+ * @param factory
+ * @return a new ApplicationStream.
+ **/
+MS2_PUBLIC ApplicationStream *application_stream_new2(MSFactory *factory, const char *ip, int loc_rtp_port, int loc_rtcp_port);
+
+/**
+ * Starts a text stream.
+ *
+ * @param[in] stream ApplicationStream object previously created with application_stream_new().
+ * @param[in] profile RtpProfile object holding the PayloadType that can be used during the text session.
+ * @param[in] rem_rtp_addr The remote IP address where to send the text to.
+ * @param[in] rem_rtp_port The remote port where to send the text to.
+ * @param[in] rem_rtcp_addr The remote IP address for RTCP.
+ * @param[in] rem_rtcp_port The remote port for RTCP.
+ * @param[in] payload_type The payload type number used to send the text stream. A valid PayloadType must be available
+ * at this index in the profile.
+ * @param[in] factory
+ */
+MS2_PUBLIC ApplicationStream *application_stream_start(ApplicationStream *stream,
+                                         RtpProfile *profile,
+                                         const char *rem_rtp_addr,
+                                         int rem_rtp_port,
+                                         const char *rem_rtcp_addr,
+                                         int rem_rtcp_port,
+                                         int payload_type);
+
+/**
+ *  Stops the text streaming thread and free everything
+ **/
+MS2_PUBLIC void application_stream_stop(ApplicationStream *stream);
+
+/**
+ * Executes background low priority tasks related to text processing (RTP statistics analysis).
+ * It should be called periodically, for example with an interval of 100 ms or so.
+ *
+ * @param[in] stream ApplicationStream object previously created with application_stream_new().
+ */
+MS2_PUBLIC void application_stream_iterate(ApplicationStream *stream);
+
+MS2_PUBLIC void application_stream_prepare(ApplicationStream *stream);
+MS2_PUBLIC void application_stream_unprepare(ApplicationStream *stream);
+/**
+ * @}
+ **/
+
 
 #ifdef __cplusplus
 }

@@ -39,6 +39,8 @@
 #pragma warning(disable : 4996)
 #endif
 
+#include <atomic>
+
 void setup_conference_info_cbs(LinphoneCoreManager *mgr) {
 	// Needed to send the ICS
 	linphone_core_set_file_transfer_server(mgr->lc, file_transfer_url);
@@ -2418,6 +2420,13 @@ void create_conference_base(time_t start_time,
 				linphone_call_params_enable_mic(new_params, FALSE);
 			}
 
+#ifdef HAVE_DATACHANNEL
+			// DTLS conf creates a datachannel
+			if (encryption == LinphoneMediaEncryptionDTLS) {
+				linphone_call_params_add_datachannel(new_params, "1 subprotocol=\"x-linphone-sndlvl\";max-time=50");
+			}
+#endif //HAVE_DATACHANNEL
+
 			// Let Marie to call the conference after lowercasing the conf-id.
 			// In some tests, Marie's core restarts later on in the test and it will call with the unmodified conference
 			// address (the conf-id parameter will be a mix of uppercase and lowercase characters) and this will allow
@@ -2497,6 +2506,60 @@ void create_conference_base(time_t start_time,
 			    return marie_call && (linphone_call_get_duration(marie_call) > nortp_timeout);
 		    });
 
+#ifdef HAVE_DATACHANNEL
+		if (encryption == LinphoneMediaEncryptionDTLS) {
+			// marie, pauline and laure send a message to the focus using datachannel
+			std::vector<std::byte> marie_msg   = { std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04}, std::byte{0x05} };
+			std::vector<std::byte> pauline_msg = { std::byte{0x10}, std::byte{0x20}, std::byte{0x30}, std::byte{0x40}, std::byte{0x50} };
+			std::vector<std::byte> laure_msg   = { std::byte{0x66}, std::byte{0x67}, std::byte{0x68}, std::byte{0x69}, std::byte{0x6a} };
+			std::atomic<int> msg_counter(0);
+			// the focus adds a callback on each call with Marie, Pauline and Laure
+			auto focusMarieDtc = linphone_call_get_stream(linphone_core_get_call_by_remote_address2(focus.getLc(), marie.getCMgr()->identity), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+			focusMarieDtc->onMessage(1, [&msg_counter, &marie_msg](const std::vector<std::byte> &msg) {
+					if (marie_msg.size() == msg.size() && std::equal(marie_msg.begin(), marie_msg.end(), msg.begin())) {
+						msg_counter.fetch_add(1, std::memory_order_relaxed);
+					} else {
+						lError()<<"Datachannel message from Marie received but not the expected one";
+					}
+				});
+			auto focusPaulineDtc = linphone_call_get_stream(linphone_core_get_call_by_remote_address2(focus.getLc(), pauline.getCMgr()->identity), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+			focusPaulineDtc->onMessage(1, [&msg_counter, &pauline_msg](const std::vector<std::byte> &msg) {
+					if (pauline_msg.size() == msg.size() && std::equal(pauline_msg.begin(), pauline_msg.end(), msg.begin())) {
+						msg_counter.fetch_add(1, std::memory_order_relaxed);
+					} else {
+						lError()<<"Datachannel message from Pauline received but not the expected one";
+					}
+				});
+			auto focusLaureDtc = linphone_call_get_stream(linphone_core_get_call_by_remote_address2(focus.getLc(), laure.getCMgr()->identity), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+			focusLaureDtc->onMessage(1, [&msg_counter, &laure_msg](const std::vector<std::byte> &msg) {
+					if (laure_msg.size() == msg.size() && std::equal(laure_msg.begin(), laure_msg.end(), msg.begin())) {
+						msg_counter.fetch_add(1, std::memory_order_relaxed);
+					} else {
+						lError()<<"Datachannel message from Laure received but not the expected one";
+					}
+				});
+
+			// each participant sends a message to the focus using datachannel, the message contains their identity
+			auto marieDtc = linphone_call_get_stream(linphone_core_get_call_by_remote_address2(marie.getCMgr()->lc, focus.getCMgr()->identity), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+			marieDtc->send(1, marie_msg);
+			auto paulineDtc = linphone_call_get_stream(linphone_core_get_call_by_remote_address2(pauline.getCMgr()->lc, focus.getCMgr()->identity), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+			paulineDtc->send(1, pauline_msg);
+			auto laureDtc = linphone_call_get_stream(linphone_core_get_call_by_remote_address2(laure.getCMgr()->lc, focus.getCMgr()->identity), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+			laureDtc->send(1, laure_msg);
+
+			// wait for messages to be delivered to focus
+			BC_ASSERT_TRUE(CoreManagerAssert({focus, marie, pauline, laure, michelle, berthe})
+			                   .waitUntil(chrono::seconds(10), [&msg_counter] {
+				                   return msg_counter.load(std::memory_order_relaxed) == 3;
+			                   }));
+
+			// reset callback so if a message is delivered late we won't segfault
+			focusMarieDtc->onMessage(1,{});
+			focusPaulineDtc->onMessage(1,{});
+			focusLaureDtc->onMessage(1,{});
+		}
+
+#endif // HAVE_DATACHANNEL
 		// Test invalid peer address
 		BC_ASSERT_PTR_NULL(linphone_core_search_conference_by_identifier(
 		    marie.getLc(), "==sip:toto@sip.conference.org##sip:me@sip.local.org"));
