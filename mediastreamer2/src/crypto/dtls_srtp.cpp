@@ -32,6 +32,10 @@
 
 #include "bctoolbox/crypto.h"
 
+#ifdef HAVE_DATACHANNEL
+#include "usrsctp.h"
+#endif
+
 namespace {
 /** A class to manage all crypto contexts needed by Dtls-Srtp */
 class DtlsCrypto {
@@ -71,6 +75,7 @@ enum class DtlsStatus : uint8_t {
 	HandshakeOver = 3,
 	FingerprintVerified = 4,
 };
+
 } // anonymous namespace
 
 struct _MSDtlsSrtpContext {
@@ -90,6 +95,9 @@ struct _MSDtlsSrtpContext {
 	uint64_t rtp_time_reference; /**< an epoch in ms, used to manage retransmission when we are client */
 	bool retry_sending;          /**< a flag to set a retry after failed packet sending */
 	std::mutex mtx;              /**< lock any operation on this context */
+#ifdef HAVE_DATACHANNEL
+	struct socket *mSctpSock;    /**< socket used by sctp connection */
+#endif // HAVE_DATACHANNEL
 
 	_MSDtlsSrtpContext() = delete;
 	_MSDtlsSrtpContext(MSMediaStreamSessions *sessions, MSDtlsSrtpParams *params) {
@@ -101,6 +109,9 @@ struct _MSDtlsSrtpContext {
 		mStreamSessions = sessions;
 		mChannelStatus = DtlsStatus::ContextNotReady;
 		mSrtpProtectionProfile = MS_CRYPTO_SUITE_INVALID;
+#ifdef HAVE_DATACHANNEL
+		mSctpSock = NULL;
+#endif // HAVE_DATACHANNEL
 	};
 	~_MSDtlsSrtpContext() = default;
 
@@ -114,6 +125,63 @@ struct _MSDtlsSrtpContext {
 };
 
 namespace {
+#ifdef HAVE_DATACHANNEL
+int usrsctp_init_done = 0;
+
+// Send callback used by usrsctp
+int sctp_send_cb(void *addr, void *buffer, size_t length, BCTBX_UNUSED(uint8_t tos), BCTBX_UNUSED(uint8_t set_df)) {
+
+	MSDtlsSrtpContext *ctx = (MSDtlsSrtpContext *)addr;
+	if (!ctx || !ctx->mDtlsCryptoContext.ssl || ctx->mChannelStatus < DtlsStatus::HandshakeOver) {
+		ms_warning("SCTP/Datachannel trying send data but the DTLS handshake is not over");
+		return -1; // context is not ready to send data
+	}
+
+	// Send SCTP packet inside DTLS application data
+	int ret = bctbx_ssl_write(ctx->mDtlsCryptoContext.ssl, (uint8_t *)buffer, length);
+
+	if (ret != (int)length) {
+		ms_warning("SCTP/Datachannel trying send data but the DTLS answer -%x", -ret);
+		return -1;
+	}
+
+	return 0; // success
+}
+int sctp_recv_cb(BCTBX_UNUSED(struct socket *sock), BCTBX_UNUSED(union sctp_sockstore addr),
+                        void *data, size_t datalen,
+                        BCTBX_UNUSED(struct sctp_rcvinfo rcv), BCTBX_UNUSED(int flags), BCTBX_UNUSED(void *ulp_info))
+{
+    if (data == NULL) {
+        // Notification or EOF
+        ms_message("[SCTP RECV] Notification or EOF\n");
+        return 1;
+    }
+
+    ms_message("[SCTP RECV] Got message: %.*s\n", (int)datalen, (char *)data);
+
+    // usrsctp allocates data buffer; must free it!
+    free(data);
+    return 1;
+}
+
+void ms_usrsctp_init(void) {
+	if (usrsctp_init_done == 0) {
+		ms_message("ms_usrsctp_init");
+		usrsctp_init(0, sctp_send_cb, NULL);
+		//usrsctp_sysctl_set_sctp_debug_on(0); // disable usrsctp debug
+	}
+	usrsctp_init_done++;
+}
+
+void ms_usrsctp_shutdown(void) {
+	usrsctp_init_done--;
+	if (usrsctp_init_done == 0) {
+		ms_message("ms_usrsctp_shutdown");
+		usrsctp_finish();
+	}
+}
+#endif // HAVE_DATACHANNEL
+
 /***********************************************/
 /***** LOCAL FUNCTIONS                     *****/
 /***********************************************/
@@ -350,6 +418,9 @@ int ms_dtls_srtp_rtp_process_on_receive(struct _RtpTransportModifier *t, mblk_t 
 
 	std::lock_guard<std::mutex> lock(ctx->mtx);
 	/* process it */
+	/* handshake is already over */
+	if (ctx->mChannelStatus >= DtlsStatus::HandshakeOver) {
+	}
 	int ret = ctx->processDtlsPacket(msg);
 	if ((ret == 0) &&
 	    (ctx->mChannelStatus ==
@@ -390,12 +461,37 @@ int ms_dtls_srtp_rtp_process_on_receive(struct _RtpTransportModifier *t, mblk_t 
 				ctx->checkChannelStatus();
 			}
 		}
+#ifdef HAVE_DATACHANNEL
+		// handshake is over, open a SCTP connection for datachannel
+    		ctx->mSctpSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP,
+                          sctp_recv_cb, NULL, 0, NULL);
+		if (!ctx->mSctpSock) {
+			ms_warning("Unable to create the SCTP socket when DTLS handshake is completed");
+		        return 0;
+    		}
 
-		if (ctx->mRole != MSDtlsSrtpRoleIsServer) { /* close the connection only if we are client, if we are server,
-			                                          the client may ask again for last packets */
-			/*FireFox version 43 requires DTLS channel to be kept openned, probably a bug in FireFox ret =
-			 * ssl_close_notify( &(ctx->mDtlsCryptoContext.ssl) );*/
-		}
+		// Enable SCTP options (needed for DataChannels)
+		int on = 1;
+		usrsctp_setsockopt(ctx->mSctpSock, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on));
+
+		// Bind local address
+		struct sockaddr_conn sconn_local;
+		memset(&sconn_local, 0, sizeof(sconn_local));
+		sconn_local.sconn_family = AF_CONN; // not an IP connection
+		sconn_local.sconn_port   = htons(5000); // port used by WebRtc
+		sconn_local.sconn_addr   = (void *)ctx; // pass this context to it
+		usrsctp_bind(ctx->mSctpSock, (struct sockaddr *)&sconn_local, sizeof(sconn_local));
+
+		// Bind remote address and connect
+		struct sockaddr_conn sconn_remote;
+		memset(&sconn_remote, 0, sizeof(sconn_remote));
+		sconn_remote.sconn_family = AF_CONN; // not an IP connection
+		sconn_remote.sconn_port   = htons(5000); // port used by WebRtc
+		sconn_remote.sconn_addr   = (void *)ctx; // pass this context to it
+		usrsctp_connect(ctx->mSctpSock, (struct sockaddr *)&sconn_remote, sizeof(sconn_remote));
+
+		
+#endif // HAVE_DATACHANNEL
 	}
 	return 0;
 }
@@ -863,6 +959,9 @@ extern "C" MSDtlsSrtpContext *ms_dtls_srtp_context_new(MSMediaStreamSessions *se
 	}
 
 	context->mChannelStatus = DtlsStatus::ContextReady;
+#ifdef HAVE_DATACHANNEL
+	ms_usrsctp_init();
+#endif
 	return context;
 }
 
@@ -877,6 +976,12 @@ extern "C" void ms_dtls_srtp_start(MSDtlsSrtpContext *context) {
 }
 
 extern "C" void ms_dtls_srtp_context_destroy(MSDtlsSrtpContext *ctx) {
+	if (ctx != NULL) {
+		if (ctx->mDtlsCryptoContext.ssl != NULL && ctx->mChannelStatus >= DtlsStatus::HandshakeOver) { 
+			bctbx_ssl_close_notify( ctx->mDtlsCryptoContext.ssl );
+		}
+		ms_usrsctp_shutdown();
+	}
 	delete ctx;
 	ms_message("DTLS-SRTP context destroyed");
 }
