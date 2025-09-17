@@ -35,7 +35,7 @@ class VoskTranscript : public AbstractTranscript {
 
 public:
 	/**
-	 * @brief initialise the transcription model.
+	 * @brief initialize the transcription model.
 	 * @param f Associated MSFilter (MSTranscript here).
 	 */
 	int init(MSFilter *f) override;

@@ -264,14 +264,23 @@ static int ms_transcript_set_chunk_duration(MSFilter *f, void *arg) {
 	return 0;
 }
 
-static int ms_transcript_start_transcription(MSFilter *f, void *arg) {
+static int ms_transcript_start(MSFilter *f, BCTBX_UNUSED(void *arg)) {
 	MSTranscript *transcript = static_cast<MSTranscript *>(f->data);
-	transcript->enable = *(bool_t *)arg;
 	if (transcript->enable) {
-		ms_message("Transcription started");
-	} else {
-		ms_message("Transcription stopped");
+		return 0;
 	}
+	transcript->enable = true;
+	ms_message("Transcription started");
+	return 0;
+}
+
+static int ms_transcript_pause(MSFilter *f, BCTBX_UNUSED(void *arg)) {
+	MSTranscript *transcript = static_cast<MSTranscript *>(f->data);
+	if (!transcript->enable) {
+		return 0;
+	}
+	transcript->enable = false;
+	ms_message("Transcription paused");
 	return 0;
 }
 
@@ -290,7 +299,8 @@ static int ms_transcript_set_audio_stream(MSFilter *f, void *arg) {
 
 static MSFilterMethod transcript_methods[] = {{MS_TRANSCRIPT_SET_MODEL_PATH, ms_transcript_set_model_path},
                                               {MS_TRANSCRIPT_INIT_MODEL, ms_transcript_init_model},
-                                              {MS_TRANSCRIPT_START, ms_transcript_start_transcription},
+                                              {MS_TRANSCRIPT_START, ms_transcript_start},
+                                              {MS_TRANSCRIPT_PAUSE, ms_transcript_pause},
                                               {MS_TRANSCRIPT_FILE_DURATION, ms_transcript_set_file_duration},
                                               {MS_TRANSCRIPT_SET_CHUNK_DURATION, ms_transcript_set_chunk_duration},
                                               {MS_TRANSCRIPT_SET_OVERLAP_DURATION, ms_transcript_set_overlap_duration},
@@ -298,7 +308,6 @@ static MSFilterMethod transcript_methods[] = {{MS_TRANSCRIPT_SET_MODEL_PATH, ms_
                                               {0, NULL}};
 
 extern "C" {
-
 MSFilterDesc ms_transcript_desc = {MS_TRANSCRIPT_ID,
                                    "MSTranscript",
                                    "Audio transcript filter.",

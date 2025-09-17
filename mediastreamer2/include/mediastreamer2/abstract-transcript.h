@@ -103,7 +103,6 @@ protected:
 	int mSampleRate;        /** Samplerate used for the transcribed audio.*/
 	/** Vector containing the last transcribed words. Sent via the events*/
 	std::vector<MSTranscription> mVectorTranscription;
-	bool_t mDisable = false;  /** If true, we disable the transcription.*/
 	int mFileDurationMs = -1; /** Duration of the file played (-1 if not set) */
 };
 

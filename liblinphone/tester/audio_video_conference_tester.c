@@ -23,7 +23,6 @@
 
 #include "belle-sip/sipstack.h"
 
-#include "linphone/api/c-transcription.h"
 #include "mediastreamer2/msanalysedisplay.h"
 #include "mediastreamer2/msmire.h"
 #include "mediastreamer2/msutils.h"
@@ -4686,18 +4685,6 @@ int liblinphone_tester_check_recorded_audio(const char *hellopath, const char *r
 	return 0;
 }
 
-void transcription_cb(LinphoneTranscription *transcription) {
-	uint32_t lastId = linphone_transcription_get_last_sentence_id(transcription);
-	uint32_t id = 1;
-	if (system("clear")) printf("DIDNT CLEAR!\n");
-	while (id <= lastId) {
-		printf("sentence from cb ID : %u  NAME : [%s] %s\n", id,
-		       linphone_transcription_get_name_by_id(transcription, id),
-		       linphone_transcription_get_sentence_by_id(transcription, id));
-		id++;
-	}
-}
-
 static void simple_conference_with_file_player(void) {
 	LinphoneCoreManager *marie = create_mgr_for_conference("marie_rc", TRUE, NULL);
 	linphone_core_enable_conference_server(marie->lc, TRUE);
@@ -4706,7 +4693,7 @@ static void simple_conference_with_file_player(void) {
 	    create_mgr_for_conference(liblinphone_tester_ipv6_available() ? "laure_tcp_rc" : "laure_rc_udp", TRUE, NULL);
 	LinphoneCoreManager *michelle = create_mgr_for_conference("michelle_rc", TRUE, NULL);
 
-	char *hellopath = bc_tester_res("sounds/367-130732-0026.wav");
+	char *hellopath = bc_tester_res("sounds/ahbahouaismaisbon.wav");
 	char *pauline_dummy_recordpath = bc_tester_file("record-local_conference_with_file_player_dummy_pauline.wav");
 	char *laure_dummy_recordpath = bc_tester_file("record-local_conference_with_file_player_dummy_laure.wav");
 	char *michelle_dummy_recordpath = bc_tester_file("record-local_conference_with_file_player_dummy_michelle.wav");
@@ -4738,9 +4725,6 @@ static void simple_conference_with_file_player(void) {
 	linphone_core_set_use_files(michelle->lc, TRUE);
 	linphone_core_set_play_file(michelle->lc, NULL);
 	linphone_core_set_record_file(michelle->lc, michelle_dummy_recordpath);
-
-	// LinphoneTranscription *transcription = linphone_core_get_transcription(pauline->lc);
-	// // linphone_transcription_set_display_cb(transcription, transcription_cb);
 
 	bctbx_list_t *participants = NULL;
 	participants = bctbx_list_append(participants, laure);

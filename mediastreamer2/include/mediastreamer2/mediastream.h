@@ -1274,8 +1274,6 @@ MS2_PUBLIC void audio_stream_set_transcription_method(AudioStream *stream, const
 MS2_PUBLIC void
 audio_stream_set_transcription_callback(AudioStream *s, AudioTranscriptionCallback cb, void *user_pointer);
 
-MS2_PUBLIC void audio_stream_start_transcription(AudioStream *stream, bool_t activate);
-
 /**
  * @}
  **/

@@ -96,11 +96,16 @@ LINPHONE_PUBLIC const bctbx_list_t *
 linphone_transcription_get_callbacks_list(const LinphoneTranscription *transcription);
 
 /**
- * Turns the transcription ON/OFF. Can be used during a call.
- * @param transcription the #LinphoneTranscription object @notnil
- * @param activate turns the transcription on if true, off if false @notnil
+ * Starts the transcription of the audio stream.
+ * @param transcription The #LinphoneTranscription object. @notnil
  */
-LINPHONE_PUBLIC void linphone_transcription_activate(LinphoneTranscription *transcription, bool_t activate);
+LINPHONE_PUBLIC void linphone_transcription_start(LinphoneTranscription *transcription);
+
+/**
+ * Pauses the transcription of the audio stream.
+ * @param transcription The #LinphoneTranscription object. @notnil
+ */
+LINPHONE_PUBLIC void linphone_transcription_pause(LinphoneTranscription *transcription);
 
 /**
  * Get the sentence associated to the given sentence id #LinphoneTranscription.

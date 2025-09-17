@@ -37,16 +37,7 @@
 #include <vosk_api.h>
 #include <whisper.h>
 
-// TODO to clean
-// #define AUDIO_FILE "sounds/hello16000.wav"    // english spoken
-// #define AUDIO_FILE "sounds/hello16000-1s.wav" // english spoken
-// #define AUDIO_FILE "sounds/audio_clean/2961-960-0001.wav" // english spoken
-// #define AUDIO_FILE "sounds/hello8000.wav" // english spoken
-#define AUDIO_FILE "sounds/367-130732-0026.wav" // english spoken
-// #define AUDIO_FILE "sounds/367-130732-0026_blank_silence.wav" // english spoken
-// #define AUDIO_FILE "sounds/237-126133-0002_noisy_long_silence.wav"
-// #define AUDIO_FILE "sounds/audio_noisy_dirty/367-130732-0026_noisy.wav"
-
+#define AUDIO_FILE "sounds/crawfish.wav"
 #define MAX_WORDS 1000
 #define MAX_WORD_LEN 100
 

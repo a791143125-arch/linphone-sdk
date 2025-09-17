@@ -18,11 +18,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "bctoolbox/tester.h"
 #include "liblinphone_tester.h"
 #include "linphone/api/c-transcription-cbs.h"
 #include "linphone/api/c-transcription.h"
 #include "linphone/api/c-types.h"
 #include "linphone/core.h"
+#include "ortp/port.h"
 #include "private_functions.h"
 #include <cstdint>
 #include <cstring>
@@ -148,7 +150,7 @@ static void check_transcription(LinphoneTranscription *crawfish_transcription, c
 	BC_ASSERT_LOWER(wer, wer_lim, float, "%f");
 }
 
-static void call_transcription(const char *method, const char *model_path) {
+static void call_transcription(const char *method, const char *model_path, bool_t with_pause) {
 	LinphoneCoreManager *marie;
 	LinphoneCoreManager *pauline;
 	char *speechfile = bc_tester_res("sounds/crawfish.wav");
@@ -207,25 +209,47 @@ static void call_transcription(const char *method, const char *model_path) {
 		_linphone_transcription_notify_result_to_display_available(transcription);
 		linphone_transcription_cbs_unref(transcription_cbs);
 
-		wait_for_until(marie->lc, pauline->lc, NULL, 0, 20000);
-		end_call(pauline, marie);
+		if (with_pause) {
 
-		double similar;
-		double min_threshold = .75f;
-		double max_threshold = 1.f;
-		BC_ASSERT_EQUAL(liblinphone_tester_audio_diff(speechfile, recordpath, &similar, &audio_cmp_params, NULL, NULL),
-		                0, int, "%d");
-		BC_ASSERT_GREATER(similar, min_threshold, double, "%g");
-		BC_ASSERT_LOWER(similar, max_threshold, double, "%g");
-		if (similar < min_threshold || similar > max_threshold) {
-			audio_cmp_failed = TRUE;
+			wait_for_until(marie->lc, pauline->lc, NULL, 0, 5000);
+			uint32_t lastId_start = linphone_transcription_get_last_sentence_id(transcription);
+			linphone_transcription_pause(transcription);
+			wait_for_until(marie->lc, pauline->lc, NULL, 0, 5000);
+			uint32_t lastId_pause = linphone_transcription_get_last_sentence_id(transcription);
+			BC_ASSERT_EQUAL(lastId_pause, lastId_start, uint32_t, "%u");
+			linphone_transcription_start(transcription);
+			wait_for_until(marie->lc, pauline->lc, NULL, 0, 5000);
+			lastId_start = linphone_transcription_get_last_sentence_id(transcription);
+			BC_ASSERT_GREATER_STRICT(lastId_start, lastId_pause, uint32_t, "%u");
+			linphone_transcription_pause(transcription);
+			wait_for_until(marie->lc, pauline->lc, NULL, 0, 5000);
+			lastId_pause = linphone_transcription_get_last_sentence_id(transcription);
+			BC_ASSERT_EQUAL(lastId_pause, lastId_start, uint32_t, "%u");
+			end_call(pauline, marie);
+
+		} else {
+
+			wait_for_until(marie->lc, pauline->lc, NULL, 0, 20000);
+			end_call(pauline, marie);
+
+			double similar;
+			double min_threshold = .75f;
+			double max_threshold = 1.f;
+			BC_ASSERT_EQUAL(
+			    liblinphone_tester_audio_diff(speechfile, recordpath, &similar, &audio_cmp_params, NULL, NULL), 0, int,
+			    "%d");
+			BC_ASSERT_GREATER(similar, min_threshold, double, "%g");
+			BC_ASSERT_LOWER(similar, max_threshold, double, "%g");
+			if (similar < min_threshold || similar > max_threshold) {
+				audio_cmp_failed = TRUE;
+			}
+
+			if (!audio_cmp_failed) {
+				unlink(recordpath);
+			}
+
+			check_transcription(transcription, method);
 		}
-
-		if (!audio_cmp_failed) {
-			unlink(recordpath);
-		}
-
-		check_transcription(transcription, method);
 	}
 end:
 	if (transcription) linphone_transcription_unref(transcription);
@@ -238,18 +262,28 @@ end:
 static void transcribe_with_vosk(void) {
 	const char *method = "vosk";
 	const char *model_path = "vosk-model-en-us-0.22-lgraph";
-	call_transcription(method, model_path);
+	bool_t with_pause = false;
+	call_transcription(method, model_path, with_pause);
 }
 
 static void transcribe_with_whispercpp_overlap(void) {
 	const char *method = "whispercpp_overlap";
 	const char *model_path = "linphone-sdk/desktop/whisper.cpp/models/ggml-base.en-q8_0.bin";
-	call_transcription(method, model_path);
+	bool_t with_pause = false;
+	call_transcription(method, model_path, with_pause);
+}
+
+static void pause_in_transcription(void) {
+	const char *method = "whispercpp_overlap";
+	const char *model_path = "linphone-sdk/desktop/whisper.cpp/models/ggml-base.en-q8_0.bin";
+	bool_t with_pause = true;
+	call_transcription(method, model_path, with_pause);
 }
 
 static test_t transcription_tests[] = {
     TEST_NO_TAG("Transcribe with vosk", transcribe_with_vosk),
-    TEST_NO_TAG("Transcribe with whisper.cpp and overlap", transcribe_with_whispercpp_overlap)};
+    TEST_NO_TAG("Transcribe with whisper.cpp and overlap", transcribe_with_whispercpp_overlap),
+    TEST_NO_TAG("Pause in transcription", pause_in_transcription)};
 
 test_suite_t transcription_test_suite = {"Call with transcription",
                                          NULL,

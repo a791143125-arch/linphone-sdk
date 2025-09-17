@@ -2329,14 +2329,6 @@ void audio_stream_enable_transcription(AudioStream *stream, bool_t enabled) {
 	stream->use_transcription = enabled;
 }
 
-void audio_stream_start_transcription(AudioStream *stream, bool_t start) {
-	if (stream->transcript) {
-		ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_START, &start);
-	} else {
-		ms_warning("No transcript filter, cannot start/stop transcription.");
-	}
-}
-
 void audio_stream_set_transcription_model_path(AudioStream *stream, const char *model_path) {
 	stream->transcription_model_path = model_path;
 }

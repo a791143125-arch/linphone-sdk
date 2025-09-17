@@ -93,15 +93,28 @@ void Transcription::setAudioStream(AudioStream *stream) {
 	audio_stream_set_transcription_callback(stream, segment_transcribed_cb, this->toC());
 }
 
-void Transcription::activate(bool_t activate) {
+void Transcription::start() {
 	if (!mStream) {
-		ms_warning("The audiostream is not yet initialized, use the transcription activate method during a call.");
+		ms_warning("The audiostream is not yet initialized.");
 		return;
 	}
 	if (mStream->transcript) {
-		ms_filter_call_method(mStream->transcript, MS_TRANSCRIPT_START, &activate);
+		ms_filter_call_method_noarg(mStream->transcript, MS_TRANSCRIPT_START);
 	} else {
-		ms_warning("No transcription filter in the audio stream, cannot activate/desactivate transcription.");
+		ms_warning("No transcription filter in the audio stream, cannot start transcription.");
+	}
+}
+
+// TODO set the sentence id to the next value in case of pause, or flush the previous transcription
+void Transcription::pause() {
+	if (!mStream) {
+		ms_warning("The audiostream is not yet initialized.");
+		return;
+	}
+	if (mStream->transcript) {
+		ms_filter_call_method_noarg(mStream->transcript, MS_TRANSCRIPT_PAUSE);
+	} else {
+		ms_warning("No transcription filter in the audio stream, cannot pause transcription.");
 	}
 }
 
@@ -145,7 +158,7 @@ void Transcription::addWordToSentence(MSTranscription transcription) {
 	}
 }
 
-bool_t Transcription::verifyIfCorrection(MSTranscription tr) {
+bool_t Transcription::testIfCorrection(MSTranscription tr) {
 	bool_t modified = false;
 	float startCurrent = tr.begining;
 	float endCurrent = tr.timestamp;
@@ -176,7 +189,7 @@ void Transcription::processTranscriptionsForApp() {
 			addWordToSentence(tr);
 			mModified = true;
 		} else {
-			if (verifyIfCorrection(tr)) mModified = true;
+			if (testIfCorrection(tr)) mModified = true;
 		}
 	}
 }

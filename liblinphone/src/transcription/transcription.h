@@ -73,7 +73,7 @@ class LINPHONE_PUBLIC Transcription : public bellesip::HybridObject<LinphoneTran
 
 private:
 	void processTranscriptionsForApp();
-	bool_t verifyIfCorrection(MSTranscription tr);
+	bool_t testIfCorrection(MSTranscription tr);
 	void addWordToSentence(MSTranscription transcription);
 
 public:
@@ -90,7 +90,8 @@ public:
 	// std::vector<uint32_t> getCorrectedById(uint32_t sentenceId);
 	uint32_t getLastSentenceId();
 	void setAudioStream(AudioStream *stream);
-	void activate(bool_t activate);
+	void start();
+	void pause();
 	std::string getNameBySsrc(uint32_t ssrc);
 
 	std::string mTest;

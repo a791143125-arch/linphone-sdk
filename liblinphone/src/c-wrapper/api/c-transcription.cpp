@@ -68,9 +68,15 @@ const bctbx_list_t *linphone_transcription_get_callbacks_list(const LinphoneTran
 	return Transcription::toCpp(transcription)->getCCallbacksList();
 }
 
-void linphone_transcription_activate(LinphoneTranscription *transcription, bool_t activate) {
+void linphone_transcription_start(LinphoneTranscription *transcription) {
 	if (transcription) {
-		Transcription::toCpp(transcription)->activate(activate);
+		Transcription::toCpp(transcription)->start();
+	}
+}
+
+void linphone_transcription_pause(LinphoneTranscription *transcription) {
+	if (transcription) {
+		Transcription::toCpp(transcription)->pause();
 	}
 }
 
