@@ -23,8 +23,11 @@
 
 #include "linphone/api/c-transcription-cbs.h"
 #include "linphone/api/c-types.h"
-#include "mediastreamer2/mediastream.h"
-#include "mediastreamer2/mstranscript.h"
+
+/**
+ * @addtogroup call
+ * @{
+ */
 
 #ifdef __cplusplus
 extern "C" {

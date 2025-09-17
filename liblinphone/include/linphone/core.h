@@ -3649,7 +3649,7 @@ LINPHONE_PUBLIC void linphone_core_enable_transcription(LinphoneCore *core, bool
 /**
  * Set the model path of the model used for transcription
  * @param core #LinphoneCore object @notnil
- * @param model_path path to the model (absolute)
+ * @param model_path path to the model (absolute) @notnil
  * @ingroup call
  */
 LINPHONE_PUBLIC void linphone_core_set_transcription_model_path(LinphoneCore *core, const char *model_path);
@@ -3657,7 +3657,7 @@ LINPHONE_PUBLIC void linphone_core_set_transcription_model_path(LinphoneCore *co
 /**
  * get the path to the transcription model.
  * @param core #LinphoneCore object @notnil
- * @return the path to the transcription model.
+ * @return the path to the transcription model @notnil
  * @ingroup call
  */
 LINPHONE_PUBLIC const char *linphone_core_get_transcription_model_path(const LinphoneCore *core);
@@ -3673,7 +3673,7 @@ LINPHONE_PUBLIC LinphoneTranscription *linphone_core_create_transcription(Linpho
 /**
  * Set the transcription method (Between implemented ones like whispercpp or vosk)
  * @param core #LinphoneCore object @notnil
- * @param method method used (absolute or relative?)
+ * @param method method used @notnil
  * @ingroup call
  */
 LINPHONE_PUBLIC void linphone_core_set_transcription_method(LinphoneCore *core, const char *method);
@@ -3681,7 +3681,7 @@ LINPHONE_PUBLIC void linphone_core_set_transcription_method(LinphoneCore *core, 
 /**
  * get the transcription method used.
  * @param core #LinphoneCore object @notnil
- * @return the method used.
+ * @return the method used. @notnil
  * @ingroup call
  */
 LINPHONE_PUBLIC const char *linphone_core_get_transcription_method(const LinphoneCore *core);
@@ -3689,7 +3689,7 @@ LINPHONE_PUBLIC const char *linphone_core_get_transcription_method(const Linphon
 /**
  * Sets a transcription object in the core.
  * @param core The #LinphoneCore object @notnil
- * @param transcription The #LinphoneTranscrption object @notnil
+ * @param transcription The #LinphoneTranscription object @maybenil
  * @ingroup call
  **/
 LINPHONE_PUBLIC void linphone_core_set_transcription(LinphoneCore *core, LinphoneTranscription *transcription);
@@ -3697,7 +3697,7 @@ LINPHONE_PUBLIC void linphone_core_set_transcription(LinphoneCore *core, Linphon
 /**
  * Get the #LinphoneTranscription object.
  * @param core #LinphoneCore object @notnil
- * @return The #LinphoneTranscription object @notnil
+ * @return The #LinphoneTranscription object @maybenil
  * @ingroup call
  */
 LINPHONE_PUBLIC LinphoneTranscription *linphone_core_get_transcription(const LinphoneCore *core);
