@@ -20,77 +20,52 @@
 
 #include "linphone/api/c-transcription.h"
 #include "c-wrapper/c-wrapper.h"
-#include "c-wrapper/internal/c-tools.h"
-#include "linphone/api/c-callbacks.h"
-#include "linphone/api/c-types.h"
-#include "private.h"
+#include "core/core.h"
+#include "linphone/api/c-transcription-cbs.h"
 #include "transcription/transcription.h"
-#include <cstddef>
-#include <cstdint>
 
 using namespace LinphonePrivate;
 
-LinphoneTranscription *linphone_transcription_new(LinphoneCore *lc) {
-	return Transcription::createCObject(lc ? L_GET_CPP_PTR_FROM_C_OBJECT(lc) : nullptr);
+void _linphone_transcription_notify_result_to_display_available(LinphoneTranscription *transcription) {
+	LINPHONE_HYBRID_OBJECT_INVOKE_CBS_NO_ARG(Transcription, Transcription::toCpp(transcription),
+	                                         linphone_transcription_cbs_get_transcription_display);
 }
 
-// bool_t linphone_transcription_is_equal(const LinphoneTranscription *transcription,
-//                                        const LinphoneTranscription *other_transcription) {
-//     return Transcription::toCpp(transcription)->isEqual(*Transcription::toCpp(other_transcription));
-// }
-
-LinphoneTranscription *linphone_transcription_clone(const LinphoneTranscription *transcription) {
-	return Transcription::toCpp(transcription)->clone()->toC();
+LinphoneTranscription *linphone_core_create_transcription(LinphoneCore *core) {
+	return Transcription::createCObject(core ? L_GET_CPP_PTR_FROM_C_OBJECT(core) : nullptr);
 }
 
 LinphoneTranscription *linphone_transcription_ref(LinphoneTranscription *transcription) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->ref();
-		return transcription;
-	}
-	return NULL;
+	Transcription::toCpp(transcription)->ref();
+	return transcription;
 }
 
 void linphone_transcription_unref(LinphoneTranscription *transcription) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->unref();
-	}
+	Transcription::toCpp(transcription)->unref();
 }
 
-void linphone_transcription_add(LinphoneTranscription *transcription, MSTranscription tr) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->addTranscription(tr);
-	}
+void linphone_transcription_set_user_data(LinphoneTranscription *transcription, void *user_data) {
+	Transcription::toCpp(transcription)->setUserData(user_data);
 }
 
-void linphone_transcription_add_cb(LinphoneTranscription *transcription, LinphoneTranscriptionCb cb) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->addTranscriptionCb(cb);
-	}
+void *linphone_transcription_get_user_data(const LinphoneTranscription *transcription) {
+	return Transcription::toCpp(transcription)->getUserData();
 }
 
-void linphone_transcription_set_display_cb(LinphoneTranscription *transcription, LinphoneTranscriptionDisplayCb cb) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->setDisplayTranscriptionCb(cb);
-	}
+void linphone_transcription_add_callbacks(LinphoneTranscription *transcription, LinphoneTranscriptionCbs *cbs) {
+	Transcription::toCpp(transcription)->addCallbacks(TranscriptionCbs::toCpp(cbs)->getSharedFromThis());
 }
 
-void linphone_transcription_set_audiostream(LinphoneTranscription *transcription, AudioStream *stream) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->setAudioStream(stream);
-	}
+void linphone_transcription_remove_callbacks(LinphoneTranscription *transcription, LinphoneTranscriptionCbs *cbs) {
+	Transcription::toCpp(transcription)->removeCallbacks(TranscriptionCbs::toCpp(cbs)->getSharedFromThis());
 }
 
-void linphone_transcription_activate(LinphoneTranscription *transcription, bool_t activate) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->activate(activate);
-	}
+LinphoneTranscriptionCbs *linphone_transcription_get_current_callbacks(const LinphoneTranscription *transcription) {
+	return Transcription::toCpp(transcription)->getCurrentCallbacks()->toC();
 }
 
-void linphone_transcription_set_conference(LinphoneTranscription *transcription, LinphoneConference *conference) {
-	if (transcription) {
-		Transcription::toCpp(transcription)->setConf(conference);
-	}
+const bctbx_list_t *linphone_transcription_get_callbacks_list(const LinphoneTranscription *transcription) {
+	return Transcription::toCpp(transcription)->getCCallbacksList();
 }
 
 const char *linphone_transcription_get_sentence_by_id(LinphoneTranscription *transcription, uint32_t id) {
@@ -113,18 +88,3 @@ uint32_t linphone_transcription_get_last_sentence_id(LinphoneTranscription *tran
 	}
 	return 0;
 }
-
-// uint32_t *linphone_transcription_get_corrected_by_id(LinphoneTranscription *transcription, uint32_t sentence_id) {
-// 	if (transcription) {
-// 		return Transcription::toCpp(transcription)->getCorrectedById(sentence_id).data();
-// 	}
-// 	return 0;
-// }
-// size_t linphone_transcription_get_corrected_size_by_id(LinphoneTranscription *transcription, uint32_t sentence_id) {
-// 	if (transcription) {
-// 		return Transcription::toCpp(transcription)->getLastSentenceId();
-// 	}
-// 	return 0;
-// }
-
-// L_GET_CPP_PTR_FROM_C_OBJECT()

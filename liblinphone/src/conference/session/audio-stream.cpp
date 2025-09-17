@@ -40,6 +40,7 @@
 #include "media-session.h"
 #include "mixers.h"
 #include "nat/ice-service.h"
+#include "transcription/transcription.h"
 
 using namespace ::std;
 
@@ -623,7 +624,10 @@ void MS2AudioStream::render(const OfferAnswerContext &params, CallSession::State
 
 		if (linphone_core_transcription_enabled(getCCore())) {
 			audio_stream_set_active_speaker_callback(mStream, &MS2AudioStream::sAudioStreamActiveSpeakerCb, this);
-			linphone_transcription_set_audiostream(linphone_core_get_transcription(getCCore()), mStream);
+
+			LinphoneTranscription *transcription = linphone_core_get_transcription(getCCore());
+			// TODO use a listener to handle the transcription from audiostream
+			Transcription::toCpp(transcription)->setAudioStream(mStream);
 		}
 
 		audio_stream_set_audio_route_changed_callback(mStream, &MS2AudioStream::audioRouteChangeCb, &getCore());

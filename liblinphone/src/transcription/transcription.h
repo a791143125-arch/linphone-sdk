@@ -18,13 +18,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#ifndef _L_TRANSCRIPTION_H_
+#define _L_TRANSCRIPTION_H_
 
 #include "bctoolbox/list.h"
 #include "belle-sip/object++.hh"
 #include "core/core-accessor.h"
-#include "linphone/api/c-callbacks.h"
 #include "linphone/api/c-types.h"
+
+#include "linphone/api/c-callbacks.h"
 #include "mediastreamer2/mediastream.h"
 #include "mediastreamer2/mstranscript.h"
 #include <cstdint>
@@ -33,7 +35,18 @@
 #include <string>
 #include <vector>
 
+#include <memory>
+
+#include "c-wrapper/c-wrapper.h"
+#include "linphone/api/c-types.h"
+
+#include "linphone/utils/general.h"
+
+#include "core/core.h"
+
 LINPHONE_BEGIN_NAMESPACE
+
+class TranscriptionCbs;
 
 struct Word {
 	std::string word;
@@ -53,38 +66,35 @@ struct Sentence {
 	char name[50];
 };
 
-class Transcription : public bellesip::HybridObject<LinphoneTranscription, Transcription>, public CoreAccessor {
+class LINPHONE_PUBLIC Transcription : public bellesip::HybridObject<LinphoneTranscription, Transcription>,
+                                      public UserDataAccessor,
+                                      public CallbacksHolder<TranscriptionCbs>,
+                                      public CoreAccessor {
+
 private:
 	void processTranscriptionsForApp();
 	bool_t verifyIfCorrection(MSTranscription tr);
 	void addWordToSentence(MSTranscription transcription);
 
 public:
-	Transcription(std::shared_ptr<Core> core);
+	Transcription(const std::shared_ptr<Core> &core);
 	Transcription(const Transcription &other);
 
 	Transcription *clone() const override;
 	Transcription &operator=(const Transcription &other);
 
 	void addTranscription(MSTranscription transcription);
-	void addTranscriptionCb(LinphoneTranscriptionCb cb);
 	Sentence initSentence(MSTranscription transcription);
 	const char *getSentenceById(uint32_t sentenceId);
 	const char *getNameById(uint32_t sentenceId);
 	// std::vector<uint32_t> getCorrectedById(uint32_t sentenceId);
 	uint32_t getLastSentenceId();
-	void setDisplayTranscriptionCb(LinphoneTranscriptionDisplayCb cb);
 	void setAudioStream(AudioStream *stream);
-	void setConf(LinphoneConference *conf);
 	void activate(bool_t activate);
 	std::string getNameBySsrc(uint32_t ssrc);
 
 	std::string mTest;
 	std::queue<MSTranscription> mTranscriptions;
-	// the definition of these callbacks is temporary, I intend to define them later in the same way it was done in the
-	// other apis
-	LinphoneTranscriptionCb mCb;
-	LinphoneTranscriptionDisplayCb mCbDisplay;
 	AudioStream *mStream;
 	LinphoneConference *mConfCtx;
 	std::map<uint32_t, Sentence> mSentences;
@@ -95,4 +105,19 @@ public:
 	bool_t mModified;
 };
 
+class TranscriptionCbs : public bellesip::HybridObject<LinphoneTranscriptionCbs, TranscriptionCbs>, public Callbacks {
+public:
+	LinphoneTranscriptionCbsDisplayCb getTranscriptionDisplay() const {
+		return mTranscriptionDisplayCb;
+	}
+	void setTranscriptionDisplay(LinphoneTranscriptionCbsDisplayCb cb) {
+		mTranscriptionDisplayCb = cb;
+	}
+
+private:
+	LinphoneTranscriptionCbsDisplayCb mTranscriptionDisplayCb = nullptr;
+};
+
 LINPHONE_END_NAMESPACE
+
+#endif /* _L_TRANSCRIPTION_H_ */

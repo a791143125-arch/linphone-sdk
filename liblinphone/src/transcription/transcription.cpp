@@ -38,6 +38,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -49,10 +50,10 @@ segment_transcribed_cb(void *data, BCTBX_UNUSED(MSFilter *f), BCTBX_UNUSED(unsig
 	MSTranscriptEvent *receivedTranscription = NULL;
 	receivedTranscription = (MSTranscriptEvent *)event;
 	LinphoneTranscription *ptr = static_cast<LinphoneTranscription *>(data);
-	linphone_transcription_add(ptr, receivedTranscription->transcription);
+	Transcription::toCpp(ptr)->addTranscription(receivedTranscription->transcription);
 }
 
-Transcription::Transcription(std::shared_ptr<Core> core) : CoreAccessor(core) {
+Transcription::Transcription(const std::shared_ptr<Core> &core) : CoreAccessor(core) {
 	mTest = "hello word";
 	mConfCtx = nullptr;
 	mMaxLenghtOfSentence = 100;
@@ -67,7 +68,7 @@ Transcription::Transcription(const Transcription &other) : HybridObject(other), 
 }
 
 Transcription *Transcription::clone() const {
-	return new Transcription(*this);
+	return nullptr;
 }
 
 Transcription &Transcription::operator=(const Transcription &other) {
@@ -82,17 +83,9 @@ void Transcription::addTranscription(MSTranscription transcription) {
 	mTranscriptions.push(transcription);
 	processTranscriptionsForApp();
 	if (mModified) {
-		mCbDisplay(this->toC());
+		_linphone_transcription_notify_result_to_display_available(this->toC());
 		mModified = false;
 	}
-}
-
-void Transcription::addTranscriptionCb(LinphoneTranscriptionCb cb) {
-	mCb = cb;
-}
-
-void Transcription::setDisplayTranscriptionCb(LinphoneTranscriptionDisplayCb cb) {
-	mCbDisplay = cb;
 }
 
 void Transcription::setAudioStream(AudioStream *stream) {
@@ -118,7 +111,7 @@ Sentence Transcription::initSentence(MSTranscription transcription) {
 	strcat(sentence.sentence, transcription.transcribed_word);
 	if (!transcription.end_of_sentence) strcat(sentence.sentence, " ");
 	sentence.confidences.push_back(transcription.confidence);
-	sentence.start = transcription.beggining;
+	sentence.start = transcription.begining;
 	sentence.end = transcription.timestamp;
 	sentence.finished = transcription.end_of_sentence;
 	sentence.name[0] = '\0';
@@ -130,7 +123,6 @@ Sentence Transcription::initSentence(MSTranscription transcription) {
 
 void Transcription::addWordToSentence(MSTranscription transcription) {
 	if (!getNameBySsrc(transcription.ssrc).empty()) mCurrentName = getNameBySsrc(transcription.ssrc);
-
 	if (mSentences.empty()) {
 		mLastId++;
 		Sentence sentence = Transcription::initSentence(transcription);
@@ -155,12 +147,12 @@ void Transcription::addWordToSentence(MSTranscription transcription) {
 
 bool_t Transcription::verifyIfCorrection(MSTranscription tr) {
 	bool_t modified = false;
-	float startCurrent = tr.beggining;
+	float startCurrent = tr.begining;
 	float endCurrent = tr.timestamp;
 	for (std::pair<const unsigned int, LinphonePrivate::Sentence> &sentence : mSentences) {
 		for (uint32_t i = 0; i < sentence.second.words.size(); i++) {
 			MSTranscription transcription = sentence.second.words[i];
-			float startOld = transcription.beggining;
+			float startOld = transcription.begining;
 			float endOld = transcription.timestamp;
 			if (startCurrent <= endOld && endCurrent >= startOld) { // ATTENTION AU CAS OU IL Y A QUE TIMESTAMP de fin
 				if ((std::min(endCurrent, endOld) - std::max(startCurrent, startOld)) / (endOld - startOld) >= 0.8) {
@@ -187,10 +179,6 @@ void Transcription::processTranscriptionsForApp() {
 			if (verifyIfCorrection(tr)) mModified = true;
 		}
 	}
-}
-
-void Transcription::setConf(LinphoneConference *conf) {
-	mConfCtx = conf;
 }
 
 const char *Transcription::getSentenceById(uint32_t sentenceId) {
@@ -238,7 +226,3 @@ std::string Transcription::getNameBySsrc(uint32_t ssrc) {
 
 	return name;
 }
-
-// Transcription *Transcription::linphone_call_get_transcription(LinphoneCall *call) {
-// 	return
-// }

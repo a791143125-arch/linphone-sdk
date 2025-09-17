@@ -121,6 +121,7 @@ public:
 	LinphoneChatRoomCbs *createChatRoomCbs() const;
 	LinphoneChatMessageCbs *createChatMessageCbs() const;
 	LinphoneMagicSearchCbs *createMagicSearchCbs() const;
+	LinphoneTranscriptionCbs *createTranscriptionCbs() const;
 
 	LinphoneDictionary *createDictionary() const;
 

@@ -197,6 +197,10 @@ LinphoneMagicSearchCbs *linphone_factory_create_magic_search_cbs(const LinphoneF
 	return Factory::toCpp(factory)->createMagicSearchCbs();
 }
 
+LinphoneTranscriptionCbs *linphone_factory_create_transcription_cbs(const LinphoneFactory *factory) {
+	return Factory::toCpp(factory)->createTranscriptionCbs();
+}
+
 LinphoneDictionary *linphone_factory_create_dictionary(const LinphoneFactory *factory) {
 	return Factory::toCpp(factory)->createDictionary();
 }

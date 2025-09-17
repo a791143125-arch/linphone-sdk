@@ -230,6 +230,14 @@ void CallSessionParams::initDefault(const std::shared_ptr<Core> &core, BCTBX_UNU
 	d->endTime = (time_t)-1;
 	setAccount(nullptr);
 	setConferenceVideoLayout((ConferenceLayout)linphone_core_get_default_conference_layout(cCore));
+	if (cCore->transcription_conf.enabled) {
+		LinphoneTranscription *transcription = linphone_core_create_transcription(cCore);
+		if (transcription) {
+			linphone_core_set_transcription(cCore, transcription);
+		} else {
+			ms_warning("transcription object creation failed");
+		}
+	}
 }
 
 // -----------------------------------------------------------------------------

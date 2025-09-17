@@ -339,16 +339,12 @@ static bool test_base(test_config *config) {
 	transcript = ms_factory_create_filter_from_desc(msFactory, filter_desc);
 	if (!BC_ASSERT_PTR_NOT_NULL(transcript)) goto end;
 	char full_path[512];
-	// snprintf(full_path, sizeof(full_path), "%s/ggml-%s.bin", MODEL_PATH, MODEL_NAME);
-	snprintf(full_path, sizeof(full_path),
-	         "/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-en-us-0.22-lgraph");
-	// snprintf(full_path, sizeof(full_path),
-	//          "/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-small-fr-0.22");
+	snprintf(full_path, sizeof(full_path), "%s/ggml-%s.bin", MODEL_PATH, MODEL_NAME);
 	ms_filter_call_method(transcript, MS_TRANSCRIPT_SET_CHUNK_DURATION, &config->chunk_size_whisper);
 	ms_filter_call_method(transcript, MS_TRANSCRIPT_SET_OVERLAP_DURATION, &config->overlap_size_whisper);
 	ms_filter_call_method(transcript, MS_TRANSCRIPT_SET_MODEL_PATH, full_path);
-	// enum transcript_method transcription_method = WHISPER_CPP_OVERLAP;
-	enum transcript_method transcription_method = VOSK;
+	enum transcript_method transcription_method = WHISPER_CPP_OVERLAP;
+	// enum transcript_method transcription_method = VOSK;
 	if (ms_filter_call_method(transcript, MS_TRANSCRIPT_INIT_MODEL, &transcription_method) == -1) {
 		ms_filter_destroy(transcript);
 		transcript = NULL;
@@ -635,10 +631,8 @@ static void vosk_test_basic(void) {
 	test_config config;
 	init_config(&config);
 	config.audio_file = bc_tester_res(AUDIO_FILE);
-	// const char* model_path = "vosk-model-small-fr-0.22";  // Path to your Vosk model
-	const char *model_path =
-	    "/home/antoine/Documents/linphone_sdk/linphone-sdk/external/vosk/vosk-model-en-us-0.22-lgraph"; // Path to your
-	                                                                                                    // Vosk model
+	const char *model_path = "vosk-model-en-us-0.22-lgraph"; // TODO download and install model automatically. For
+	                                                         // the moment you must set here the path to your Vosk model
 	VoskModel *model = vosk_model_new(model_path);
 	if (!model) {
 		ms_error("Failed to load model");

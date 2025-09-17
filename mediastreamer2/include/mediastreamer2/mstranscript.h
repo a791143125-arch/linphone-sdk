@@ -31,7 +31,7 @@
 struct _MSTranscription {
 	char transcribed_word[40];
 	float timestamp; /**<time stamp of the transcribed word*/
-	float beggining;
+	float begining;
 	float confidence;
 	bool_t is_final;
 	bool_t end_of_sentence;

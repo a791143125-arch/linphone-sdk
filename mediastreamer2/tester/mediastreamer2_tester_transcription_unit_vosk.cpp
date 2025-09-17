@@ -60,8 +60,8 @@ static void vosk_json() {
 
 	BC_ASSERT_TRUE(std::string(transcriptions[0].transcribed_word) == "take");
 	BC_ASSERT_TRUE(std::string(transcriptions[1].transcribed_word) == "thirty");
-	BC_ASSERT_TRUE(int(100 * transcriptions[0].beggining) == 33);
-	BC_ASSERT_TRUE(int(100 * transcriptions[1].beggining) == 66);
+	BC_ASSERT_TRUE(int(100 * transcriptions[0].begining) == 33);
+	BC_ASSERT_TRUE(int(100 * transcriptions[1].begining) == 66);
 	BC_ASSERT_TRUE(int(100 * transcriptions[0].timestamp) == 66);
 	BC_ASSERT_TRUE(int(100 * transcriptions[1].timestamp) == 96);
 	BC_ASSERT_TRUE(int(100 * transcriptions[0].confidence) == 99);
@@ -90,8 +90,8 @@ static void vosk_json_partial() {
 
 	BC_ASSERT_TRUE(std::string(transcriptions[0].transcribed_word) == "take");
 	BC_ASSERT_TRUE(std::string(transcriptions[1].transcribed_word) == "thirty");
-	BC_ASSERT_TRUE(int(100 * transcriptions[0].beggining) == 33);
-	BC_ASSERT_TRUE(int(100 * transcriptions[1].beggining) == 66);
+	BC_ASSERT_TRUE(int(100 * transcriptions[0].begining) == 33);
+	BC_ASSERT_TRUE(int(100 * transcriptions[1].begining) == 66);
 	BC_ASSERT_TRUE(int(100 * transcriptions[0].timestamp) == 66);
 	BC_ASSERT_TRUE(int(100 * transcriptions[1].timestamp) == 96);
 	BC_ASSERT_TRUE(int(100 * transcriptions[0].confidence) == 99);

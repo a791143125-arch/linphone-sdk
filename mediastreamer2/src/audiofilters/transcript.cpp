@@ -46,7 +46,7 @@ static void ms_transcription_copy(MSTranscription *trscrpt_src, MSTranscription 
 	trscrpt_dst->timestamp = trscrpt_src->timestamp;
 	strncpy(trscrpt_dst->transcribed_word, trscrpt_src->transcribed_word, sizeof(trscrpt_dst->transcribed_word));
 	trscrpt_dst->ssrc = trscrpt_src->ssrc;
-	trscrpt_dst->beggining = trscrpt_src->beggining;
+	trscrpt_dst->begining = trscrpt_src->begining;
 	trscrpt_dst->confidence = trscrpt_src->confidence;
 	trscrpt_dst->correction = trscrpt_src->correction;
 	trscrpt_dst->end_of_sentence = trscrpt_src->end_of_sentence;
@@ -57,7 +57,7 @@ static void ms_transcription_copy(MSTranscription *trscrpt_src, MSTranscription 
 MSTranscription default_transcription_object() {
 	MSTranscription ret;
 	ret.timestamp = -1;
-	ret.beggining = -1;
+	ret.begining = -1;
 	ret.confidence = -1;
 	ret.correction = false;
 	ret.end_of_sentence = false;
@@ -137,8 +137,8 @@ void event_sender(MSFilter *f, std::vector<MSTranscription> transcriptions) {
 			}
 			ms_filter_notify(f, MS_TRANSCRIPT_EVENT, &event);
 		}
-		if (sentence != "") show_word_in_other_terminal(sentence, "/dev/pts/2");
-		ms_message("%s\n", sentence.c_str());
+		// if (sentence != "") show_word_in_other_terminal(sentence, "/dev/pts/2");
+		ms_message("===> sent from filter: %s\n", sentence.c_str());
 		transcriptions.clear();
 	}
 }

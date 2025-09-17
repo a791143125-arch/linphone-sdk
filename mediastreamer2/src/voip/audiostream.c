@@ -1794,7 +1794,6 @@ int audio_stream_start_from_io(AudioStream *stream,
 			free(model_path);
 
 			enum transcript_method transcription_method = stream->transcription_method;
-			// enum transcript_method transcription_method = VOSK;
 			if (ms_filter_call_method(stream->transcript, MS_TRANSCRIPT_INIT_MODEL, &transcription_method) == -1) {
 				ms_filter_destroy(stream->transcript);
 				stream->transcript = NULL;

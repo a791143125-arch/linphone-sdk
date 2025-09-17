@@ -456,7 +456,7 @@ class Core;
 	ui_config_t ui_conf;                                                                                               \
 	autoreplier_config_t autoreplier_conf;                                                                             \
 	transcription_config_t transcription_conf;                                                                         \
-	LinphoneTranscription *transcription;                                                                              \
+	LinphoneTranscription *transcription; /* TODO déplacer dans le call */                                            \
 	LinphoneAccount *default_account;                                                                                  \
 	MSList *friends_lists;                                                                                             \
 	MSList *auth_info;                                                                                                 \

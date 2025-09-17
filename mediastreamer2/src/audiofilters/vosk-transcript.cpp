@@ -19,9 +19,9 @@
  */
 
 #include "mediastreamer2/vosk-transcript.h"
-#include "jsoncpp/json/json.h"
 #include "mediastreamer2/mscommon.h"
 #include "mediastreamer2/mstranscript.h"
+#include "json/json.h"
 #include <cstdint>
 #include <string>
 #include <unistd.h>
@@ -77,7 +77,7 @@ std::vector<MSTranscription> VoskTranscript::jsonToMSTranscript(std::string sent
 		strncpy(transcription.transcribed_word, word.c_str(), sizeof(transcription.transcribed_word));
 		transcription.transcribed_word[sizeof(transcription.transcribed_word) - 1] = '\0';
 		transcription.timestamp = end;
-		transcription.beggining = start;
+		transcription.begining = start;
 		transcription.confidence = confidence;
 		currentIteration.push_back(transcription);
 	}

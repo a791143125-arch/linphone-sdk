@@ -17,10 +17,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef LINPHONE_TRANSCRIPTION_API_CONFIG_H
-#define LINPHONE_TRANSCRIPTION_API_CONFIG_H
 
-#include "linphone/api/c-callbacks.h"
+#ifndef L_C_LINPHONE_TRANSCRIPTION_H_
+#define L_C_LINPHONE_TRANSCRIPTION_H_
+
+#include "linphone/api/c-transcription-cbs.h"
 #include "linphone/api/c-types.h"
 #include "mediastreamer2/mediastream.h"
 #include "mediastreamer2/mstranscript.h"
@@ -29,29 +30,25 @@
 extern "C" {
 #endif
 
-LINPHONE_PUBLIC LinphoneTranscription *linphone_transcription_new(LinphoneCore *lc);
-
-/**
- * Instantiate a new Transcription parameters with values from source.
- * @param transcription The #LinphoneTranscription object to be cloned. @notnil
- * @return The newly created #LinphoneTranscription object. @notnil
- */
-LINPHONE_PUBLIC LinphoneTranscription *linphone_transcription_clone(const LinphoneTranscription *transcription);
-
-// /**
-//  * Checks if two Transcriptions are identical
-//  * @param transcription The #LinphoneTranscription object to be compared. @notnil
-//  * @param other_transcription The #LinphoneTranscription object to compare to. @notnil
-//  * @return True only if the two Transcriptions are identical. @notnil
-//  */
-// LINPHONE_PUBLIC bool_t linphone_transcription_is_equal(const LinphoneTranscription *transcription,
-//                                                        const LinphoneTranscription *other_transcription);
-
 /**
  * Release a #LinphoneTranscription.
  * @param transcription the #LinphoneTranscription object @notnil
  */
 LINPHONE_PUBLIC void linphone_transcription_unref(LinphoneTranscription *transcription);
+
+/**
+ * Set a user (application) pointer.
+ * @param transcription #LinphoneTranscription object. @notnil
+ * @param user_data The user data to set. @maybenil
+ **/
+LINPHONE_PUBLIC void linphone_transcription_set_user_data(LinphoneTranscription *transcription, void *user_data);
+
+/**
+ * Retrieve user pointer.
+ * @param transcription #LinphoneTranscription object. @notnil
+ * @return the user_data pointer or NULL. @maybenil
+ **/
+LINPHONE_PUBLIC void *linphone_transcription_get_user_data(const LinphoneTranscription *transcription);
 
 /**
  * Take a reference on a #LinphoneTranscription.
@@ -61,28 +58,39 @@ LINPHONE_PUBLIC void linphone_transcription_unref(LinphoneTranscription *transcr
 LINPHONE_PUBLIC LinphoneTranscription *linphone_transcription_ref(LinphoneTranscription *transcription);
 
 /**
- * Add a MSTranscription to be processed in #LinphoneTranscription.
- * @param transcription the #LinphoneTranscription object @notnil
- * @param tr the trasncription from mediastreamer2 @notnil
+ * Add a listener in order to be notified of #LinphoneTranscription events.
+ * @param transcription #LinphoneTranscription object to monitor. @notnil
+ * @param cbs A #LinphoneTranscriptionCbs object holding the callbacks you need. @notnil
  */
-LINPHONE_PUBLIC void linphone_transcription_add(LinphoneTranscription *transcription, MSTranscription tr);
-LINPHONE_PUBLIC void linphone_transcription_add_cb(LinphoneTranscription *transcription,
-                                                   LinphoneTranscriptionCb cb); // TO REMOVE
+LINPHONE_PUBLIC void linphone_transcription_add_callbacks(LinphoneTranscription *transcription,
+                                                          LinphoneTranscriptionCbs *cbs);
 
 /**
- * Add a display callback to be called at each actualisation of the transcription by #LinphoneTranscription.
- * @param transcription the #LinphoneTranscription object @notnil
- * @param cb the display callback @notnil
+ * Remove a listener from a #LinphoneTranscription
+ * @param transcription #LinphoneTranscription object @notnil
+ * @param cbs #LinphoneTranscriptionCbs object to remove. @notnil
  */
-LINPHONE_PUBLIC void linphone_transcription_set_display_cb(LinphoneTranscription *transcription,
-                                                           LinphoneTranscriptionDisplayCb cb);
+LINPHONE_PUBLIC void linphone_transcription_remove_callbacks(LinphoneTranscription *transcription,
+                                                             LinphoneTranscriptionCbs *cbs);
 
 /**
- * Sets a pointer to an audiostream in #LinphoneTranscription.
- * @param transcription the #LinphoneTranscription object @notnil
- * @param stream pointer to the audiostream @notnil
+ * Gets the current LinphoneTranscriptionCbs.
+ * This is meant only to be called from a callback to be able to get the user_data associated with the
+ * #LinphoneTranscriptionCbs that is calling the callback.
+ * @param transcription #LinphoneTranscription object @notnil
+ * @return The #LinphoneTranscriptionCbs that has called the last callback. @maybenil
  */
-LINPHONE_PUBLIC void linphone_transcription_set_audiostream(LinphoneTranscription *transcription, AudioStream *stream);
+LINPHONE_PUBLIC LinphoneTranscriptionCbs *
+linphone_transcription_get_current_callbacks(const LinphoneTranscription *transcription);
+
+/**
+ * @brief Gets the list of listener in the transcription.
+ * @param transcription #LinphoneTranscription object. @notnil
+ * @return The list of #LinphoneTranscriptionCbs. @maybenil
+ * @donotwrap
+ */
+LINPHONE_PUBLIC const bctbx_list_t *
+linphone_transcription_get_callbacks_list(const LinphoneTranscription *transcription);
 
 /**
  * Turns the transcription ON/OFF. Can be used during a call.
@@ -90,14 +98,6 @@ LINPHONE_PUBLIC void linphone_transcription_set_audiostream(LinphoneTranscriptio
  * @param activate turns the transcription on if true, off if false @notnil
  */
 LINPHONE_PUBLIC void linphone_transcription_activate(LinphoneTranscription *transcription, bool_t activate);
-
-/**
- * Sets a pointer to a conference in #LinphoneTranscription.
- * @param transcription the #LinphoneTranscription object @notnil
- * @param conference pointer to the conference @notnil
- */
-LINPHONE_PUBLIC void linphone_transcription_set_conference(LinphoneTranscription *transcription,
-                                                           LinphoneConference *conference);
 
 /**
  * Get the sentence associated to the given sentence id #LinphoneTranscription.
@@ -122,15 +122,20 @@ LINPHONE_PUBLIC const char *linphone_transcription_get_name_by_id(LinphoneTransc
 //                                                                        uint32_t sentence_id);
 
 /**
- * Get the id of the last transcribed sentence. Necessary to have access to all the transcription data (transcription,
+ * Get the id of the last transcribed sentence. Necessary to have access to all the transcription data
+ (transcription,
  * associated speaker...).
  * @param transcription the #LinphoneTranscription object @notnil
  * @return id of the last transcribed sentence
  */
 LINPHONE_PUBLIC uint32_t linphone_transcription_get_last_sentence_id(LinphoneTranscription *transcription);
 
+/**
+ * @}
+ */
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LINPHONE_TRANSCRIPTION_API_CONFIG_H */
+#endif // L_C_LINPHONE_TRANSCRIPTION_H_

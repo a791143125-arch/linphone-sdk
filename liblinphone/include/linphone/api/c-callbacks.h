@@ -128,6 +128,21 @@ typedef void (*LinphoneAlertCbsTerminatedCb)(LinphoneAlert *alert);
  */
 
 /**
+ * @addtogroup call
+ * @{
+ */
+
+/**
+ * Callback for notifying about a transcription ready to be displayed.
+ * @param transcription #LinphoneTranscription object @notnil
+ */
+typedef void (*LinphoneTranscriptionCbsDisplayCb)(LinphoneTranscription *transcription);
+
+/**
+ * @}
+ **/
+
+/**
  * @addtogroup call_control
  * @{
  **/
@@ -1065,16 +1080,6 @@ typedef void (*LinphoneConferenceSchedulerCbsStateChangedCb)(LinphoneConferenceS
  */
 typedef void (*LinphoneConferenceSchedulerCbsInvitationsSentCb)(LinphoneConferenceScheduler *conference_scheduler,
                                                                 const bctbx_list_t *failed_invitations);
-
-/**
- * For a test (will be removed)
- */
-typedef void (*LinphoneTranscriptionCb)(void);
-
-/**
- * Callback used to display transcription (what the app should provide)
- */
-typedef void (*LinphoneTranscriptionDisplayCb)(LinphoneTranscription *transcription);
 
 /**
  * @}

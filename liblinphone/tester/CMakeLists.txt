@@ -66,6 +66,7 @@ set(SOUND_FILES
 	sounds/ahbahouaismaisbon.wav
 	sounds/special-&_characters.wav
 	sounds/continuous_48000_stereo.wav
+	sounds/crawfish.wav
 	sounds/hello44100.wav
 	sounds/hello8000.mkv
 	sounds/hello8000_mkv_ref.wav
@@ -77,7 +78,6 @@ set(SOUND_FILES
 	sounds/sintel_trailer_pcmu_h264.mkv
 	sounds/recording.mkv
 	sounds/recording.smff
-	sounds/silence8000.wav
 	sounds/vrroom.wav
 )
 

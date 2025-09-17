@@ -478,6 +478,7 @@ set(LINPHONE_CXX_OBJECTS_SOURCE_FILES
 	c-wrapper/api/c-vcard.cpp
 	c-wrapper/api/c-bearer-token.cpp
 	c-wrapper/api/c-transcription.cpp
+	c-wrapper/api/c-transcription-cbs.cpp
 	c-wrapper/internal/c-sal.cpp
 	c-wrapper/internal/c-tools.cpp
 	call/call-log.cpp

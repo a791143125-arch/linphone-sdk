@@ -326,6 +326,10 @@ LinphoneMagicSearchCbs *Factory::createMagicSearchCbs() const {
 	return linphone_magic_search_cbs_new();
 }
 
+LinphoneTranscriptionCbs *Factory::createTranscriptionCbs() const {
+	return linphone_transcription_cbs_new();
+}
+
 LinphoneDictionary *Factory::createDictionary() const {
 	return Dictionary::createCObject();
 }

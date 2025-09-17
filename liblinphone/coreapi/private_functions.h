@@ -585,6 +585,8 @@ void _linphone_magic_search_notify_more_results_available(LinphoneMagicSearch *m
                                                           LinphoneMagicSearchSource source);
 void _linphone_magic_search_notify_results_limit_reached(LinphoneMagicSearch *magic_search, int sourcesFlag);
 
+void _linphone_transcription_notify_result_to_display_available(LinphoneTranscription *transcription);
+
 const LinphoneParticipantImdnState *
 _linphone_participant_imdn_state_from_cpp_obj(const LinphonePrivate::ParticipantImdnState &state);
 

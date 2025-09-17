@@ -139,6 +139,7 @@ set(C_API_HEADER_FILES
 	c-vcard.h
 	c-bearer-token.h
 	c-transcription.h
+	c-transcription-cbs.h
 )
 
 set(ENUMS_HEADER_FILES
