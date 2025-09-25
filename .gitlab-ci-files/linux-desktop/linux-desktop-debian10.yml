@@ -17,7 +17,7 @@ recache-debian10:
 
 
 .factorize_debian10: &docker_image_platform_and_runner_tag
-  tags: [ "docker-test" ]
+  tags: [ "docker-test-lenovo-2-sdk" ]
   image: !reference [.debian10_image_version, image]
   variables:
     PLATFORM: linux-debian10
@@ -140,7 +140,7 @@ bellesip-debian10-test:
   needs:
     - debian10-ninja-gcc
   #different runner needed because belle-sip_tester can't work in parallel (dialog test suite is crashing randomly)
-  tags: [ "docker-sequential" ]
+  tags: [ "docker-test-sequential-lenovo-2-sdk" ]
   image: !reference [.debian10_image_version, image]
   variables:
     PLATFORM: linux-debian10
