@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2023 Belledonne Communications SARL.
+ * Copyright (c) 2010-2025 Belledonne Communications SARL.
  *
  * This file is part of Liblinphone
  * (see https://gitlab.linphone.org/BC/public/liblinphone).
@@ -33,10 +33,7 @@ LINPHONE_BEGIN_NAMESPACE
 
 // -----------------------------------------------------------------------------
 
-LinphoneStatus EventPublish::sendPublish(const std::shared_ptr<const Content> &body, bool notifyErr) {
-	SalBodyHandler *body_handler;
-	int err;
-
+LinphoneStatus EventPublish::sendPublish(const std::shared_ptr<const Content> &body, const bool notifyErr) {
 	if (mSendCustomHeaders) {
 		mOp->setSentCustomHeaders(mSendCustomHeaders);
 		sal_custom_header_free(mSendCustomHeaders);
@@ -44,9 +41,10 @@ LinphoneStatus EventPublish::sendPublish(const std::shared_ptr<const Content> &b
 	} else mOp->setSentCustomHeaders(nullptr);
 
 	fillOpFields();
-	body_handler = sal_body_handler_from_content((body && !body->isEmpty()) ? body->toC() : nullptr);
-	auto publishOp = dynamic_cast<SalPublishOp *>(mOp);
-	err = publishOp->publish(mName, mExpires, body_handler);
+	const SalBodyHandler *body_handler =
+	    sal_body_handler_from_content((body && !body->isEmpty()) ? body->toC() : nullptr);
+	const auto publishOp = dynamic_cast<SalPublishOp *>(mOp);
+	const int err = publishOp->publish(mName, mExpires, body_handler);
 	if (err == 0) {
 		if (mPublishState == LinphonePublishOk) {
 			setState(LinphonePublishRefreshing);
@@ -64,8 +62,7 @@ LinphoneStatus EventPublish::sendPublish(const std::shared_ptr<const Content> &b
 EventPublish::EventPublish(const shared_ptr<Core> &core) : Event(core) {
 }
 
-EventPublish::EventPublish(const shared_ptr<Core> &core, LinphonePrivate::SalPublishOp *op, const string &name)
-    : Event(core) {
+EventPublish::EventPublish(const shared_ptr<Core> &core, SalPublishOp *op, const string &name) : Event(core) {
 	mOp = op;
 	mExpires = op->getExpires();
 	mName = name;
@@ -76,18 +73,18 @@ EventPublish::EventPublish(const shared_ptr<Core> &core,
                            const shared_ptr<Account> &account,
                            const std::shared_ptr<const Address> &resourceAddr,
                            const string &event,
-                           int expires)
+                           const int expires)
     : EventPublish(core, new SalPublishOp(core->getCCore()->sal.get()), event) {
 	auto resource = resourceAddr;
 	if ((!resource || !resource->isValid()) && account) resource = account->getAccountParams()->getIdentityAddress();
 
 	setExpires(expires);
 	if (!account) {
-		auto coreAccount = core->lookupKnownAccount(resource, true);
-		linphone_configure_op_with_account(
-		    core->getCCore(), mOp, resource->toC(), nullptr,
-		    !!linphone_config_get_int(core->getCCore()->config, "sip", "publish_msg_with_contact", 0),
-		    coreAccount->toC());
+		if (const auto coreAccount = core->lookupKnownAccount(resource, true))
+			linphone_configure_op_with_account(
+			    core->getCCore(), mOp, resource->toC(), nullptr,
+			    !!linphone_config_get_int(core->getCCore()->config, "sip", "publish_msg_with_contact", 0),
+			    coreAccount->toC());
 	} else {
 		linphone_configure_op_with_account(
 		    core->getCCore(), mOp, resource->toC(), nullptr,
@@ -101,7 +98,7 @@ EventPublish::EventPublish(const shared_ptr<Core> &core,
 EventPublish::EventPublish(const shared_ptr<Core> &core,
                            const std::shared_ptr<const Address> &resource,
                            const string &event,
-                           int expires)
+                           const int expires)
     : EventPublish(core, nullptr, resource, event, expires) {
 }
 
@@ -136,14 +133,13 @@ LinphoneStatus EventPublish::refresh() {
 }
 
 LinphoneStatus EventPublish::accept() {
-	int err;
 	if (mPublishState != LinphonePublishIncomingReceived && mPublishState != LinphonePublishRefreshing) {
 		ms_error("EventPublish::accept(): cannot accept publish if subscription wasn't just received.");
 		return -1;
 	}
 	fillOpFields();
-	auto publishOp = dynamic_cast<SalPublishOp *>(mOp);
-	err = publishOp->accept();
+	const auto publishOp = dynamic_cast<SalPublishOp *>(mOp);
+	const int err = publishOp->accept();
 	if (err == 0) {
 		setState(LinphonePublishOk);
 		startTimeoutHandling();
@@ -151,14 +147,13 @@ LinphoneStatus EventPublish::accept() {
 	return err;
 }
 
-LinphoneStatus EventPublish::deny(LinphoneReason reason) {
-	int err;
+LinphoneStatus EventPublish::deny(const LinphoneReason reason) {
 	if (mPublishState != LinphonePublishIncomingReceived && mPublishState != LinphonePublishRefreshing) {
 		ms_error("EventPublish::deny(): cannot deny publish if publish wasn't just received.");
 		return -1;
 	}
-	auto publishOp = dynamic_cast<SalPublishOp *>(mOp);
-	err = publishOp->decline(linphone_reason_to_sal(reason));
+	const auto publishOp = dynamic_cast<SalPublishOp *>(mOp);
+	const int err = publishOp->decline(linphone_reason_to_sal(reason));
 	setState(LinphonePublishCleared);
 	return err;
 }
@@ -167,7 +162,7 @@ void EventPublish::pause() {
 	if (mOp) mOp->stopRefreshing();
 }
 
-void EventPublish::setOneshot(bool oneshot) {
+void EventPublish::setOneshot(const bool oneshot) {
 	mOneshot = oneshot;
 }
 
@@ -175,7 +170,7 @@ LinphonePublishState EventPublish::getState() const {
 	return mPublishState;
 }
 
-void EventPublish::setState(LinphonePublishState state) {
+void EventPublish::setState(const LinphonePublishState state) {
 	if (mPublishState != state) {
 		ms_message("Event [%p] moving from [%s] to publish state [%s]", this,
 		           linphone_publish_state_to_string(mPublishState), linphone_publish_state_to_string(state));
@@ -185,7 +180,7 @@ void EventPublish::setState(LinphonePublishState state) {
 		linphone_core_notify_publish_state_changed(getCore()->getCCore(), this->toC(), state);
 		LINPHONE_HYBRID_OBJECT_INVOKE_CBS(Event, this, linphone_event_cbs_get_publish_state_changed, state);
 		switch (state) {
-			case LinphonePublishNone: /*this state is probably trigered by a network state change to DOWN, we should
+			case LinphonePublishNone: /*this state is probably triggered by a network state change to DOWN, we should
 			                             release the op*/
 				release();
 				break;
@@ -212,21 +207,21 @@ void EventPublish::setState(LinphonePublishState state) {
 void EventPublish::unpublish() {
 	setState(LinphonePublishTerminating);
 	if (mOp) {
-		auto op = dynamic_cast<SalPublishOp *>(mOp);
+		const auto op = dynamic_cast<SalPublishOp *>(mOp);
 		op->unpublish();
 	}
 }
 
 void EventPublish::terminate() {
-	// if event was already terminated (including on error), we should not terminate it again
-	// otherwise it will be unreffed twice.
+	// If the event was already terminated (including on error), we should not terminate it again.
+	// Otherwise, it will be unrefereed twice.
 	if (mPublishState == LinphonePublishError || mPublishState == LinphonePublishCleared) {
 		return;
 	}
 
 	if (mPublishState != LinphonePublishNone) {
 		if (mOp && (mPublishState == LinphonePublishOk) && (mExpires != -1)) {
-			auto op = dynamic_cast<SalPublishOp *>(mOp);
+			const auto op = dynamic_cast<SalPublishOp *>(mOp);
 			op->unpublish();
 		}
 		setState(LinphonePublishCleared);
@@ -240,7 +235,7 @@ void EventPublish::startTimeoutHandling() {
 	stopTimeoutHandling();
 	if (mExpires > 0) {
 		mTimer = getCore()->createTimer(
-		    [this]() {
+		    [this] {
 			    lInfo() << "Publish event [" << this << "] has expired";
 			    terminate();
 			    return true;
