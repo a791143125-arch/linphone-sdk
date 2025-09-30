@@ -257,6 +257,7 @@
     - echo $LOG_PATTERN.txt
     - echo $LOG_PATTERN2.txt
     - echo $SHAKY_TESTS_LIBLINPHONE
+    - echo $TESTS_LIBLINPHONE_SUITE
     - |
         if [ $USE_TUNNEL_PQ_TESTS_LIBLINPHONE = "false" ];
         then
@@ -264,7 +265,12 @@
            then
               if [ $SHAKY_TESTS_LIBLINPHONE = "false" ];
               then
-                  $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --tag '!shaky' --max-failed 0 $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt || EXIT=$?
+                  if [ $TESTS_LIBLINPHONE_SUITE = "false" ];
+                  then
+                      $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --tag '!shaky' --max-failed 0 $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt || EXIT=$?
+                  else
+                      $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --suite $TESTS_LIBLINPHONE_SUITE --tag '!shaky' --max-failed 0 $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt || EXIT=$?
+                  fi
               else
                   $PATH_TO_TESTER/$TESTER_BIN --verbose $LIBLINPHONE_TESTER_PARALLEL_OPTIONS --tag 'shaky' $RESOURCES_DIR $ADDITIONNAL_OPTIONS --log-file $LOG_PATTERN.txt --xml --xml-file BCUnitAutomatedShaky || EXIT=$?
               fi
@@ -557,6 +563,8 @@
     USE_TUNNEL_PQ_TESTS_LIBLINPHONE: "false"
     CRYPTO_BACKEND_TESTS_LIBLINPHONE: "false"
     SHAKY_TESTS_LIBLINPHONE: "false"
+    TESTS_LIBLINPHONE_SUITE: "TestDefaultSuiteValue"
+    
 
 .test-liblinphone-shaky:
   extends: .test-liblinphone
@@ -583,6 +591,7 @@
 
 .test-liblinphone-mr:
   extends: .test-liblinphone
+  stage: suite-tests
   allow_failure: false
   #Only launches mr tests on mr, excepted for wip and draft
   rules:

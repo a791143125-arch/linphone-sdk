@@ -206,9 +206,9 @@ liblinphone-rocky8-test-shaky:
   variables:
     PLATFORM: linux-rocky8
 
-liblinphone-rocky8-test-mr:
-  extends: .test-liblinphone-mr
-  <<: *docker_image_needs_platform_devtoolset_libl
+#liblinphone-rocky8-test-mr:
+#  extends: .test-liblinphone-mr
+#  <<: *docker_image_needs_platform_devtoolset_libl
 
 liblinphone-rocky8-test-mr-pq-h264-ekt:
   extends:

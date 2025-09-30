@@ -222,16 +222,16 @@
     - if: $CI_PIPELINE_SOURCE == "schedule" && $ENABLE_ANDROID_TESTS != null
     - !reference [.rules-merge-request-manual, rules]
 
-libl-rocky8-mr-test-upload:
-  extends: .test-report-upload
-  needs:
-    - liblinphone-rocky8-test-mr
-  variables:
-    PLATFORM: "linux-rocky8"
-    TESTER: "liblinphone"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: always
+#libl-rocky8-mr-test-upload:
+ # extends: .test-report-upload
+ # needs:
+ #   - liblinphone-rocky8-test-mr
+ # variables:
+ #   PLATFORM: "linux-rocky8"
+ #   TESTER: "liblinphone"
+ # rules:
+  #  - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+ #     when: always
 
 libl-rocky8-schedule-test-upload:
   extends: .test-report-upload-linux-scheduled

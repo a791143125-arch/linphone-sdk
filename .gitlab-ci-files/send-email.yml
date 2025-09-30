@@ -6,8 +6,8 @@ send-email-test-report:
   stage: email-notif
   tags: [ "docker-flat" ]
 
-  needs:
-    - libl-rocky8-mr-test-upload
+ # needs:
+  #  - libl-rocky8-mr-test-upload
 
   script:
     - ls -lah results
@@ -23,4 +23,4 @@ send-email-test-report:
     - echo $?
 
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
