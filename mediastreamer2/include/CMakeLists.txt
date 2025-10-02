@@ -89,6 +89,7 @@ set(HEADER_FILES
 	msanalysedisplay.h
 	msmire.h
 	mspacketrouter.h
+	ms_datachannel.h
 )
 
 set(MEDIASTREAMER2_HEADER_FILES )

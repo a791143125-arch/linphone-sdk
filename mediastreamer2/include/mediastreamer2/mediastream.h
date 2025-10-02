@@ -42,6 +42,7 @@
 #include <mediastreamer2/mswebcam.h>
 #include <mediastreamer2/qualityindicator.h>
 #include <mediastreamer2/zrtp.h>
+#include <mediastreamer2/ms_datachannel.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +126,7 @@ struct _MSMediaStreamSessions {
 	MSSrtpCtx *srtp_context;
 	MSZrtpContext *zrtp_context;
 	MSDtlsSrtpContext *dtls_context;
+	MSDataChannelContext *datachannel_context;
 	MSTicker *ticker;
 	bctbx_list_t *auxiliary_sessions; /**< a list of RtpSessions created by the mediastream on new SSRC
 	                                        multiplexed in a bundle */
@@ -212,6 +214,7 @@ MS2_PUBLIC bool_t media_stream_dtls_supported(void);
 
 /* enable DTLS on the media stream */
 MS2_PUBLIC void media_stream_enable_dtls(MediaStream *stream, const MSDtlsSrtpParams *params);
+MS2_PUBLIC void media_stream_enable_datachannel(MediaStream *stream);
 
 MS2_PUBLIC void media_stream_set_rtcp_information(MediaStream *stream, const char *cname, const char *tool);
 

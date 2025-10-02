@@ -251,6 +251,19 @@ static void ms_media_stream_bundle_and_sessions_free(void *b) {
 }
 
 void ms_media_stream_sessions_uninit(MSMediaStreamSessions *sessions) {
+	// destroy Datachannel, then DTLS session first as it may send shutdown packets
+	if (sessions->datachannel_context != NULL) {
+		ms_datachannel_context_destroy(sessions->datachannel_context);
+		sessions->datachannel_context = NULL;
+	}
+	if (sessions->dtls_context != NULL) {
+		ms_dtls_srtp_context_destroy(sessions->dtls_context);
+		sessions->dtls_context = NULL;
+	}
+	if (sessions->zrtp_context != NULL) {
+		ms_zrtp_context_destroy(sessions->zrtp_context);
+		sessions->zrtp_context = NULL;
+	}
 	if (sessions->srtp_context) {
 		ms_srtp_context_delete(sessions->srtp_context);
 		sessions->srtp_context = NULL;
@@ -265,14 +278,6 @@ void ms_media_stream_sessions_uninit(MSMediaStreamSessions *sessions) {
 	if (sessions->fec_session) {
 		rtp_session_destroy(sessions->fec_session);
 		sessions->fec_session = NULL;
-	}
-	if (sessions->zrtp_context != NULL) {
-		ms_zrtp_context_destroy(sessions->zrtp_context);
-		sessions->zrtp_context = NULL;
-	}
-	if (sessions->dtls_context != NULL) {
-		ms_dtls_srtp_context_destroy(sessions->dtls_context);
-		sessions->dtls_context = NULL;
 	}
 	if (sessions->ticker) {
 		ms_ticker_destroy(sessions->ticker);
@@ -402,6 +407,14 @@ void media_stream_enable_dtls(MediaStream *stream, const MSDtlsSrtpParams *param
 		if (params_copy.mtu == 0) params_copy.mtu = ms_factory_get_mtu(stream->factory);
 
 		stream->sessions.dtls_context = ms_dtls_srtp_context_new(&(stream->sessions), &params_copy);
+		media_stream_configure_stun_packet_sending(stream);
+	}
+}
+
+void media_stream_enable_datachannel(MediaStream *stream) {
+	if (stream->sessions.datachannel_context == NULL) {
+		ms_message("Create Datachannel context in stream session [%p]", &(stream->sessions));
+		stream->sessions.datachannel_context = ms_datachannel_context_new(&(stream->sessions));
 		media_stream_configure_stun_packet_sending(stream);
 	}
 }

@@ -941,6 +941,10 @@ void MS2Stream::initDtlsParams(MediaStream *ms) {
 			dtlsParams.role =
 			    MSDtlsSrtpRoleUnset; /* Default is unset, then check if we have a result SalMediaDescription */
 			media_stream_enable_dtls(ms, &dtlsParams);
+			if (ms_datachannel_supported()) { //TODO: check if we must do that according 
+				lError() << "JOHAN: datachannel supported";
+				media_stream_enable_datachannel(ms);
+			}
 			ms_free(certificate);
 			ms_free(key);
 		} else {
