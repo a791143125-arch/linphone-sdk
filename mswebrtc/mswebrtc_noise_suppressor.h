@@ -43,6 +43,8 @@ public:
 	void process(MSFilter *filter);
 	void postprocess();
 	int setRate(size_t rateInHz);
+	int getRate();
+	int getNbChannels();
 
 	// TODO missing methods
 

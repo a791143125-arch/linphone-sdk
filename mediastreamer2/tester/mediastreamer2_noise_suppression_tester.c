@@ -36,8 +36,51 @@
 #include "mediastreamer2_tester_private.h"
 #include "ortp/port.h"
 
+#ifdef ENABLE_WEBRTC_AEC
+extern void libmswebrtc_init(MSFactory *factory);
+#endif
+
 // FIXME FHA
-#define PLAY_DURATION_MS 60000
+#define PLAY_DURATION_MS 21000
+
+#define NS_DUMP 1
+
+typedef struct _denoising_test_config {
+	char *speech_file;
+	char *noise_file;
+	char *clean_file;
+	char *noisy_speech_file;
+	int sample_rate_Hz;
+	float play_duration_ms;
+	int start_noise_ms;
+	float noise_gain;
+} denoising_test_config;
+
+static void init_denoising_test_config(denoising_test_config *config) {
+	config->speech_file = NULL;
+	config->noise_file = NULL;
+	config->clean_file = NULL;
+	config->noisy_speech_file = NULL;
+	config->sample_rate_Hz = 48000;
+	config->play_duration_ms = PLAY_DURATION_MS;
+	config->start_noise_ms = 0;
+	config->noise_gain = 0.1;
+}
+
+static void uninit_denoising_test_config(denoising_test_config *config) {
+	if (config->speech_file) ms_free(config->speech_file);
+	if (config->noise_file) ms_free(config->noise_file);
+#if NS_DUMP != 1
+	if (config->clean_file) unlink(config->clean_file);
+	if (config->noisy_speech_file) unlink(config->noisy_speech_file);
+#endif
+	if (config->clean_file) ms_free(config->clean_file);
+	if (config->noisy_speech_file) ms_free(config->noisy_speech_file);
+	config->speech_file = NULL;
+	config->noise_file = NULL;
+	config->clean_file = NULL;
+	config->noisy_speech_file = NULL;
+}
 
 static MSFactory *msFactory = NULL;
 
@@ -74,22 +117,12 @@ static bool_t noise_test_create_player(MSFilter **player, char *input_file) {
 	return TRUE;
 }
 
-static void play_noisy_audio(char *model,
-                             char *noise_file,
-                             char *output_file,
-                             int input_sample_rate,
-                             float play_duration_ms,
-                             int start_noise_ms,
-                             float noise_gain) {
-	char *talk_file;
-	if (input_sample_rate == 48000) {
-		talk_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
-	} else {
-		talk_file = bc_tester_res("sounds/farend_simple_talk.wav");
-	}
-	unlink(output_file);
-	char *output_file_with_noise = bc_tester_file("output_noisy_audio.wav");
-	unlink(output_file_with_noise);
+static void play_and_denoise_audio(char *model, denoising_test_config *config) {
+
+#ifdef NS_DUMP
+	unlink(config->clean_file);
+	unlink(config->noisy_speech_file);
+#endif
 
 	int nchannels = 1;
 	int filter_nchannels = 0;
@@ -123,7 +156,7 @@ static void play_noisy_audio(char *model,
 	ms_tester_create_filters(filter_mask, msFactory);
 
 	// talk
-	if (!noise_test_create_player(&player_talk, talk_file)) {
+	if (!noise_test_create_player(&player_talk, config->speech_file)) {
 		BC_FAIL("cannot create talk player");
 		goto end;
 	}
@@ -134,7 +167,7 @@ static void play_noisy_audio(char *model,
 	ms_message("audio parameters read are: sample rate = %d Hz, mono/stereo = %d", signal_input_rate, nchannels_input);
 
 	// noise
-	if (!noise_test_create_player(&player_noise, noise_file)) {
+	if (!noise_test_create_player(&player_noise, config->noise_file)) {
 		BC_FAIL("cannot create noise player");
 		goto end;
 	}
@@ -157,11 +190,12 @@ static void play_noisy_audio(char *model,
 
 	MSAudioMixerCtl gainctl;
 	gainctl.pin = 0;
-	gainctl.param.gain = noise_gain;
+	gainctl.param.gain = config->noise_gain;
 	ms_filter_call_method(mixer, MS_AUDIO_MIXER_SET_INPUT_GAIN, &gainctl);
 	gainctl.pin = 1;
 	gainctl.param.gain = 1.;
 	ms_filter_call_method(mixer, MS_AUDIO_MIXER_SET_INPUT_GAIN, &gainctl);
+	ms_message("Noise added with gain = %f", config->noise_gain);
 
 	tee_for_two = ms_factory_create_filter(msFactory, MS_TEE_ID);
 
@@ -197,13 +231,13 @@ static void play_noisy_audio(char *model,
 	ms_filter_call_method(sound_rec, MS_FILTER_SET_SAMPLE_RATE, &ns_sample_rate);
 	ms_filter_call_method(sound_rec, MS_FILTER_SET_NCHANNELS, &ns_nchannels);
 	ms_filter_call_method_noarg(sound_rec, MS_FILE_REC_CLOSE);
-	ms_filter_call_method(sound_rec, MS_FILE_REC_OPEN, output_file);
+	ms_filter_call_method(sound_rec, MS_FILE_REC_OPEN, config->clean_file);
 
 	sound_rec_with_noise = ms_factory_create_filter(msFactory, MS_FILE_REC_ID);
 	ms_filter_call_method(sound_rec_with_noise, MS_FILTER_SET_SAMPLE_RATE, &ns_sample_rate);
 	ms_filter_call_method(sound_rec_with_noise, MS_FILTER_SET_NCHANNELS, &ns_nchannels);
 	ms_filter_call_method_noarg(sound_rec_with_noise, MS_FILE_REC_CLOSE);
-	ms_filter_call_method(sound_rec_with_noise, MS_FILE_REC_OPEN, output_file_with_noise);
+	ms_filter_call_method(sound_rec_with_noise, MS_FILE_REC_OPEN, config->noisy_speech_file);
 
 	MSConnectionHelper h;
 	ms_connection_helper_start(&h);
@@ -226,7 +260,7 @@ static void play_noisy_audio(char *model,
 	ms_filter_call_method(player_noise, MS_PLAYER_GET_DURATION, &noise_duration_ms);
 	ms_message("noise duration is %d ms", noise_duration_ms);
 	printf("noise duration is %fs\n", (float)noise_duration_ms / 1000.);
-	if (start_noise_ms > 0) ms_filter_call_method(player_noise, MS_PLAYER_SEEK_MS, &start_noise_ms);
+	if (config->start_noise_ms > 0) ms_filter_call_method(player_noise, MS_PLAYER_SEEK_MS, &config->start_noise_ms);
 	ms_filter_call_method(player_talk, MS_PLAYER_GET_DURATION, &talk_duration_ms);
 	ms_message("talk duration is %d ms", talk_duration_ms);
 	printf("talk duration is %fs\n", (float)talk_duration_ms / 1000.);
@@ -244,7 +278,7 @@ static void play_noisy_audio(char *model,
 	struct timeval now;
 	float elapsed = 0.;
 	bctbx_gettimeofday(&start_time, NULL);
-	while (audio_done != 1 && elapsed < play_duration_ms) {
+	while (audio_done != 1 && elapsed < config->play_duration_ms) {
 		bctbx_gettimeofday(&now, NULL);
 		elapsed = ((now.tv_sec - start_time.tv_sec) * 1000.0f) + ((now.tv_usec - start_time.tv_usec) / 1000.0f);
 		ms_usleep(time_step_usec);
@@ -285,177 +319,357 @@ end:
 	if (sound_rec_with_noise) ms_filter_destroy(sound_rec_with_noise);
 	if (filter_mask) ms_tester_destroy_filters(filter_mask);
 	ms_tester_destroy_ticker();
-	bctbx_free(talk_file);
-	bctbx_free(output_file);
-	bctbx_free(output_file_with_noise);
+}
+
+static void check_audio_quality(char *clean_file,
+                                char *reference_file,
+                                char *noisy_file,
+                                int start_comparison_ms,
+                                float energy_threshold,
+                                float similarity_threshold) {
+	double similar = 0.;
+	double energy = 0.;
+	MSAudioDiffParams audio_cmp_params;
+	audio_cmp_params.chunk_size_ms = 0;
+	audio_cmp_params.max_shift_percent = 5;
+	ms_message("*** compare clean audio with reference ***");
+	ms_message("compare %s", clean_file);
+	ms_message("compare %s", reference_file);
+	ms_message("Try to align output on reference by computing cross correlation with a maximal shift of %d percent",
+	           audio_cmp_params.max_shift_percent);
+	BC_ASSERT_EQUAL(ms_audio_compare_silence_and_speech(reference_file, clean_file, &similar, &energy,
+	                                                    &audio_cmp_params, NULL, NULL, 500, 1500, start_comparison_ms),
+	                0, int, "%d");
+	ms_message("energy in silence = %f - max = %f", energy, energy_threshold);
+	ms_message("similarity in talk = %f - min = %f", similar, similarity_threshold);
+	BC_ASSERT_GREATER(similar, similarity_threshold, double, "%f");
+	BC_ASSERT_LOWER(similar, 1.0, double, "%f");
+	BC_ASSERT_LOWER(energy, energy_threshold, double, "%f");
+
+	float k = 0.5;
+	ms_message("*** check that noise is reduced by at least %f ***", k);
+	ms_message("compare %s", noisy_file);
+	ms_message("compare %s", reference_file);
+	double similar_noisy = 0.;
+	double energy_noisy = 0.;
+	BC_ASSERT_EQUAL(ms_audio_compare_silence_and_speech(reference_file, noisy_file, &similar_noisy, &energy_noisy,
+	                                                    &audio_cmp_params, NULL, NULL, 500, 1500, start_comparison_ms),
+	                0, int, "%d");
+	ms_message("energy in silence of noisy audio = %f, -> %f for comparison", energy_noisy,
+	           energy_noisy - k * energy_noisy);
+	BC_ASSERT_LOWER_STRICT(energy, energy_noisy - k * energy_noisy, double, "%f");
 }
 
 static void talk_with_very_slight_noise_48kHz_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_very_slight_noise_48kHz_mswebrtcns.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.1;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_very_slight_noise_48kHz_mswebrtcns.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_very_slight_noise_48kHz_mswebrtcns.wav");
+	config.noise_gain = 0.1;
 	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.5,
+	                    0.97);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_very_slight_noise_48kHz_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_very_slight_noise_48kHz_rnnoise.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.1;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_very_slight_noise_48kHz_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_very_slight_noise_48kHz_rnnoise.wav");
+	config.noise_gain = 0.1;
 	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.05,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_real_noise_48kHz_1_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_real_noise_48kHz_1_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_real_noise_48kHz_1_rnnoise.wav");
+	config.noise_gain = 0.3;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.05,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_real_noise_48kHz_2_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_real_noise_48kHz_2_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_real_noise_48kHz_2_rnnoise.wav");
+	config.noise_gain = 0.4;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.05,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_real_noise_48kHz_1_mswebrtcns(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_real_noise_48kHz_1_mswebrtcns.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_real_noise_48kHz_1_mswebrtcns.wav");
+	config.noise_gain = 0.3;
+	char *model = "webrtcns";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.05,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_real_noise_48kHz_2_mswebrtcns(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_real_noise_48kHz_2_mswebrtcns.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_real_noise_48kHz_2_mswebrtcns.wav");
+	config.noise_gain = 0.4;
+	char *model = "webrtcns";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.05,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_1_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_1_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_1_rnnoise.wav");
+	config.noise_gain = 0.1;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_5_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_5_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_5_rnnoise.wav");
+	config.noise_gain = 0.2;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_6_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_6_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_6_rnnoise.wav");
+	config.noise_gain = 0.3;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_7_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_7_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_7_rnnoise.wav");
+	config.noise_gain = 0.4;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_2_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_2_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_2_rnnoise.wav");
+	config.noise_gain = 0.5;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_3_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_3_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_3_rnnoise.wav");
+	config.noise_gain = 1.;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
+}
+
+static void talk_with_white_noise_48kHz_4_rnnoise(void) {
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/white_noise_48000Hz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_white_noise_48kHz_4_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_white_noise_48kHz_4_rnnoise.wav");
+	config.noise_gain = 1.5;
+	config.play_duration_ms = 10000;
+	char *model = "rnnoise";
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.01,
+	                    0.98);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_slight_noise_48kHz_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_slight_noise_48kHz_mswebrtcns.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.2;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_slight_noise_48kHz_mswebrtcns.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_slight_noise_48kHz_mswebrtcns.wav");
+	config.noise_gain = 0.2;
 	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 2., 0.95);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_slight_noise_48kHz_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_slight_noise_48kHz_rnnoise.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.2;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_slight_noise_48kHz_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_slight_noise_48kHz_rnnoise.wav");
+	config.noise_gain = 0.2;
 	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
-}
-
-static void talk_with_medium_noise_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_16kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_medium_noise_mswebrtcns.wav");
-	int rate_Hz = 16000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
-	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
-}
-
-static void talk_with_medium_noise_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_16kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_medium_noise_rnnoise.wav");
-	int rate_Hz = 16000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
-	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.03,
+	                    0.98);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_medium_noise_48kHz_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_medium_noise_48kHz_mswebrtcns.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_medium_noise_48kHz_mswebrtcns.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_medium_noise_48kHz_mswebrtcns.wav");
+	config.noise_gain = 0.5;
 	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 12.5,
+	                    0.87);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_medium_noise_48kHz_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_medium_noise_48kHz_rnnoise.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_4_linux_medium_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_medium_noise_48kHz_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_medium_noise_48kHz_rnnoise.wav");
+	config.noise_gain = 0.5;
 	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
-}
-
-static void talk_with_increasing_noise_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/echo_8_linux_inscreasing_noise_1min_16kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_increasing_noise_mswebrtcns.wav");
-	int rate_Hz = 16000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
-	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
-}
-
-static void talk_with_increasing_noise_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/echo_8_linux_inscreasing_noise_1min_16kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_increasing_noise_rnnoise.wav");
-	int rate_Hz = 16000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
-	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	int start_comparison_ms = config.play_duration_ms - 4000;
+	check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.02,
+	                    0.96);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_increasing_noise_48kHz_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/echo_8_linux_inscreasing_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_increasing_noise_48kHz_mswebrtcns.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_8_linux_inscreasing_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_increasing_noise_48kHz_mswebrtcns.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_increasing_noise_48kHz_mswebrtcns.wav");
+	config.noise_gain = 0.5;
+	config.play_duration_ms = 60000;
 	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	// int start_comparison_ms = config.play_duration_ms - 4000;
+	// check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.2,
+	//                     0.98);
+	uninit_denoising_test_config(&config);
 }
 
 static void talk_with_increasing_noise_48kHz_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/echo_8_linux_inscreasing_noise_1min_48kHz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_increasing_noise_48kHz_rnnoise.wav");
-	int rate_Hz = 48000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 0;
-	float noise_gain = 0.5;
+	denoising_test_config config;
+	init_denoising_test_config(&config);
+	config.speech_file = bc_tester_res("sounds/farend_simple_talk_48kHz.wav");
+	config.noise_file = bc_tester_res("sounds/echo_8_linux_inscreasing_noise_1min_48kHz.wav");
+	config.clean_file = bc_tester_file("clean_audio_talk_with_increasing_noise_48kHz_rnnoise.wav");
+	config.noisy_speech_file = bc_tester_file("noisy_audio_talk_with_increasing_noise_48kHz_rnnoise.wav");
+	config.noise_gain = 0.5;
+	config.play_duration_ms = 60000;
 	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
-}
-
-static void talk_with_strong_increasing_noise_mswebrtcns(void) {
-	char *noise_file = bc_tester_res("sounds/increasing_noise_16000Hz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_strong_increasing_noise_mswebrtcns.wav");
-	int rate_Hz = 16000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 45000;
-	float noise_gain = 1.;
-	char *model = "webrtcns";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
-}
-
-static void talk_with_strong_increasing_noise_rnnoise(void) {
-	char *noise_file = bc_tester_res("sounds/increasing_noise_16000Hz.wav");
-	char *output_file = bc_tester_file("output_audio_talk_with_strong_increasing_noise_rnnoise.wav");
-	int rate_Hz = 16000;
-	float play_duration_ms = PLAY_DURATION_MS;
-	int start_noise_ms = 45000;
-	float noise_gain = 1.;
-	char *model = "rnnoise";
-	play_noisy_audio(model, noise_file, output_file, rate_Hz, play_duration_ms, start_noise_ms, noise_gain);
-	bctbx_free(noise_file);
+	play_and_denoise_audio(model, &config);
+	// int start_comparison_ms = config.play_duration_ms - 4000;
+	// check_audio_quality(config.clean_file, config.speech_file, config.noisy_speech_file, start_comparison_ms, 0.2,
+	//                     0.98);
+	uninit_denoising_test_config(&config);
 }
 
 static test_t tests[] = {
@@ -463,16 +677,21 @@ static test_t tests[] = {
     TEST_NO_TAG("Talk with very slight noise 48kHz, RNNoise", talk_with_very_slight_noise_48kHz_rnnoise),
     TEST_NO_TAG("Talk with slight noise 48kHz, MSWebRTCNS", talk_with_slight_noise_48kHz_mswebrtcns),
     TEST_NO_TAG("Talk with slight noise 48kHz, RNNoise", talk_with_slight_noise_48kHz_rnnoise),
-    TEST_NO_TAG("Talk with medium noise, MSWebRTCNS", talk_with_medium_noise_mswebrtcns),
-    TEST_NO_TAG("Talk with medium noise, RNNoise", talk_with_medium_noise_rnnoise),
     TEST_NO_TAG("Talk with medium noise 48kHz, MSWebRTCNS", talk_with_medium_noise_48kHz_mswebrtcns),
     TEST_NO_TAG("Talk with medium noise 48kHz, RNNoise", talk_with_medium_noise_48kHz_rnnoise),
-    TEST_NO_TAG("Talk with increasing noise, MSWebRTCNS", talk_with_increasing_noise_mswebrtcns),
-    TEST_NO_TAG("Talk with increasing noise, RNNoise", talk_with_increasing_noise_rnnoise),
     TEST_NO_TAG("Talk with increasing noise 48kHz, MSWebRTCNS", talk_with_increasing_noise_48kHz_mswebrtcns),
     TEST_NO_TAG("Talk with increasing noise 48kHz, RNNoise", talk_with_increasing_noise_48kHz_rnnoise),
-    TEST_NO_TAG("Talk with strong increasing noise, MSWebRTCNS", talk_with_strong_increasing_noise_mswebrtcns),
-    TEST_NO_TAG("Talk with strong increasing noise, RNNoise", talk_with_strong_increasing_noise_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 1, RNNoise", talk_with_white_noise_48kHz_1_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 2, RNNoise", talk_with_white_noise_48kHz_2_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 3, RNNoise", talk_with_white_noise_48kHz_3_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 4, RNNoise", talk_with_white_noise_48kHz_4_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 5, RNNoise", talk_with_white_noise_48kHz_5_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 6, RNNoise", talk_with_white_noise_48kHz_6_rnnoise),
+    TEST_NO_TAG("Talk with white noise 48kHz 7, RNNoise", talk_with_white_noise_48kHz_7_rnnoise),
+    TEST_NO_TAG("Talk with real noise 48kHz 1, RNNoise", talk_with_real_noise_48kHz_1_rnnoise),
+    TEST_NO_TAG("Talk with real noise 48kHz 2, RNNoise", talk_with_real_noise_48kHz_2_rnnoise),
+    TEST_NO_TAG("Talk with real noise 48kHz 1, MSWebRTCNS", talk_with_real_noise_48kHz_1_mswebrtcns),
+    TEST_NO_TAG("Talk with real noise 48kHz 2, MSWebRTCNS", talk_with_real_noise_48kHz_2_mswebrtcns),
 };
 
 test_suite_t noise_suppression_in_audio_test_suite = {"Noise suppression in audio",

@@ -123,4 +123,12 @@ int mswebrtc_noise_suppressor::setRate(size_t rateInHz) {
 	return 0;
 }
 
+int mswebrtc_noise_suppressor::getRate() {
+	return static_cast<int>(mRateInHz);
+}
+
+int mswebrtc_noise_suppressor::getNbChannels() {
+	return static_cast<int>(mNumChannels);
+}
+
 } // namespace mswebrtc_noise_suppressor

@@ -68,9 +68,16 @@ static int webrtc_noise_suppressor_set_sample_rate(MSFilter *f, void *arg) {
 }
 
 static int webrtc_noise_suppressor_get_sample_rate(MSFilter *f, void *arg) {
-	// mswebrtc_noise_suppressor::mswebrtc_noise_suppressor *NSInst =
-	// static_cast<mswebrtc_noise_suppressor::mswebrtc_noise_suppressor *>(f->data); *static_cast<int *>(arg) =
-	// NSInst->getSampleRate();
+	mswebrtc_noise_suppressor::mswebrtc_noise_suppressor *NSInst =
+	    static_cast<mswebrtc_noise_suppressor::mswebrtc_noise_suppressor *>(f->data);
+	*static_cast<int *>(arg) = NSInst->getRate();
+	return 0;
+}
+
+static int webrtc_noise_suppressor_get_nchannels(MSFilter *f, void *arg) {
+	mswebrtc_noise_suppressor::mswebrtc_noise_suppressor *NSInst =
+	    static_cast<mswebrtc_noise_suppressor::mswebrtc_noise_suppressor *>(f->data);
+	*static_cast<int *>(arg) = NSInst->getNbChannels();
 	return 0;
 }
 
@@ -91,6 +98,7 @@ static int webrtc_noise_suppressor_get_bypass_mode(MSFilter *f, void *arg) {
 static MSFilterMethod webrtc_noise_suppressor_methods[] = {
     {MS_FILTER_SET_SAMPLE_RATE, webrtc_noise_suppressor_set_sample_rate},
     {MS_FILTER_GET_SAMPLE_RATE, webrtc_noise_suppressor_get_sample_rate},
+    {MS_FILTER_GET_NCHANNELS, webrtc_noise_suppressor_get_nchannels},
     // {MS_NOISE_SUPPRESSOR_SET_BYPASS_MODE, webrtc_noise_suppressor_set_bypass_mode},
     // {MS_NOISE_SUPPRESSOR_GET_BYPASS_MODE, webrtc_noise_suppressor_get_bypass_mode},
     {0, NULL}};

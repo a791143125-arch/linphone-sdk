@@ -1809,9 +1809,12 @@ int audio_stream_start_from_io(AudioStream *stream,
 	ms_connection_helper_start(&h);
 	ms_connection_helper_link(&h, stream->soundread, -1, 0);
 	if (stream->read_decoder) ms_connection_helper_link(&h, stream->read_decoder, 0, 0);
+	// TODO FHA tester RNNoise ici, si 48kHz, avec test dans audio_stream_configure_resampler pour passer en bypass si
+	// chgt rate
 	if (stream->read_resampler) ms_connection_helper_link(&h, stream->read_resampler, 0, 0);
 	if (stream->mic_equalizer) ms_connection_helper_link(&h, stream->mic_equalizer, 0, 0);
 	if (stream->ec) ms_connection_helper_link(&h, stream->ec, 1, 1);
+	// TODO FHA tester RNNoise ici, si 48kHz
 	if (stream->volsend) ms_connection_helper_link(&h, stream->volsend, 0, 0);
 	if (stream->vad) ms_connection_helper_link(&h, stream->vad, 0, 0);
 	if (stream->dtmfgen_rtp) ms_connection_helper_link(&h, stream->dtmfgen_rtp, 0, 0);
