@@ -204,15 +204,7 @@ public class AudioHelper implements OnAudioFocusChangeListener {
     }
 
     public void requestRingingAudioFocus() {
-        boolean nativeRinging = true;
-        if (AndroidPlatformHelper.isReady()) {
-            nativeRinging = AndroidPlatformHelper.instance().getCore().isNativeRingingEnabled();
-            if (!nativeRinging) {
-                Log.w("[Audio Helper] Native ringing was disabled, so ringing audio focus will be requested even if it is disabled in config");
-            }
-        }
-
-        if (nativeRinging && isAudioFocusDisabled()) {
+        if (isAudioFocusDisabled()) {
             Log.i("[Audio Helper] We were asked not to require audio focus, skipping");
             return;
         }
