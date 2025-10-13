@@ -942,9 +942,8 @@ LINPHONE_PUBLIC int linphone_chat_room_get_history_events_size(LinphoneChatRoom 
  * Notifies the destination of the chat message being composed that the user is typing a new message.
  * @param chat_room The #LinphoneChatRoom object corresponding to the conversation for which a new message is being
  * typed. @notnil
- * @deprecated 24/06/2025 use linphone_chat_room_compose_text_message() instead.
  */
-LINPHONE_PUBLIC LINPHONE_DEPRECATED void linphone_chat_room_compose(LinphoneChatRoom *chat_room);
+LINPHONE_PUBLIC void linphone_chat_room_compose(LinphoneChatRoom *chat_room);
 
 /**
  * Creates a message attached to the given chat room.
