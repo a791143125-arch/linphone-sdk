@@ -5130,7 +5130,26 @@ bool MediaSession::startRecording() {
 		return false;
 	}
 	AudioControlInterface *i = d->getStreamsGroup().lookupMainStreamInterface<AudioControlInterface>(SalAudio);
-	if (i != nullptr) return i->startRecording();
+	if (i != nullptr) {
+		i->activateLocalStreamInRecording(true);
+		return i->startRecording();
+	}
+
+	return false;
+}
+
+bool MediaSession::startRecordingRemoteOnly() {
+	L_D();
+	if (d->getParams()->getRecordFilePath().empty()) {
+		lError() << "MediaSession::startRecordingRemoteOnly(): no output file specified. Use "
+		            "MediaSessionParams::setRecordFilePath()";
+		return false;
+	}
+	AudioControlInterface *i = d->getStreamsGroup().lookupMainStreamInterface<AudioControlInterface>(SalAudio);
+	if (i != nullptr) {
+		i->activateLocalStreamInRecording(false);
+		return i->startRecording();
+	}
 
 	return false;
 }

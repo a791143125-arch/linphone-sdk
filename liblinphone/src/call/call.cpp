@@ -984,6 +984,12 @@ bool Call::isRecording() {
 	return static_pointer_cast<MediaSession>(getActiveSession())->getMediaParams()->isRecording();
 }
 
+void Call::startRecordingRemoteOnly() {
+	if (static_pointer_cast<MediaSession>(getActiveSession())->startRecordingRemoteOnly()) {
+		updateRecordState(SalMediaRecordOn);
+	}
+}
+
 LinphoneStatus Call::takePreviewSnapshot(const string &file) {
 	return static_pointer_cast<MediaSession>(getActiveSession())->takePreviewSnapshot(file);
 }

@@ -195,6 +195,10 @@ bool MS2AudioMixer::startRecording() {
 	return ms_audio_recorder_endpoint_start(mRecordEndpoint) != -1;
 }
 
+void MS2AudioMixer::activateLocalStreamInRecording(bool activate) {
+	lError() << "MS2AudioMixer:activateLocalStreamInRecording(): unsupported";
+}
+
 void MS2AudioMixer::stopRecording() {
 	if (!mRecordEndpoint) {
 		lWarning() << "MS2AudioMixer::stopRecording(): no record currently active";

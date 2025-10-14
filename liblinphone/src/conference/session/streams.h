@@ -231,6 +231,7 @@ public:
 	virtual bool startRecording() = 0;
 	virtual void stopRecording() = 0;
 	virtual bool isRecording() = 0;
+	virtual void activateLocalStreamInRecording(bool activate) = 0;
 	virtual float getPlayVolume() = 0;   /* Measured playback volume */
 	virtual float getRecordVolume() = 0; /* Measured record volume */
 	virtual float getMicGain() = 0;

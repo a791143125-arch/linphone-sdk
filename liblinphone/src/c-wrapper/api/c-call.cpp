@@ -672,6 +672,11 @@ void linphone_call_stop_recording(LinphoneCall *call) {
 	Call::toCpp(call)->stopRecording();
 }
 
+void linphone_call_start_recording_remote_only(LinphoneCall *call) {
+	CallLogContextualizer logContextualizer(call);
+	Call::toCpp(call)->startRecordingRemoteOnly();
+}
+
 bool_t linphone_call_is_recording(LinphoneCall *call) {
 	return Call::toCpp(call)->isRecording();
 }

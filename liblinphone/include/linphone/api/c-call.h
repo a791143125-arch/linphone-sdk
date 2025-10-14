@@ -906,6 +906,14 @@ LINPHONE_PUBLIC void linphone_call_start_recording(LinphoneCall *call);
 LINPHONE_PUBLIC void linphone_call_stop_recording(LinphoneCall *call);
 
 /**
+ * Starts call recording of remote party audio only.
+ * Video record is only available if this function is called in state StreamRunning.
+ * The output file where audio is recorded must be previously specified with linphone_call_params_set_record_file().
+ * @param call The #LinphoneCall object. @notnil
+ **/
+LINPHONE_PUBLIC void linphone_call_start_recording_remote_only(LinphoneCall *call);
+
+/**
  * Gets a player associated with the call to play a local file and stream it to the remote peer.
  * @param call #LinphoneCall object. @notnil
  * @return A #LinphonePlayer object. @maybenil

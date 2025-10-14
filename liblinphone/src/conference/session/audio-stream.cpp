@@ -965,6 +965,10 @@ void MS2AudioStream::stopRecording() {
 	mRecordActive = false;
 }
 
+void MS2AudioStream::activateLocalStreamInRecording(bool activate) {
+	audio_stream_mixed_record_activate_local_stream(mStream, activate);
+}
+
 float MS2AudioStream::getPlayVolume() {
 	if (mStream && mStream->volrecv) {
 		float vol = 0;

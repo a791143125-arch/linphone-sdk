@@ -206,6 +206,7 @@ public:
 	virtual bool isRecording() override {
 		return mRecordActive;
 	}
+	virtual void activateLocalStreamInRecording(bool activate) override;
 	virtual float getPlayVolume() override;
 	virtual float getRecordVolume() override;
 	virtual float getMicGain() override;

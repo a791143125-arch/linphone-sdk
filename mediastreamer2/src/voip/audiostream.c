@@ -2113,6 +2113,17 @@ int audio_stream_mixed_record_stop(AudioStream *st) {
 	return 0;
 }
 
+void audio_stream_mixed_record_activate_local_stream(AudioStream *st, bool_t activate) {
+	if (st && st->recorder_mixer) {
+		MSAudioMixerCtl ctl = {0};
+		ctl.pin = 0; // 0 = local, 1 = remote
+		ctl.param.active = activate;
+		ms_filter_call_method(st->recorder_mixer, MS_AUDIO_MIXER_SET_ACTIVE, &ctl);
+	} else {
+		ms_warning("Unable to set activate/deactivate local stream recording in recorder mixer.");
+	}
+}
+
 uint32_t audio_stream_get_features(AudioStream *st) {
 	return st->features;
 }
