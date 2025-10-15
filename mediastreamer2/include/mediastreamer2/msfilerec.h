@@ -22,11 +22,19 @@
 
 #include <mediastreamer2/msfilter.h>
 
+#define MAX_PATH_TEMP 255
+
+typedef struct _MSFileRecEventData {
+	char filePath[MAX_PATH_TEMP];
+} MSFileRecEventData;
+
 extern MSFilterDesc ms_file_rec_desc;
 
 #define MS_FILE_REC_OPEN MS_FILTER_METHOD(MS_FILE_REC_ID, 0, const char)
 #define MS_FILE_REC_START MS_FILTER_METHOD_NO_ARG(MS_FILE_REC_ID, 1)
 #define MS_FILE_REC_STOP MS_FILTER_METHOD_NO_ARG(MS_FILE_REC_ID, 2)
 #define MS_FILE_REC_CLOSE MS_FILTER_METHOD_NO_ARG(MS_FILE_REC_ID, 3)
+#define MS_RECORDER_RECORDING_SEGMENT_AVAILABLE MS_FILTER_EVENT(MS_FILE_REC_ID, 4, MSFileRecEventData)
+#define MAX_SEGMENTS_PER_RECORDING 10000
 
 #endif

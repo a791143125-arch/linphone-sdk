@@ -158,6 +158,8 @@ typedef enum _MSRecorderState MSRecorderState;
 
 #define MS_RECORDER_MAX_SIZE_REACHED MS_FILTER_EVENT_NO_ARG(MSFilterRecorderInterface, 1)
 
+#define MS_RECORDER_ENABLE_SEGMENTED_RECORDING MS_FILTER_METHOD(MSFilterRecorderInterface, 7, int)
+
 /** Interface definitions for echo cancellers */
 
 /** sets the echo delay in milliseconds*/

@@ -798,6 +798,11 @@ void Call::onBaudotDetected(BCTBX_UNUSED(const std::shared_ptr<CallSession> &ses
 }
 #endif /* HAVE_BAUDOT */
 
+void Call::onRecordingSegmentAvailable(BCTBX_UNUSED(const std::shared_ptr<CallSession> &session),
+                                       const string &filename) {
+	linphone_call_notify_recording_segment_available(this->toC(), L_STRING_TO_C(filename));
+}
+
 void Call::onTmmbrReceived(BCTBX_UNUSED(const shared_ptr<CallSession> &session), int streamIndex, int tmmbr) {
 	linphone_call_notify_tmmbr_received(this->toC(), streamIndex, tmmbr);
 }
@@ -988,6 +993,10 @@ void Call::startRecordingRemoteOnly() {
 	if (static_pointer_cast<MediaSession>(getActiveSession())->startRecordingRemoteOnly()) {
 		updateRecordState(SalMediaRecordOn);
 	}
+}
+
+void Call::enableSegmentedRecording(int samplesPerSegment) {
+	static_pointer_cast<MediaSession>(getActiveSession())->enableSegmentedRecording(samplesPerSegment);
 }
 
 LinphoneStatus Call::takePreviewSnapshot(const string &file) {

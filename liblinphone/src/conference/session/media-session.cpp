@@ -5154,6 +5154,14 @@ bool MediaSession::startRecordingRemoteOnly() {
 	return false;
 }
 
+void MediaSession::enableSegmentedRecording(int samplesPerSegment) {
+	L_D();
+	AudioControlInterface *i = d->getStreamsGroup().lookupMainStreamInterface<AudioControlInterface>(SalAudio);
+	if (i != nullptr) {
+		i->enableSegmentedRecording(samplesPerSegment);
+	}
+}
+
 void MediaSession::stopRecording() {
 	L_D();
 	AudioControlInterface *i = d->getStreamsGroup().lookupMainStreamInterface<AudioControlInterface>(SalAudio);

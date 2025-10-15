@@ -199,6 +199,10 @@ void MS2AudioMixer::activateLocalStreamInRecording(bool activate) {
 	lError() << "MS2AudioMixer:activateLocalStreamInRecording(): unsupported";
 }
 
+void MS2AudioMixer::enableSegmentedRecording(int samplesPerSegment) {
+	lError() << "MS2AudioMixer:activateLocalStreamInRecording(): unsupported";
+}
+
 void MS2AudioMixer::stopRecording() {
 	if (!mRecordEndpoint) {
 		lWarning() << "MS2AudioMixer::stopRecording(): no record currently active";

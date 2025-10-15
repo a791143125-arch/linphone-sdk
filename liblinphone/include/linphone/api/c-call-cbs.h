@@ -380,6 +380,22 @@ LINPHONE_PUBLIC void linphone_call_cbs_set_baudot_detected(LinphoneCallCbs *cbs,
 LINPHONE_PUBLIC LinphoneCallCbsBaudotDetectedCb linphone_call_cbs_get_baudot_detected(LinphoneCallCbs *cbs);
 
 /**
+ * Set the recording segment available callback.
+ * @param[in] cbs The #LinphoneCallCbs object. @notnil
+ * @param[in] cb the Recording segment available callback to be used.
+ */
+LINPHONE_PUBLIC void linphone_call_cbs_set_recording_segment_available(LinphoneCallCbs *cbs,
+                                                                       LinphoneCallCbsRecordingSegmentAvailableCb cb);
+
+/**
+ * Get the recording segment available callback.
+ * @param[in] cbs The #LinphoneCallCbs object. @notnil
+ * @return The Recording available detected callback.
+ */
+LINPHONE_PUBLIC LinphoneCallCbsRecordingSegmentAvailableCb
+linphone_call_cbs_get_recording_segment_available(LinphoneCallCbs *cbs);
+
+/**
  * @}
  */
 

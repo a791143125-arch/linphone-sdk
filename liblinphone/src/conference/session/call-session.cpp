@@ -2398,6 +2398,19 @@ void CallSession::notifyBaudotDetected(MSBaudotStandard standard) {
 }
 #endif /* HAVE_BAUDOT */
 
+void CallSession::notifyRecordingSegmentAvailable(const std::string filename) {
+	L_D();
+	// Copy list of listeners as the callback might delete one
+	auto listeners = d->listeners;
+	for (const auto &listener : listeners) {
+		auto listenerRef = listener.lock();
+		if (listenerRef) {
+			auto logContext = listenerRef->getLogContextualizer();
+			listenerRef->onRecordingSegmentAvailable(getSharedFromThis(), filename);
+		}
+	}
+}
+
 void CallSession::notifyLossOfMediaDetected() {
 	L_D();
 	// Copy list of listeners as the callback might delete one

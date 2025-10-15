@@ -163,6 +163,10 @@ public:
 	}
 #endif /* HAVE_BAUDOT */
 
+	virtual void onRecordingSegmentAvailable(BCTBX_UNUSED(const std::shared_ptr<CallSession> &session),
+	                                         BCTBX_UNUSED(const std::string &filename)) {
+	}
+
 	virtual void confirmGoClear() const {};
 
 	virtual void onAlertNotified(BCTBX_UNUSED(std::shared_ptr<Alert> &alert)){};

@@ -183,6 +183,7 @@ public:
 	virtual void stopRecording() override;
 	virtual bool isRecording() override;
 	virtual void activateLocalStreamInRecording(bool activate) override;
+	virtual void enableSegmentedRecording(int samplesPerSegment) override;
 	virtual float getPlayVolume() override;   /* Measured playback volume */
 	virtual float getRecordVolume() override; /* Measured record volume */
 	virtual float getMicGain() override;

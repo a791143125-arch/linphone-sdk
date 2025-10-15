@@ -38,6 +38,7 @@
 #include "linphone/core.h"
 #include "media-session-p.h"
 #include "media-session.h"
+#include "mediastreamer2/msfilerec.h"
 #include "mixers.h"
 #include "nat/ice-service.h"
 
@@ -627,6 +628,10 @@ void MS2AudioStream::render(const OfferAnswerContext &params, CallSession::State
 			ms_filter_add_notify_callback(mStream->baudot_detector, sBaudotDetectorEventNotified, this, false);
 		}
 #endif /* HAVE_BAUDOT */
+
+		if (mStream->recorder) {
+			ms_filter_add_notify_callback(mStream->recorder, sRecordingSegmentAvailableEventNotified, this, false);
+		}
 	}
 
 	if ((targetState == CallSession::State::Paused) && !captcard && !playfile.empty()) {
@@ -969,6 +974,10 @@ void MS2AudioStream::activateLocalStreamInRecording(bool activate) {
 	audio_stream_mixed_record_activate_local_stream(mStream, activate);
 }
 
+void MS2AudioStream::enableSegmentedRecording(int samplesPerSegment) {
+	audio_stream_mixed_record_enable_segmented_recording(mStream, samplesPerSegment);
+}
+
 float MS2AudioStream::getPlayVolume() {
 	if (mStream && mStream->volrecv) {
 		float vol = 0;
@@ -1205,6 +1214,17 @@ void MS2AudioStream::sBaudotDetectorEventNotified(void *userData, MSFilter *f, u
 	zis->baudotDetectorEventNotified(f, id, arg);
 }
 #endif /* HAVE_BAUDOT */
+
+void MS2AudioStream::recordingSegmentAvailableEventNotified(BCTBX_UNUSED(MSFilter *f), unsigned int id, void *arg) {
+	if (id == MS_RECORDER_RECORDING_SEGMENT_AVAILABLE)
+		getMediaSession().notifyRecordingSegmentAvailable(std::string(reinterpret_cast<const char *>(arg)));
+}
+
+void MS2AudioStream::sRecordingSegmentAvailableEventNotified(void *userData, MSFilter *f, unsigned int id, void *arg) {
+	MS2AudioStream *zis = static_cast<MS2AudioStream *>(userData);
+	MSFileRecEventData *data = static_cast<MSFileRecEventData *>(arg);
+	zis->recordingSegmentAvailableEventNotified(f, id, data->filePath);
+}
 
 std::string MS2AudioStream::getLabel() const {
 	return std::string();

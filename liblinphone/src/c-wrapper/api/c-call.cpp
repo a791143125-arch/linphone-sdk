@@ -192,6 +192,11 @@ void linphone_call_notify_baudot_detected(LinphoneCall *call, LinphoneBaudotStan
 	LINPHONE_HYBRID_OBJECT_INVOKE_CBS(Call, Call::toCpp(call), linphone_call_cbs_get_baudot_detected, standard);
 }
 
+void linphone_call_notify_recording_segment_available(LinphoneCall *call, const char *filename) {
+	LINPHONE_HYBRID_OBJECT_INVOKE_CBS(Call, Call::toCpp(call), linphone_call_cbs_get_recording_segment_available,
+	                                  filename);
+}
+
 // =============================================================================
 // Public functions.
 // =============================================================================
@@ -675,6 +680,11 @@ void linphone_call_stop_recording(LinphoneCall *call) {
 void linphone_call_start_recording_remote_only(LinphoneCall *call) {
 	CallLogContextualizer logContextualizer(call);
 	Call::toCpp(call)->startRecordingRemoteOnly();
+}
+
+void linphone_call_enable_segmented_recording(LinphoneCall *call, int samples_per_segment) {
+	CallLogContextualizer logContextualizer(call);
+	Call::toCpp(call)->enableSegmentedRecording(samples_per_segment);
 }
 
 bool_t linphone_call_is_recording(LinphoneCall *call) {

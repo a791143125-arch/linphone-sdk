@@ -2124,6 +2124,14 @@ void audio_stream_mixed_record_activate_local_stream(AudioStream *st, bool_t act
 	}
 }
 
+void audio_stream_mixed_record_enable_segmented_recording(AudioStream *st, int samples) {
+	if (st && st->recorder) {
+		ms_filter_call_method(st->recorder, MS_RECORDER_ENABLE_SEGMENTED_RECORDING, &samples);
+	} else {
+		ms_warning("Unable to set the number of samples per recordings");
+	}
+}
+
 uint32_t audio_stream_get_features(AudioStream *st) {
 	return st->features;
 }

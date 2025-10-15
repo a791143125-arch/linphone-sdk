@@ -95,6 +95,7 @@ public:
 	void stopRecording();
 	bool isRecording();
 	bool startRecordingRemoteOnly();
+	void enableSegmentedRecording(int samplesPerSegment);
 	void setRecordPath(const std::string &path);
 	void terminateBecauseOfLostMedia();
 	LinphoneStatus updateFromConference(const MediaSessionParams *msp, const std::string &subject = "");

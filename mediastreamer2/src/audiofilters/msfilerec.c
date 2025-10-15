@@ -28,11 +28,15 @@
 #include "mediastreamer2/msfilerec.h"
 #include "waveheader.h"
 #include <bctoolbox/vfs.h>
+#include <math.h>
 
 #include "fd_portab.h" // keep this include at the last of the inclusion sequence!
 
 static int rec_close(MSFilter *f, void *arg);
 static void write_wav_header(bctbx_vfs_file_t *fp, int rate, int nchannels, int size);
+static const char *generate_next_indexed_filename(const char *filename, int index);
+static int rec_open(MSFilter *f, void *arg);
+static int rec_open_lock(MSFilter *f, void *arg, bool_t lock);
 
 typedef struct RecState {
 	bctbx_vfs_file_t *fp;
@@ -45,6 +49,10 @@ typedef struct RecState {
 	MSRecorderState state;
 	bool_t swap;
 	bool_t is_wav;
+	char *filename;
+	int samples_per_segment;
+	int segment_index;
+	char *segment_base_filename;
 } RecState;
 
 static void rec_init(MSFilter *f) {
@@ -57,6 +65,10 @@ static void rec_init(MSFilter *f) {
 	s->mime = "pcm";
 	s->swap = FALSE;
 	s->is_wav = FALSE;
+	s->samples_per_segment = 0;
+	s->segment_index = 0;
+	s->segment_base_filename = NULL;
+	s->filename = NULL;
 	f->data = s;
 }
 
@@ -82,10 +94,22 @@ static void rec_process(MSFilter *f) {
 		if (s->state == MSRecorderRunning) {
 			int len = (int)(m->b_wptr - m->b_rptr);
 			int max_size_reached = 0;
+			int segment_complete = 0;
+
 			if (s->max_size != 0 && s->size + len > s->max_size) {
 				len = s->max_size - s->size;
 				max_size_reached = 1;
 			}
+
+			if (s->samples_per_segment > 0) {
+				int bytes_per_sample = 2;
+				int bytes_per_frame = bytes_per_sample * s->nchannels;
+				int frames_in_segment = (s->size + len) / bytes_per_frame;
+				if (frames_in_segment >= s->samples_per_segment) {
+					segment_complete = 1;
+				}
+			}
+
 			if (s->swap) {
 				if (dblk_ref_value(m->b_datap) != 1) {
 					mblk_t *old = m;
@@ -100,6 +124,22 @@ static void rec_process(MSFilter *f) {
 				ms_warning("MSFileRec: Maximum size (%d) has been reached. closing file.", s->max_size);
 				_rec_close(s);
 				ms_filter_notify_no_arg(f, MS_RECORDER_MAX_SIZE_REACHED);
+			}
+
+			if (segment_complete) {
+				ms_message("MSFileRec: recording segment complete %s", s->filename);
+				_rec_close(s);
+				MSFileRecEventData eventData = {{0}};
+				strncpy(eventData.filePath, s->filename, sizeof(eventData.filePath) - 1);
+				ms_filter_notify(f, MS_RECORDER_RECORDING_SEGMENT_AVAILABLE, &eventData);
+				s->segment_index++;
+				const char *new_filename = generate_next_indexed_filename(s->segment_base_filename, s->segment_index);
+				if (new_filename && rec_open_lock(f, new_filename, FALSE) == 0) {
+					s->state = MSRecorderRunning;
+				} else {
+					ms_error("MSFileRec: failed to open next recording segment %s", new_filename);
+					break;
+				}
 			}
 		} else freemsg(m);
 	}
@@ -122,10 +162,19 @@ static int rec_get_length(const char *file, int *length) {
 }
 
 static int rec_open(MSFilter *f, void *arg) {
+	return rec_open_lock(f, arg, TRUE);
+}
+
+static int rec_open_lock(MSFilter *f, void *arg, bool_t lock) {
 	RecState *s = (RecState *)f->data;
-	const char *filename = (const char *)arg;
+	char *filename = (const char *)arg;
 	int flags;
 	ssize_t fsize;
+
+	if (s->samples_per_segment > 0 && !s->segment_base_filename) {
+		s->segment_base_filename = filename;
+		filename = generate_next_indexed_filename(filename, s->segment_index);
+	}
 
 	if (s->fp) rec_close(f, NULL);
 
@@ -160,9 +209,10 @@ static int rec_open(MSFilter *f, void *arg) {
 	}
 	ms_message("MSFileRec: recording into %s", filename);
 	s->writer = ms_async_writer_new(s->fp);
-	ms_mutex_lock(&f->lock);
+	if (lock) ms_mutex_lock(&f->lock);
 	s->state = MSRecorderPaused;
-	ms_mutex_unlock(&f->lock);
+	s->filename = filename;
+	if (lock) ms_mutex_unlock(&f->lock);
 	return 0;
 }
 
@@ -297,6 +347,66 @@ static int rec_set_max_size(MSFilter *f, void *arg) {
 	return 0;
 }
 
+static int rec_enable_segmented_recording(MSFilter *f, void *arg) {
+	RecState *d = (RecState *)f->data;
+	d->samples_per_segment = *((int *)arg);
+	d->segment_index = 0;
+	return 0;
+}
+
+static const char *generate_next_indexed_filename(const char *filename, int index) {
+	if (!filename) {
+		ms_error("MSFileRec: unable to generate new file name as base file name is null");
+		return NULL;
+	}
+	if (index < 0 || index >= MAX_SEGMENTS_PER_RECORDING) {
+		ms_error("MSFileRec: unable to generate new file name based on %s, (max files per recording is %d)", filename,
+		         MAX_SEGMENTS_PER_RECORDING);
+		return NULL;
+	}
+
+#if defined(_WIN32)
+	const char sep1 = '\\';
+#else
+	const char sep1 = '/';
+#endif
+	const char *last_slash_fwd = strrchr(filename, '/');
+	const char *last_slash_bwd = strrchr(filename, '\\');
+	const char *last_sep = last_slash_fwd;
+	if (last_slash_bwd && (!last_sep || last_slash_bwd > last_sep)) last_sep = last_slash_bwd;
+
+	const char *dot = strrchr(filename, '.');
+	if (dot && last_sep && dot < last_sep) {
+		dot = NULL;
+	}
+
+	size_t base_len = dot ? (size_t)(dot - filename) : strlen(filename);
+	const char *ext = dot ? (dot + 1) : NULL;
+
+	int max_idx = (MAX_SEGMENTS_PER_RECORDING > 0) ? (MAX_SEGMENTS_PER_RECORDING - 1) : 0;
+	int padding_width = 1;
+	while (max_idx >= 10) {
+		padding_width++;
+		max_idx /= 10;
+	}
+
+	size_t ext_len = ext ? strlen(ext) : 0;
+	size_t needed = base_len + 1 + (size_t)padding_width + (ext ? (1 + ext_len) : 0) + 1;
+
+	char *out = (char *)malloc(needed);
+	if (!out) {
+		ms_error("MSFileRec: memory allocation failed for filename");
+		return NULL;
+	}
+
+	if (ext && ext_len > 0) {
+		snprintf(out, needed, "%.*s_%0*d.%s", (int)base_len, filename, padding_width, index, ext);
+	} else {
+		snprintf(out, needed, "%.*s_%0*d", (int)base_len, filename, padding_width, index);
+	}
+	return out;
+}
+
 static MSFilterMethod rec_methods[] = {{MS_FILTER_SET_SAMPLE_RATE, rec_set_sr},
                                        {MS_FILTER_SET_NCHANNELS, rec_set_nchannels},
                                        {MS_FILTER_GET_SAMPLE_RATE, rec_get_sr},
@@ -313,6 +423,7 @@ static MSFilterMethod rec_methods[] = {{MS_FILTER_SET_SAMPLE_RATE, rec_set_sr},
                                        {MS_FILTER_GET_OUTPUT_FMT, rec_get_fmtp},
                                        {MS_FILTER_SET_OUTPUT_FMT, rec_set_fmtp},
                                        {MS_RECORDER_SET_MAX_SIZE, rec_set_max_size},
+                                       {MS_RECORDER_ENABLE_SEGMENTED_RECORDING, rec_enable_segmented_recording},
                                        {0, NULL}};
 
 #ifdef _WIN32

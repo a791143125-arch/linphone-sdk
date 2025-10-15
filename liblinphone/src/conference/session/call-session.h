@@ -200,6 +200,7 @@ public:
 	void notifyBaudotCharacterReceived(char receivedCharacter);
 	void notifyBaudotDetected(MSBaudotStandard standard);
 #endif /* HAVE_BAUDOT */
+	void notifyRecordingSegmentAvailable(const std::string filename);
 	void notifySendMasterKeyChanged(const std::string key);
 	void notifyReceiveMasterKeyChanged(const std::string key);
 	void notifyUpdateMediaInfoForReporting(const int type);

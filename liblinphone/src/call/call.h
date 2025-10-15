@@ -71,6 +71,7 @@ public:
 	LinphoneCallCbsAudioDeviceChangedCb audioDeviceChangedCb;
 	LinphoneCallCbsRemoteRecordingCb remoteRecordingCb;
 	LinphoneCallCbsBaudotDetectedCb baudotDetectedCb;
+	LinphoneCallCbsRecordingSegmentAvailableCb recordingSegmentAvailableCb;
 };
 
 class LINPHONE_PUBLIC Call : public bellesip::HybridObject<LinphoneCall, Call>,
@@ -122,6 +123,7 @@ public:
 	void stopRecording();
 	bool isRecording();
 	void startRecordingRemoteOnly();
+	void enableSegmentedRecording(int samplesPerSegment);
 	LinphoneStatus takePreviewSnapshot(const std::string &file);
 	LinphoneStatus takeVideoSnapshot(const std::string &file);
 	LinphoneStatus terminate(const LinphoneErrorInfo *ei = nullptr);
@@ -317,6 +319,7 @@ public:
 	void onBaudotCharacterReceived(const std::shared_ptr<CallSession> &session, char receivedCharacter) override;
 	void onBaudotDetected(const std::shared_ptr<CallSession> &session, MSBaudotStandard standard) override;
 #endif /* HAVE_BAUDOT */
+	void onRecordingSegmentAvailable(const std::shared_ptr<CallSession> &session, const std::string &filename) override;
 	void onTmmbrReceived(const std::shared_ptr<CallSession> &session, int streamIndex, int tmmbr) override;
 	void onSnapshotTaken(const std::shared_ptr<CallSession> &session, const char *file_path) override;
 	void onStartRingtone(const std::shared_ptr<CallSession> &session) override;

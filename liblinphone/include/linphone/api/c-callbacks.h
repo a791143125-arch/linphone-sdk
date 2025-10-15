@@ -294,6 +294,14 @@ typedef void (*LinphoneCallCbsRemoteRecordingCb)(LinphoneCall *call, bool_t reco
 typedef void (*LinphoneCallCbsBaudotDetectedCb)(LinphoneCall *call, LinphoneBaudotStandard standard);
 
 /**
+ * Callback to notify a recording is available
+ *
+ * @param call LinphoneCall where recording is available @notnil
+ * @param filename of the recording
+ */
+typedef void (*LinphoneCallCbsRecordingSegmentAvailableCb)(LinphoneCall *call, const char *filename);
+
+/**
  * @}
  **/
 

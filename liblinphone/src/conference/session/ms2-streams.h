@@ -207,6 +207,7 @@ public:
 		return mRecordActive;
 	}
 	virtual void activateLocalStreamInRecording(bool activate) override;
+	virtual void enableSegmentedRecording(int samplesPerSegment) override;
 	virtual float getPlayVolume() override;
 	virtual float getRecordVolume() override;
 	virtual float getMicGain() override;
@@ -272,6 +273,8 @@ private:
 	static void sBaudotDetectorEventNotified(void *userData, MSFilter *f, unsigned int id, void *arg);
 #endif /* HAVE_BAUDOT */
 	void applyBaudotModeAndStandard() const;
+	void recordingSegmentAvailableEventNotified(MSFilter *f, unsigned int id, void *arg);
+	static void sRecordingSegmentAvailableEventNotified(void *userData, MSFilter *f, unsigned int id, void *arg);
 
 	void audioStreamIsSpeakingCb(uint32_t speakerSsrc, bool_t isSpeaking);
 	static void sAudioStreamIsSpeakingCb(void *userData, uint32_t speakerSsrc, bool_t isSpeaking);

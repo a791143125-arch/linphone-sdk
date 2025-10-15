@@ -216,3 +216,12 @@ LinphoneCallCbsBaudotDetectedCb linphone_call_cbs_get_baudot_detected(LinphoneCa
 void linphone_call_cbs_set_baudot_detected(LinphoneCallCbs *cbs, LinphoneCallCbsBaudotDetectedCb cb) {
 	CallCbs::toCpp(cbs)->baudotDetectedCb = cb;
 }
+
+LinphoneCallCbsRecordingSegmentAvailableCb linphone_call_cbs_get_recording_segment_available(LinphoneCallCbs *cbs) {
+	return CallCbs::toCpp(cbs)->recordingSegmentAvailableCb;
+}
+
+void linphone_call_cbs_set_recording_segment_available(LinphoneCallCbs *cbs,
+                                                       LinphoneCallCbsRecordingSegmentAvailableCb cb) {
+	CallCbs::toCpp(cbs)->recordingSegmentAvailableCb = cb;
+}

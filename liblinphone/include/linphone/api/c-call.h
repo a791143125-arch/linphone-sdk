@@ -914,6 +914,13 @@ LINPHONE_PUBLIC void linphone_call_stop_recording(LinphoneCall *call);
 LINPHONE_PUBLIC void linphone_call_start_recording_remote_only(LinphoneCall *call);
 
 /**
+ * Enabled segmented recording, one file will contain samples_per_segment
+ * @param call The #LinphoneCall object. @notnil
+ * @param samples_per_segment The number of sample per files
+ **/
+LINPHONE_PUBLIC void linphone_call_enable_segmented_recording(LinphoneCall *call, int samples_per_segment);
+
+/**
  * Gets a player associated with the call to play a local file and stream it to the remote peer.
  * @param call #LinphoneCall object. @notnil
  * @return A #LinphonePlayer object. @maybenil

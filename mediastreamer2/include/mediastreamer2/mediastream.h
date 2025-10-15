@@ -1042,6 +1042,8 @@ MS2_PUBLIC int audio_stream_mixed_record_stop(AudioStream *st);
 
 MS2_PUBLIC void audio_stream_mixed_record_activate_local_stream(AudioStream *st, bool_t activate);
 
+MS2_PUBLIC void audio_stream_mixed_record_enable_segmented_recording(AudioStream *st, int samples);
+
 /**
  * Open a player to play an audio/video file to remote end.
  * The player is returned as a MSFilter so that application can make usual player controls on it using the
