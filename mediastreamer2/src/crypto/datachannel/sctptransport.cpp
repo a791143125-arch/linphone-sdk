@@ -212,7 +212,7 @@ SctpTransport::SctpTransport(MSDtlsSrtpContext *DtlsContext,
                              Ports ports,
                              message_callback recvCallback,
                              amount_callback bufferedAmountCallback,
-			     state_callback stateChangeCallback)
+                             state_callback stateChangeCallback)
     : mStateChangeCallback(std::move(stateChangeCallback)), mRecvCallback(std::move(recvCallback)),
       mMaxMessageSize(config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE)), mPorts(std::move(ports)),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)),
@@ -938,7 +938,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			const int count = (reset_event.strreset_length - sizeof(reset_event)) / sizeof(uint16_t);
 			const uint16_t flags = reset_event.strreset_flags;
 
-			// IF_PLOG(plog::verbose) 
+			// IF_PLOG(plog::verbose)
 			{
 				std::ostringstream desc;
 				desc << "flags=";
@@ -1042,15 +1042,21 @@ void SctpTransport::DebugCallback(const char *format, ...) {
 	PLOG_INFO << "usrsctp: " << buffer; // usrsctp debug as verbose
 }
 
-std::ostream& operator<<(std::ostream& os, SctpTransport::State state) {
-    switch (state) {
-        case SctpTransport::State::Disconnected:    return os << "Disconnected";
-        case SctpTransport::State::Connecting:  return os << "Connecting";
-        case SctpTransport::State::Connected:   return os << "Connected";
-        case SctpTransport::State::Completed: return os << "Completed";
-        case SctpTransport::State::Failed: return os << "Failed";
-        default:            return os << "Unknown";
-    }
+std::ostream &operator<<(std::ostream &os, SctpTransport::State state) {
+	switch (state) {
+		case SctpTransport::State::Disconnected:
+			return os << "Disconnected";
+		case SctpTransport::State::Connecting:
+			return os << "Connecting";
+		case SctpTransport::State::Connected:
+			return os << "Connected";
+		case SctpTransport::State::Completed:
+			return os << "Completed";
+		case SctpTransport::State::Failed:
+			return os << "Failed";
+		default:
+			return os << "Unknown";
+	}
 }
 
 } // namespace rtc::impl

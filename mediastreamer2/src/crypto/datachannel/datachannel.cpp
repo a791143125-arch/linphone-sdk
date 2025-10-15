@@ -23,7 +23,41 @@
 #include <memory>
 
 #ifdef HAVE_DATACHANNEL
+#include "common.hpp"
 #include "sctptransport.hpp"
+
+using namespace rtc::impl;
+
+namespace {
+enum class State : int {
+	New,
+	Connecting,
+	Connected,
+	Disconnected,
+	Failed,
+	Closed,
+};
+std::ostream &operator<<(std::ostream &os, State state) {
+	switch (state) {
+		case State::New:
+			return os << "New";
+		case State::Connecting:
+			return os << "Connecting";
+		case State::Connected:
+			return os << "Connected";
+		case State::Disconnected:
+			return os << "Disconnected";
+		case State::Failed:
+			return os << "Failed";
+		case State::Closed:
+			return os << "Closed";
+		default:
+			return os << "Unknown";
+	}
+}
+
+} // namespace
+
 struct _MSDataChannelContext : public std::enable_shared_from_this<_MSDataChannelContext> {
 	std::shared_ptr<_MSDataChannelContext> mKeepAlive; /**< make sure we keep a ref on ourselves*/
 	std::shared_ptr<rtc::impl::SctpTransport> mSctpTransport;
@@ -38,15 +72,32 @@ struct _MSDataChannelContext : public std::enable_shared_from_this<_MSDataChanne
 		mKeepAlive.reset();
 	}
 	void attachDtlsHdskCb(MSDtlsSrtpContext *DtlsCtx);
+	bool changeState(State newState);
+
+	State state = State::New;
+	rtc::synchronized_callback<State> mStateChangeCallback;
 };
 
+bool _MSDataChannelContext::changeState(State newState) {
+
+	if (state == newState || state == State::Closed) {
+		return false;
+	}
+	state = newState;
+
+	std::ostringstream s;
+	s << newState;
+	PLOG_INFO << "Changed state to " << s.str();
+
+	mStateChangeCallback(newState);
+
+	return true;
+}
+
 void _MSDataChannelContext::attachDtlsHdskCb(MSDtlsSrtpContext *DtlsCtx) {
-	ms_error("JOHAN attach Dtls Hdsk Cb");
-	std::weak_ptr<_MSDataChannelContext> weakThis = shared_from_this();
-	ms_error("JOHAN attach Dtls Hdsk Cb 2");
+	auto weakThis = weak_from_this();
 	ms_dtls_srtp_set_handshake_cb(DtlsCtx, [weakThis](MSDtlsSrtpContext *DtlsCtx) {
 		if (auto self = weakThis.lock()) {
-			ms_error("Datachannel starts Sctp connection");
 			rtc::impl::SctpTransport::Ports ports = {}; // TODO: get Sctp ports from SDP through some parameters?
 			rtc::impl::SctpTransport::Configuration config =
 			    {}; // TODO: get configuration somewhere MTU and max message size
@@ -60,6 +111,30 @@ void _MSDataChannelContext::attachDtlsHdskCb(MSDtlsSrtpContext *DtlsCtx) {
 				    // amount callback
 				    [](uint16_t streamId, size_t amount) {
 					    ms_error("JOHAN amount callback : %d, %ld", streamId, amount);
+				    },
+				    [weakThis](rtc::impl::SctpTransport::State state) {
+					    PLOG_ERROR << "JOHAN state change callback dtc : " << state;
+					    auto shared_this = weakThis.lock();
+					    if (!shared_this) return;
+
+					    switch (state) {
+						    case SctpTransport::State::Connected:
+							    shared_this->changeState(State::Connected);
+							    // shared_this->assignDataChannels();
+							    // mProcessor.enqueue(&PeerConnection::openDataChannels, shared_from_this());
+							    break;
+						    case SctpTransport::State::Failed:
+							    shared_this->changeState(State::Failed);
+							    // mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+							    break;
+						    case SctpTransport::State::Disconnected:
+							    shared_this->changeState(State::Disconnected);
+							    // mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+							    break;
+						    default:
+							    // Ignore
+							    break;
+					    }
 				    });
 				self->mSctpTransport->start();
 			} catch (std::exception const &e) {
@@ -80,7 +155,7 @@ bool ms_datachannel_supported() {
 extern "C" MSDataChannelContext *ms_datachannel_context_new(struct _MSMediaStreamSessions *sessions) {
 	ms_message("Creating Data Channel context on stream sessions [%p] attached to dtls context %p", sessions,
 	           sessions->dtls_context);
-	auto context = new MSDataChannelContext();
+	auto context = new _MSDataChannelContext();
 	context->init();
 	context->attachDtlsHdskCb(sessions->dtls_context);
 	return context;
@@ -105,7 +180,9 @@ bool ms_datachannel_supported() {
 	return false;
 }
 
-MSDataChannelContext *ms_datachannel_context_new(struct _MSMediaStreamSessions *sessions) {
+extern "C" MSDataChannelContext *ms_datachannel_context_new(struct _MSMediaStreamSessions *sessions) {
 	return nullptr;
+}
+extern "C" void ms_datachannel_context_destroy(MSDataChannelContext *ctx) {
 }
 #endif // HAVE_DATACHANNEL

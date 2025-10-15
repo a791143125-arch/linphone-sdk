@@ -81,7 +81,7 @@ public:
 	              Ports ports,
 	              message_callback recvCallback,
 	              amount_callback bufferedAmountCallback,
-		      state_callback stateChangeCallback);
+	              state_callback stateChangeCallback);
 	~SctpTransport();
 
 	void onBufferedAmount(amount_callback callback);
@@ -181,7 +181,7 @@ private:
 	class InstancesSet;
 	static InstancesSet *Instances;
 };
-std::ostream& operator<<(std::ostream& os, SctpTransport::State state);
+std::ostream &operator<<(std::ostream &os, SctpTransport::State state);
 
 } // namespace rtc::impl
 

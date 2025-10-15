@@ -130,6 +130,8 @@ set(VOIP_SOURCE_FILES_CXX
 	audiofilters/tonedetector.cpp
 	crypto/ms_srtp.cpp
 	crypto/dtls_srtp.cpp
+	crypto/datachannel/channel.hpp
+	crypto/datachannel/channel.cpp
 	crypto/datachannel/datachannel.cpp
 	crypto/datachannel/message.cpp
 	crypto/datachannel/message.hpp
