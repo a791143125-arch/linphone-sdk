@@ -69,7 +69,7 @@ Stream *StreamsGroup::createStream(const OfferAnswerContext &params) {
 
 	SalStreamType type = params.getLocalStreamDescription().type;
 	// Do not create video stream if no payload is in local media description
-	if (!payloads.empty()) {
+	if (!payloads.empty() || type==SalApplication) {
 		switch (type) {
 			case SalAudio:
 				ret = new MS2AudioStream(*this, params);
@@ -81,6 +81,9 @@ Stream *StreamsGroup::createStream(const OfferAnswerContext &params) {
 				break;
 			case SalText:
 				ret = new MS2RTTStream(*this, params);
+				break;
+			case SalApplication:
+				ret = new MS2ApplicationStream(*this, params);
 				break;
 			case SalOther:
 				break;

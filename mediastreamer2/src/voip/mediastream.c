@@ -711,6 +711,7 @@ bool_t media_stream_secured(const MediaStream *stream) {
 		case MSAudio:
 		case MSText:
 		case MSVideo:
+		case MSApplication:
 			return ms_media_stream_sessions_secured(&stream->sessions, stream->direction);
 		case MSUnknownMedia:
 			break;
@@ -725,6 +726,7 @@ MSSrtpKeySource media_stream_get_srtp_key_source(const MediaStream *stream, Medi
 		case MSAudio:
 		case MSText:
 		case MSVideo:
+		case MSApplication: // srtp does not really apply on the application stream but keys would be set anyway
 			return ms_media_stream_sessions_get_srtp_key_source(&stream->sessions, dir, is_inner);
 		case MSUnknownMedia:
 		default:
@@ -740,6 +742,7 @@ MSCryptoSuite media_stream_get_srtp_crypto_suite(const MediaStream *stream, Medi
 		case MSAudio:
 		case MSText:
 		case MSVideo:
+		case MSApplication: // srtp does not really apply on the application stream but keys would be set anyway
 			return ms_media_stream_sessions_get_srtp_crypto_suite(&stream->sessions, dir, is_inner);
 		case MSUnknownMedia:
 		default:

@@ -974,6 +974,15 @@ void belle_sdp_media_clone(belle_sdp_media_t *media, const belle_sdp_media_t *or
 	CLONE_STRING(belle_sdp_media, protocol, media, orig)
 }
 
+const char *belle_sip_fmt_to_string(long fmt) {
+	switch (fmt) {
+		case BELLE_SDP_FMT_WEBRTC_DATACHANNEL:
+			return "webrtc-datachannel";
+		default:
+			return "unknown";
+	}
+}
+
 belle_sip_error_code belle_sdp_media_marshal(belle_sdp_media_t *media, char *buff, size_t buff_size, size_t *offset) {
 	belle_sip_list_t *list = media->media_formats;
 
@@ -990,7 +999,11 @@ belle_sip_error_code belle_sdp_media_marshal(belle_sdp_media_t *media, char *buf
 	if (error != BELLE_SIP_OK) return error;
 
 	for (; list != NULL; list = list->next) {
-		error = belle_sip_snprintf(buff, buff_size, offset, " %li", (long)(intptr_t)list->data);
+		if ((long)(intptr_t)list->data >= 0) {
+			error = belle_sip_snprintf(buff, buff_size, offset, " %li", (long)(intptr_t)list->data);
+		} else {
+			error = belle_sip_snprintf(buff, buff_size, offset, " %s", belle_sip_fmt_to_string((long)(intptr_t)list->data));
+		}
 		if (error != BELLE_SIP_OK) return error;
 	}
 
@@ -1009,7 +1022,12 @@ belle_sdp_media_t *belle_sdp_media_create(const char *media_type,
 	belle_sdp_media_set_media_port(media, media_port);
 	belle_sdp_media_set_port_count(media, port_count);
 	belle_sdp_media_set_protocol(media, protocol);
-	if (static_media_formats) belle_sdp_media_set_media_formats(media, static_media_formats);
+	if (static_media_formats) {
+		belle_sdp_media_set_media_formats(media, static_media_formats);
+		size_t offset=0;
+		char buff[4096];
+		belle_sdp_media_marshal(media, buff, 4096, &offset);
+	}
 	return media;
 }
 GET_SET_STRING(belle_sdp_media, media_type);

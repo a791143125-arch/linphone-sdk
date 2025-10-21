@@ -76,6 +76,7 @@ public:
 	void enableScreenSharing(bool value);
 	void enableVideo(bool value);
 	void enableVideoMulticast(bool value);
+	void enableDataChannel(bool value);
 	float getReceivedFps() const;
 	LinphoneVideoDefinition *getReceivedVideoDefinition() const;
 	float getSentFps() const;
@@ -88,6 +89,7 @@ public:
 	bool screenSharingEnabled() const;
 	bool videoEnabled() const;
 	bool videoMulticastEnabled() const;
+	bool dataChannelEnabled() const;
 
 	void enableFec(bool value);
 	bool fecEnabled() const;

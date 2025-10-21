@@ -7747,6 +7747,9 @@ std::string MainDb::getConferenceInfoTypeQuery(const std::list<LinphoneStreamTyp
 			case LinphoneStreamTypeText:
 				capabilityString = "chat";
 				break;
+			case LinphoneStreamTypeApplication:
+				capabilityString = "application";
+				break;
 			case LinphoneStreamTypeUnknown:
 				break;
 		}

@@ -663,5 +663,11 @@ belle_sdp_session_description_add_attribute_holder(belle_sdp_session_description
 
 #define BELLE_SDP_SESSION_DESCRIPTION(t) BELLE_SDP_CAST(t, belle_sdp_session_description_t)
 
+/***************************************************************************************
+ * Non numeric FMT mapping: mapped to negative value to avoid collision
+ *
+ ***************************************************************************************/
+#define BELLE_SDP_FMT_WEBRTC_DATACHANNEL -1
+
 BELLE_SIP_END_DECLS
 #endif /* BELLE_SDP_H_ */

@@ -858,6 +858,9 @@ void MediaSessionPrivate::updating(bool isUpdate) {
 					case SalText:
 						getParams()->enableRealtimeText(true);
 						break;
+					case SalApplication:
+						getParams()->enableDataChannel(true);
+						break;
 					case SalOther:
 						break;
 				}
@@ -1021,6 +1024,8 @@ Stream *MediaSessionPrivate::getStream(LinphoneStreamType type) const {
 			return getStreamsGroup().lookupMainStream(SalVideo);
 		case LinphoneStreamTypeText:
 			return getStreamsGroup().lookupMainStream(SalText);
+		case LinphoneStreamTypeApplication:
+			return getStreamsGroup().lookupMainStream(SalApplication);
 		case LinphoneStreamTypeUnknown:
 			break;
 	}
@@ -1157,8 +1162,18 @@ void MediaSessionPrivate::fixCallParams(std::shared_ptr<SalMediaDescription> &rm
 			lInfo() << "CallSession [" << q << "]: disabling RTT in our call params because the remote doesn't want it";
 			getParams()->enableRealtimeText(false);
 		}
+		if (getParams()->dataChannelEnabled() && !rcp->dataChannelEnabled() && !isInRemoteConference) {
+			lInfo() << "CallSession [" << q
+			        << "]: disabling datachannel in our call params because the remote doesn't want it";
+			getParams()->enableDataChannel(false);
+		}
 		// Real Time Text is always by default accepted when proposed.
 		if (!getParams()->realtimeTextEnabled() && rcp->realtimeTextEnabled()) getParams()->enableRealtimeText(true);
+
+		// TODO DTC: Shall we always accept DTC opening when proposed -> we need bundle and DTLS.
+		lError()<<"DTC:fixCallParams : getParams()->dataChannelEnabled():"<<getParams()->dataChannelEnabled()<<"  rcp->dataChannelEnabled():"<<rcp->dataChannelEnabled();
+		if (!getParams()->dataChannelEnabled() && rcp->dataChannelEnabled()) getParams()->enableDataChannel(true);
+		lError()<<"DTC:fixCallParams : getParams()->dataChannelEnabled():"<<getParams()->dataChannelEnabled()<<"  rcp->dataChannelEnabled():"<<rcp->dataChannelEnabled();
 
 		const auto &cCore = q->getCore()->getCCore();
 		if (isInLocalConference) {
@@ -1203,6 +1218,7 @@ void MediaSessionPrivate::initializeParamsAccordingToIncomingCallParams() {
 	const auto conference = q->getCore()->findConference(
 	    ConferenceId(localAddress, localAddress, q->getCore()->createConferenceIdParams()), false);
 	std::shared_ptr<SalMediaDescription> md = op->getRemoteMediaDescription();
+	lError()<<"DTC: MediaSessionPrivate::initializeParamsAccordingToIncomingCallParams. Remote md is "<<(md?"NOT NULL":"NULL");
 	if (md) {
 		/* It is implicit to receive an INVITE without SDP, in this case WE choose the media parameters according to
 		 * policy */
@@ -1241,6 +1257,10 @@ void MediaSessionPrivate::setCompatibleIncomingCallParams(std::shared_ptr<SalMed
 	L_Q();
 	LinphoneCore *lc = q->getCore()->getCCore();
 	/* Handle AVPF, SRTP and DTLS */
+	lError()<<"DTC:  MediaSessionPrivate::setCompatibleIncomingCallParams md streams:";
+	for (auto &stream : md->streams) {
+		lError()<<"     DTC: stream type"<<stream.type;
+	}
 
 	getParams()->enableAvpf(hasAvpf(md));
 	const auto &account = getDestAccount();
@@ -1649,6 +1669,7 @@ void MediaSessionPrivate::addStreamToBundle(const std::shared_ptr<SalMediaDescri
                                             SalStreamDescription &sd,
                                             SalStreamConfiguration &cfg,
                                             const std::string &mid) {
+	lError()<<"DTC: addStream to bundle mid : "<<mid;
 	if (cfg.dir != SalStreamInactive) {
 		SalStreamBundle bundle;
 		if (!md->bundles.empty()) {
@@ -1660,7 +1681,7 @@ void MediaSessionPrivate::addStreamToBundle(const std::shared_ptr<SalMediaDescri
 		cfg.mid_rtp_ext_header_id = rtpExtHeaderMidNumber;
 		/* rtcp-mux must be enabled when bundle mode is proposed.*/
 		cfg.rtcp_mux = TRUE;
-		if (mandatoryRtpBundleEnabled() || bundleModeAccepted) {
+		if (mandatoryRtpBundleEnabled() || bundleModeAccepted || sd.type == SalApplication) {
 			// Bundle is offered inconditionally
 			if (bundle.getMidOfTransportOwner() != mid) {
 				cfg.bundle_only = true;
@@ -1729,6 +1750,7 @@ SalMediaProto MediaSessionPrivate::getMdProto(SalStreamType type,
                                               const bool ignoreRemoteMd,
                                               const std::list<LinphoneMediaEncryption> &encs) const {
 	L_Q();
+	lError()<<"DTC: in getMdProto type:"<<type<<" idx:"<< idx<<" useCurrentParams:"<<useCurrentParams<<" ignoreRemoteMd:"<<ignoreRemoteMd;
 	auto streamType = type;
 	bool assigned = false;
 	SalMediaProto requested = SalProtoRtpAvpf;
@@ -1798,12 +1820,16 @@ void MediaSessionPrivate::fillRtpParameters(SalStreamDescription &stream) const 
 
 	auto &cfg = stream.cfgs[stream.getActualConfigurationIndex()];
 	if (cfg.dir != SalStreamInactive) {
-		bool rtcpMux =
-		    !!linphone_config_get_int(linphone_core_get_config(q->getCore()->getCCore()), "rtp", "rtcp_mux", 0);
-		/* rtcp-mux must be enabled when bundle mode is proposed or we're using DTLS-SRTP.*/
-		cfg.rtcp_mux = rtcpMux || getParams()->rtpBundleEnabled() ||
-		               (getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS);
-		cfg.rtcp_cname = getMe()->getAddress()->toString();
+		if (stream.type == SalApplication) {
+			cfg.rtcp_mux = false;
+		} else {
+			bool rtcpMux =
+			    !!linphone_config_get_int(linphone_core_get_config(q->getCore()->getCCore()), "rtp", "rtcp_mux", 0);
+			/* rtcp-mux must be enabled when bundle mode is proposed or we're using DTLS-SRTP.*/
+			cfg.rtcp_mux = rtcpMux || getParams()->rtpBundleEnabled() ||
+			               (getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS);
+			cfg.rtcp_cname = getMe()->getAddress()->toString();
+		}
 
 		if (stream.rtp_port == 0 && !cfg.isBundleOnly()) {
 			stream.rtp_port = SAL_STREAM_DESCRIPTION_PORT_TO_BE_DETERMINED;
@@ -1967,7 +1993,8 @@ void MediaSessionPrivate::fillLocalStreamDescription(SalStreamDescription &strea
 	const auto &dontCheckCodecs =
 	    (type == SalAudio)
 	        ? q->getCore()->getCCore()->codecs_conf.dont_check_audio_codec_support
-	        : ((type == SalVideo) ? q->getCore()->getCCore()->codecs_conf.dont_check_video_codec_support : false);
+	        : ((type == SalVideo) ? q->getCore()->getCCore()->codecs_conf.dont_check_video_codec_support
+			: ((type == SalApplication)? true : false));
 
 	SalStreamConfiguration cfg;
 	cfg.proto = proto;
@@ -1980,6 +2007,7 @@ void MediaSessionPrivate::fillLocalStreamDescription(SalStreamDescription &strea
 
 		cfg.replacePayloads(codecs);
 		cfg.rtcp_cname = getMe()->getAddress()->toString();
+		lError()<<"DTC fillLocalStreamDescription name:"<<name<<" proto "<<proto<<" rtcp name:"<<cfg.rtcp_cname<<" rtp port:"<<stream.rtp_port<<" bundle enabled :"<<getParams()->rtpBundleEnabled();
 
 		const auto conference = q->getCore()->findConference(q->getSharedFromThis(), false);
 		if (conference || (q->getRemoteContactAddress() != nullptr &&
@@ -2010,6 +2038,7 @@ void MediaSessionPrivate::fillLocalStreamDescription(SalStreamDescription &strea
 		if (q->getCore()->getCCore()->goog_remb_enabled) cfg.rtcp_fb.goog_remb_enabled = TRUE;
 
 		stream.addActualConfiguration(cfg);
+		lError()<<"DTC fillLocalStreamDescription name:"<<name<<" proto "<<proto<<" rtp port :"<<stream.rtp_port;
 		fillRtpParameters(stream);
 	} else {
 		const std::string streamType(sal_stream_type_to_string(type));
@@ -2089,6 +2118,7 @@ SalStreamDescription &MediaSessionPrivate::addStreamToMd(std::shared_ptr<SalMedi
                                                          int streamIdx,
                                                          const std::shared_ptr<SalMediaDescription> &oldMd) {
 	L_Q();
+	lError()<<"DTC: addStreamToMd streamIdx: "<<streamIdx;
 	const auto currentMdSize = md->streams.size();
 	const auto conference = q->getCore()->findConference(q->getSharedFromThis());
 	std::list<unsigned int> protectedStreamNumbers = getProtectedStreamNumbers(md);
@@ -2110,9 +2140,11 @@ SalStreamDescription &MediaSessionPrivate::addStreamToMd(std::shared_ptr<SalMedi
 			}
 		}
 	}
+	lError()<<"DTC: addStreamToMd streamIdx: "<<streamIdx<<" found free slot "<<freeSlot;
 
 	// Stream position preference
 	if (streamIdx >= 0) {
+		lError()<<"DTC: addStreamToMd streamIdx > 0";
 		const auto &idx = static_cast<decltype(md->streams)::size_type>(streamIdx);
 		try {
 			auto stream = md->streams.at(idx);
@@ -2637,6 +2669,7 @@ void MediaSessionPrivate::makeLocalMediaDescription(bool localIsOfferer,
 	const auto conference = q->getCore()->findConference(q->getSharedFromThis(), false);
 	const std::shared_ptr<SalMediaDescription> &refMd = ((localIsOfferer) ? oldMd : remoteMd);
 
+	lError()<<"DTC: makeLocalMediaDescription localIsOfferer: "<<localIsOfferer<<" bundle enabled: "<<getParams()->rtpBundleEnabled();
 	this->localIsOfferer = localIsOfferer;
 
 	getParams()->getPrivate()->adaptToNetwork(core, pingTime);
@@ -2927,6 +2960,43 @@ void MediaSessionPrivate::makeLocalMediaDescription(bool localIsOfferer,
 		PayloadTypeHandler::clearPayloadList(textCodecs);
 	}
 
+	SalMediaDescription::optional_sal_stream_description oldApplicationStream{};
+	if (refMd) {
+		oldApplicationStream = refMd->findBestStream(SalApplication);
+	}
+
+	// To add an application stream, as we use it for webrtc datachannel only, one must:
+	// - use DTLS
+	// - bundle all streams
+	auto callApplicationEnabled =
+	    (!conferenceCreated && conference) ? getCurrentParams()->dataChannelEnabled() : getParams()->dataChannelEnabled();
+	bool addApplicationStream = callApplicationEnabled;
+	addApplicationStream &= (getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS);
+	addApplicationStream &= rtpBundleEnabled;
+
+
+	lError()<<"DTC: in makeLocalMd addApplicationStream:"<<addApplicationStream<<" (getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS):"<<(getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS)<<" getParams()->rtpBundleEnabled():"<< rtpBundleEnabled<<" getCurrentParams()->dataChannelEnabled():"<<getCurrentParams()->dataChannelEnabled()<<" getParams()->dataChannelEnabled():"<<getParams()->dataChannelEnabled();
+	if (addApplicationStream || oldApplicationStream.has_value()) {
+		std::list<OrtpPayloadType *> alreadyAssignedApplicationPayloads;
+		if (oldApplicationStream.has_value()) {
+			alreadyAssignedApplicationPayloads = (*oldApplicationStream)->already_assigned_payloads;
+		}
+		const auto remoteApplicationStreamIdx = remoteMd ? remoteMd->findFirstStreamIdxOfType(SalApplication, 0) : -1;
+		lError()<<"DTC: in makeLocalMd remoteApplicationStreamIdx: "<< remoteApplicationStreamIdx;
+		//const auto proto = getMdProto(SalApplication, remoteApplicationStreamIdx, remoteMd, offerNegotiatedMediaProtocolOnly,
+		  //                            addCapabilityNegotiationAttributes, encList);
+		const auto proto = SalProtoUdpDtlsSctp; // application stream can only be UDP/DTLS/SCTP
+		lError()<<"DTC: in makeLocalMd proto is: "<< proto;
+		const auto applicationStreamIdx = refMd ? refMd->findFirstStreamIdxOfType(SalApplication, 0) : -1;
+		lError()<<"DTC: in makeLocalMd applicationStreamIdx: "<< applicationStreamIdx;
+		SalStreamDescription &applicationStream = addStreamToMd(md, applicationStreamIdx, oldMd);
+		fillLocalStreamDescription(applicationStream, md, getParams()->dataChannelEnabled(), "Application", SalApplication, proto,
+		                           SalStreamSendRecv, {}, "dc",
+		                           getParams()->getPrivate()->getCustomSdpMediaAttributes(LinphoneStreamTypeApplication));
+		applicationStream.setSupportedEncryptions(encList);
+	}
+
+
 #ifdef HAVE_ADVANCED_IM
 	bool eventLogEnabled = !!linphone_config_get_bool(linphone_core_get_config(q->getCore()->getCCore()), "misc",
 	                                                  "conference_event_log_enabled", TRUE);
@@ -2969,6 +3039,8 @@ void MediaSessionPrivate::makeLocalMediaDescription(bool localIsOfferer,
 			if (videoStreamIndex != -1) getStreamsGroup().setStreamMain(static_cast<size_t>(videoStreamIndex), true);
 			const auto textStreamIndex = mdForMainStream->findIdxBestStream(SalText);
 			if (textStreamIndex != -1) getStreamsGroup().setStreamMain(static_cast<size_t>(textStreamIndex), true);
+			const auto applicationStreamIndex = mdForMainStream->findIdxBestStream(SalApplication);
+			if (applicationStreamIndex != -1) getStreamsGroup().setStreamMain(static_cast<size_t>(applicationStreamIndex), true);
 		}
 		/* Get the transport addresses filled in to the media description. */
 		updateLocalMediaDescriptionFromIce(localIsOfferer);
@@ -3970,6 +4042,7 @@ LinphoneMediaDirection MediaSessionPrivate::getDirFromMd(const std::shared_ptr<S
 
 void MediaSessionPrivate::updateCurrentParams() const {
 	L_Q();
+	lError()<<"DTC: MediaSessionPrivate::updateCurrentParams";
 	CallSessionPrivate::updateCurrentParams();
 
 	VideoControlInterface *i = getStreamsGroup().lookupMainStreamInterface<VideoControlInterface>(SalVideo);
@@ -4179,10 +4252,20 @@ void MediaSessionPrivate::updateCurrentParams() const {
 		} else {
 			getCurrentParams()->enableRealtimeText(false);
 		}
+
+		const auto applicationStream = md->findBestStream(SalApplication);
+		if (applicationStream.has_value()) {
+			lError()<<"DTC: MediaSessionPrivate::updateCurrentParams : app stream has value :"<<(*applicationStream)->enabled();
+			// Direction and multicast are not supported for application stream.
+			getCurrentParams()->enableDataChannel((*applicationStream)->enabled());
+		} else {
+			getCurrentParams()->enableDataChannel(false);
+		}
 	} else {
 		getCurrentParams()->enableAudio(false);
 		getCurrentParams()->enableVideo(false);
 		getCurrentParams()->enableRealtimeText(false);
+		getCurrentParams()->enableDataChannel(false);
 	}
 	getCurrentParams()->getPrivate()->setUpdateCallWhenIceCompleted(isUpdateSentWhenIceCompleted());
 	bool deviceIsScreenSharing = false;
@@ -4202,12 +4285,14 @@ void MediaSessionPrivate::updateCurrentParams() const {
 	}
 	getCurrentParams()->enableScreenSharing(q->isScreenSharingNegotiated() && (!conference || deviceIsScreenSharing));
 	getCurrentParams()->enableFec(getStreamsGroup().isFecEnabled());
+	lError()<<"DTC: MediaSessionPrivate::updateCurrentParams done";
 }
 
 // -----------------------------------------------------------------------------
 
 LinphoneStatus MediaSessionPrivate::startAccept() {
 	L_Q();
+	lError()<<"DTC: MediaSessionPrivate::startAccept";
 
 	shared_ptr<Call> currentCall = q->getCore()->getCurrentCall();
 	// If the core in a call, request to empty sound resources only if this call is not the call the core is currently
@@ -4277,6 +4362,7 @@ LinphoneStatus MediaSessionPrivate::startAccept() {
 		expectMediaInAck = true;
 	}
 
+	lError()<<"DTC: MediaSessionPrivate::startAccept done";
 	return 0;
 }
 
@@ -4324,6 +4410,11 @@ LinphoneStatus MediaSessionPrivate::accept(const MediaSessionParams *msp, BCTBX_
 
 	const bool isOfferer = (op->getRemoteMediaDescription() ? false : true);
 
+	lError()<<"DTC:  MediaSessionPrivate::accept msp is "<<(msp?"not null":"null");
+	if (msp) {
+		lError()<<"DTC:  MediaSessionPrivate::accept msp bundle is "<<msp->rtpBundleEnabled();
+	}
+
 	if (msp || (localDesc == nullptr)) {
 		makeLocalMediaDescription(isOfferer, q->isCapabilityNegotiationEnabled(), false);
 	}
@@ -4335,6 +4426,7 @@ LinphoneStatus MediaSessionPrivate::accept(const MediaSessionParams *msp, BCTBX_
 	// accept the call is known. In this case, if the encryption is mandatory a new local media description must be
 	// generated in order to populate the crypto keys with the set actually ued in the call
 	if ((state == CallSession::State::IncomingReceived) && mParams) {
+		lError()<<"DTC:  MediaSessionPrivate::accept call  makeLocalMediaDescription again";
 		makeLocalMediaDescription(isOfferer, q->isCapabilityNegotiationEnabled(), false, false);
 	}
 
@@ -4523,6 +4615,7 @@ MediaSession::MediaSession(const shared_ptr<Core> &core,
     : CallSession(*new MediaSessionPrivate, core) {
 	L_D();
 	d->me = me;
+	lError()<<"DTC: new MediaSession param is "<<(params?"NOT NULL":"NULL");
 
 	if (params) {
 		d->setParams(new MediaSessionParams(*(static_cast<const MediaSessionParams *>(params))));
@@ -4666,6 +4759,8 @@ void MediaSession::configure(LinphoneCallDir direction,
                              const std::shared_ptr<const Address> &to) {
 	L_D();
 	std::shared_ptr<Address> remote;
+
+	lError()<<"DTC:  MediaSession::configure direction:"<<direction;
 
 	// Create parameters before calling CallSession::configure to avoid being erased by the CallSession object
 	if ((direction == LinphoneCallIncoming) && !getParams()) {
@@ -5806,6 +5901,18 @@ const MediaSessionParams *MediaSession::getRemoteParams() const {
 				                                                  textStream.custom_sdp_attributes);
 			} else params->enableRealtimeText(false);
 
+			const auto applicationStreamOpt = md->findBestStream(SalApplication);
+			lError()<<"DTC: getRemoteParams: applicationStreamOpt:"<< applicationStreamOpt.has_value();
+			if (applicationStreamOpt.has_value()) {
+				auto &applicationStream = **applicationStreamOpt;
+				lError()<<"DTC: getRemoteParams: applicationStream.enabled():"<< applicationStream.enabled();
+				params->enableDataChannel(applicationStream.enabled());
+				params->setMediaEncryption(LinphoneMediaEncryptionDTLS);
+				params->getPrivate()->setCustomSdpMediaAttributes(LinphoneStreamTypeApplication,
+				                                                  applicationStream.custom_sdp_attributes);
+			} else params->enableDataChannel(false);
+
+
 			if (!params->videoEnabled()) {
 				if ((md->bandwidth > 0) && (md->bandwidth <= linphone_core_get_edge_bw(getCore()->getCCore())))
 					params->enableLowBandwidth(true);
@@ -5878,6 +5985,8 @@ MSFormatType MediaSession::getStreamType(int streamIndex) const {
 				return MSVideo;
 			case SalText:
 				return MSText;
+			case SalApplication:
+				return MSApplication;
 			case SalOther:
 				break;
 		}
@@ -6164,6 +6273,7 @@ uint32_t MediaSession::getSsrc(LinphoneStreamType type) const {
 				}
 			} break;
 			case LinphoneStreamTypeText:
+			case LinphoneStreamTypeApplication:
 			case LinphoneStreamTypeUnknown:
 				ssrc = 0;
 				break;

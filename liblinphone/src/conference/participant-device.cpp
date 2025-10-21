@@ -198,6 +198,7 @@ bool ParticipantDevice::setSsrc(const LinphoneStreamType type, uint32_t newSsrc)
 			break;
 		case LinphoneStreamTypeVideo:
 		case LinphoneStreamTypeText:
+		case LinphoneStreamTypeApplication:
 		case LinphoneStreamTypeUnknown:
 			break;
 	}
@@ -496,6 +497,7 @@ LinphoneMediaDirection ParticipantDevice::getStreamDirectionFromSession(const Li
 				dir = participantParams->getVideoDirection();
 				break;
 			case LinphoneStreamTypeText:
+			case LinphoneStreamTypeApplication:
 				dir = LinphoneMediaDirectionSendRecv;
 				break;
 			case LinphoneStreamTypeUnknown:

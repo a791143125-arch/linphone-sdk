@@ -137,6 +137,8 @@ public:
 	float sentFps = 0.f;
 	LinphoneVideoDefinition *sentVideoDefinition = nullptr;
 
+	bool dataChannelEnabled = false;
+
 	bool fecEnabled = false;
 	std::shared_ptr<PayloadType> usedFecCodec;
 

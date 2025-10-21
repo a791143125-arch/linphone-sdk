@@ -456,6 +456,29 @@ private:
 	TextStream *mStream = nullptr;
 };
 
+/*
+ * Application stream.
+ */
+class MS2ApplicationStream : public MS2Stream {
+public:
+	MS2ApplicationStream(StreamsGroup &sm, const OfferAnswerContext &param);
+	virtual bool prepare() override;
+	virtual void finishPrepare() override;
+	virtual void render(const OfferAnswerContext &ctx, CallSession::State targetState) override;
+	virtual void stop() override;
+	virtual void finish() override;
+	virtual void initZrtp() override;
+	virtual void startZrtp() override;
+	virtual std::string getLabel() const override;
+	virtual void configure(const OfferAnswerContext &params) override;
+	virtual ~MS2ApplicationStream();
+
+private:
+	virtual MediaStream *getMediaStream() const override;
+	virtual void handleEvent(const OrtpEvent *ev) override;
+	ApplicationStream *mStream = nullptr;
+};
+
 LINPHONE_END_NAMESPACE
 
 #endif

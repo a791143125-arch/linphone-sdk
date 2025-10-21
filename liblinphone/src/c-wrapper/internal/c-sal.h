@@ -91,7 +91,7 @@ typedef enum {
 	SalStreamInactive = 3
 } SalStreamDir;
 
-typedef enum { SalAudio = 0, SalVideo = 1, SalText = 2, SalOther = 3 } SalStreamType;
+typedef enum { SalAudio = 0, SalVideo = 1, SalText = 2, SalApplication = 3, SalOther = 4 } SalStreamType;
 
 typedef enum {
 	SalProtoRtpAvp = 0,
@@ -100,7 +100,8 @@ typedef enum {
 	SalProtoRtpSavpf = 3,
 	SalProtoUdpTlsRtpSavp = 4,
 	SalProtoUdpTlsRtpSavpf = 5,
-	SalProtoOther = 6
+	SalProtoUdpDtlsSctp = 6,
+	SalProtoOther = 7
 } SalMediaProto;
 
 typedef enum {

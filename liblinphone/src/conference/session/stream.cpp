@@ -214,6 +214,12 @@ pair<int, int> Stream::getPortRange(LinphoneCore *core, const SalStreamType type
 		case SalText:
 			linphone_core_get_text_port_range(core, &minPort, &maxPort);
 			break;
+		case SalApplication:
+			// Application support for now is limited to webrtc datachannel. There are only supported in bundle mode
+			// so this port shall actually never be used -> use the text port range
+			// TODO: shall we have a dedicated port range for application stream
+			linphone_core_get_text_port_range(core, &minPort, &maxPort);
+			break;
 		case SalOther:
 			break;
 	}

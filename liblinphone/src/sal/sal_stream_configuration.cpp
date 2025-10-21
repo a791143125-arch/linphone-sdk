@@ -252,6 +252,7 @@ bool SalStreamConfiguration::hasAvpf() const {
 		case SalProtoRtpAvp:
 		case SalProtoRtpSavp:
 		case SalProtoUdpTlsRtpSavp:
+		case SalProtoUdpDtlsSctp:
 		case SalProtoOther:
 			return false;
 	}
@@ -272,6 +273,7 @@ bool SalStreamConfiguration::hasSrtp() const {
 		case SalProtoRtpAvpf:
 		case SalProtoUdpTlsRtpSavpf:
 		case SalProtoUdpTlsRtpSavp:
+		case SalProtoUdpDtlsSctp:
 		case SalProtoOther:
 			return false;
 	}
@@ -282,7 +284,24 @@ bool SalStreamConfiguration::hasDtls() const {
 	switch (proto) {
 		case SalProtoUdpTlsRtpSavpf:
 		case SalProtoUdpTlsRtpSavp:
+		case SalProtoUdpDtlsSctp:
 			return true;
+		case SalProtoRtpSavp:
+		case SalProtoRtpSavpf:
+		case SalProtoRtpAvp:
+		case SalProtoRtpAvpf:
+		case SalProtoOther:
+			return false;
+	}
+	return false;
+}
+
+bool SalStreamConfiguration::hasDataChannel() const {
+	switch (proto) {
+		case SalProtoUdpDtlsSctp:
+			return true;
+		case SalProtoUdpTlsRtpSavpf:
+		case SalProtoUdpTlsRtpSavp:
 		case SalProtoRtpSavp:
 		case SalProtoRtpSavpf:
 		case SalProtoRtpAvp:
@@ -311,6 +330,7 @@ bool SalStreamConfiguration::hasZrtp() const {
 			case SalProtoUdpTlsRtpSavp:
 			case SalProtoRtpSavp:
 			case SalProtoRtpSavpf:
+			case SalProtoUdpDtlsSctp:
 			case SalProtoOther:
 				return false;
 		}

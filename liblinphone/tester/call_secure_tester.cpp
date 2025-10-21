@@ -2236,6 +2236,53 @@ static void dtls_srtp_to_none_call_with_several_video_switches(void) {
 }
 #endif // VIDEO_ENABLED
 
+static void call_datachannel(void) {
+	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
+	linphone_core_set_media_encryption(marie->lc, LinphoneMediaEncryptionDTLS);
+	linphone_core_set_media_encryption_mandatory(marie->lc, TRUE);
+
+	LinphoneCoreManager *pauline =
+	    linphone_core_manager_new(transport_supported(LinphoneTransportTls) ? "pauline_rc" : "pauline_tcp_rc");
+	linphone_core_set_media_encryption(pauline->lc, LinphoneMediaEncryptionDTLS);
+	linphone_core_set_media_encryption_mandatory(pauline->lc, TRUE);
+	
+	LinphoneAccount *marie_account = linphone_core_get_default_account(marie->lc);
+	LinphoneAccountParams *marie_account_params =
+	    linphone_account_params_clone(linphone_account_get_params(marie_account));
+	linphone_account_params_enable_rtp_bundle(marie_account_params, TRUE);
+	linphone_account_set_params(marie_account, marie_account_params);
+	linphone_account_params_unref(marie_account_params);
+
+	LinphoneAccount *pauline_account = linphone_core_get_default_account(pauline->lc);
+	LinphoneAccountParams *pauline_account_params =
+	    linphone_account_params_clone(linphone_account_get_params(pauline_account));
+	linphone_account_params_enable_rtp_bundle(pauline_account_params, TRUE);
+	linphone_account_set_params(pauline_account, pauline_account_params);
+	linphone_account_params_unref(pauline_account_params);
+
+	LinphoneCallParams *marie_params = linphone_core_create_call_params(marie->lc, NULL);
+	linphone_call_params_set_media_encryption(marie_params, LinphoneMediaEncryptionDTLS);
+	linphone_call_params_enable_datachannel(marie_params, true);
+
+	LinphoneCallParams *pauline_params = linphone_core_create_call_params(pauline->lc, NULL);
+	linphone_call_params_set_media_encryption(pauline_params, LinphoneMediaEncryptionDTLS);
+	linphone_call_params_enable_datachannel(pauline_params, true);
+
+	BC_ASSERT_TRUE((call_with_params(marie, pauline, marie_params, NULL)));
+	linphone_call_params_unref(marie_params);
+	linphone_call_params_unref(pauline_params);
+
+	const LinphoneCallParams *params = NULL;
+	params = linphone_call_get_current_params(linphone_core_get_current_call(pauline->lc));
+	BC_ASSERT_EQUAL(linphone_call_params_get_media_encryption(params), LinphoneMediaEncryptionDTLS, int, "%d");
+	params = linphone_call_get_current_params(linphone_core_get_current_call(marie->lc));
+	BC_ASSERT_EQUAL(linphone_call_params_get_media_encryption(params), LinphoneMediaEncryptionDTLS, int, "%d");
+
+	end_call(pauline, marie);
+	linphone_core_manager_destroy(marie);
+	linphone_core_manager_destroy(pauline);
+}
+
 static void call_accepting_all_encryptions(void) {
 	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
 	linphone_core_set_media_encryption(marie->lc, LinphoneMediaEncryptionSRTP);
@@ -2266,6 +2313,7 @@ static void call_accepting_all_encryptions(void) {
 	linphone_core_manager_destroy(marie);
 	linphone_core_manager_destroy(pauline);
 }
+
 
 static void secure_call_with_replaces(LinphoneMediaEncryption encryption) {
 	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
@@ -2393,6 +2441,7 @@ static test_t call_secure2_tests[] = {
     TEST_ONE_TAG("DTLS-SRTP call with rtcp-mux", dtls_srtp_audio_call_with_rtcp_mux, "DTLS"),
     TEST_ONE_TAG("DTLS-SRTP call with rtcp-mux not accepted", dtls_srtp_audio_call_with_rtcp_mux_not_accepted, "DTLS"),
     TEST_NO_TAG("Call accepting all encryptions", call_accepting_all_encryptions),
+    TEST_NO_TAG("Call with datachannel", call_datachannel),
     TEST_ONE_TAG("EKT call", ekt_call, "CRYPTO"),
     TEST_NO_TAG("EKT call with unmatching keys", unmatching_ekt_call),
     TEST_NO_TAG("EKT call with EKT key update", updating_ekt_call)};

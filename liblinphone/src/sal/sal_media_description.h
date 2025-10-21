@@ -107,6 +107,7 @@ public:
 	bool hasImplicitAvpf() const;
 	bool hasSrtp() const;
 	bool hasDtls() const;
+	bool hasDataChannel() const;
 	bool hasZrtp() const;
 	bool hasLimeIk() const;
 	bool hasIpv6() const;

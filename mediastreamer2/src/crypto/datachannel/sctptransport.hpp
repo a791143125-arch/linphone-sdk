@@ -9,7 +9,7 @@
 #ifndef RTC_IMPL_SCTP_TRANSPORT_H
 #define RTC_IMPL_SCTP_TRANSPORT_H
 
-// JOHAN
+// DTC
 #define SCTP_DEBUG 1
 
 #include "common.hpp"

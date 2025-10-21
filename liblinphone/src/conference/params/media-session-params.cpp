@@ -47,6 +47,7 @@ void MediaSessionParamsPrivate::clone(const MediaSessionParamsPrivate *src) {
 	screenSharingEnabled = src->screenSharingEnabled;
 	videoEnabled = src->videoEnabled;
 	videoDirection = src->videoDirection;
+	dataChannelEnabled = src->dataChannelEnabled;
 	videoMulticastEnabled = src->videoMulticastEnabled;
 	usedVideoCodec = src->usedVideoCodec;
 	receivedFps = src->receivedFps;
@@ -326,6 +327,7 @@ void MediaSessionParams::initDefault(const std::shared_ptr<Core> &core, Linphone
 	d->micEnabled = true; /* always enabled by default. This switch is unrelated to the Core's mic enablement.*/
 	/* DO NOT SET input and output audio devices: default values exist at Call level already, and may be updated
 	 * at call startup when for example the sound device list is reloaded.*/
+	d->dataChannelEnabled = false;
 }
 
 // -----------------------------------------------------------------------------
@@ -402,6 +404,11 @@ void MediaSessionParams::enableVideoMulticast(bool value) {
 	d->videoMulticastEnabled = value;
 }
 
+void MediaSessionParams::enableDataChannel(bool value) {
+	L_D();
+	d->dataChannelEnabled = value;
+}
+
 float MediaSessionParams::getReceivedFps() const {
 	L_D();
 	return d->receivedFps;
@@ -459,6 +466,11 @@ bool MediaSessionParams::videoEnabled() const {
 bool MediaSessionParams::videoMulticastEnabled() const {
 	L_D();
 	return d->videoMulticastEnabled;
+}
+
+bool MediaSessionParams::dataChannelEnabled() const {
+	L_D();
+	return d->dataChannelEnabled;
 }
 
 // -----------------------------------------------------------------------------

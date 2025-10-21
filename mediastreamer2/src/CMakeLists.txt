@@ -104,6 +104,7 @@ set(VOIP_SOURCE_FILES_C
 	utils/srtp_prefix.h
 	voip/audioconference.c
 	voip/audiostream.c
+	voip/applicationstream.c
 	voip/bandwidthcontroller.c
 	voip/bitratecontrol.c
 	voip/bitratedriver.c

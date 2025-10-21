@@ -850,6 +850,7 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
     const PotentialCfgGraph::media_description_config::key_type &localCfgIdx,
     const PotentialCfgGraph::media_description_config::key_type &remoteCfgIdx) {
 
+	lError()<<"DTC: initiateIncomingConfiguration local_cap type: "<<local_cap.type<<" remote offer type: "<<remote_offer.type<<" result type "<<result.type;
 	SalStreamConfiguration resultCfg;
 	if (result.hasConfigurationAtIndex(result.getActualConfigurationIndex())) {
 		resultCfg = result.getActualConfiguration();
@@ -923,7 +924,8 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
 		resultCfg.maxptime = localCfg.maxptime;
 	}
 
-	if (resultCfg.payloads.empty() || OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads) ||
+	// Application streams does not get payload
+	if ((result.type != SalApplication && (resultCfg.payloads.empty() || OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads))) ||
 	    !remote_offer.enabled()) {
 		lWarning() << "[Initiate Incoming Configuration] Unable to find suitable payloads";
 		return std::nullopt;

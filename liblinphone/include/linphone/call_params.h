@@ -861,6 +861,33 @@ linphone_call_params_get_input_audio_device(const LinphoneCallParams *params);
  */
 LINPHONE_PUBLIC const LinphoneAudioDevice *
 linphone_call_params_get_output_audio_device(const LinphoneCallParams *params);
+/**
+ * Enable application stream.
+ * @param call_params #LinphoneCallParams object @notnil
+ * @param enabled A boolean value telling whether to enable application or not.
+ **/
+LINPHONE_PUBLIC void linphone_call_params_enable_datachannel(LinphoneCallParams *call_params, bool_t enabled);
+
+/**
+ * Tell whether datachannel is enabled or not.
+ * @param call_params #LinphoneCallParams object @notnil
+ * @return A boolean value telling whether datachannel is enabled or not.
+ **/
+LINPHONE_PUBLIC bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *call_params);
+
+/**
+ * Enable application stream.
+ * @param call_params #LinphoneCallParams object @notnil
+ * @param enabled A boolean value telling whether to enable application or not.
+ **/
+LINPHONE_PUBLIC void linphone_call_params_enable_datachannel(LinphoneCallParams *call_params, bool_t enabled);
+
+/**
+ * Tell whether datachannel is enabled or not.
+ * @param call_params #LinphoneCallParams object @notnil
+ * @return A boolean value telling whether datachannel is enabled or not.
+ **/
+LINPHONE_PUBLIC bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *call_params);
 
 /************ */
 /* DEPRECATED */

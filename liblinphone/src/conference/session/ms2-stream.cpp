@@ -271,8 +271,8 @@ void MS2Stream::fillLocalMediaDescription(OfferAnswerContext &ctx) {
 	auto &localDesc = const_cast<SalStreamDescription &>(ctx.getLocalStreamDescription());
 	localDesc.rtp_addr = getPublicIp();
 	localDesc.rtcp_addr = getPublicIp();
-	if (localDesc.rtp_port == SAL_STREAM_DESCRIPTION_PORT_TO_BE_DETERMINED && !localDesc.getPayloads().empty()) {
-		/* Don't fill ports if no codecs are defined. The stream is not valid and should be disabled.*/
+	if (localDesc.rtp_port == SAL_STREAM_DESCRIPTION_PORT_TO_BE_DETERMINED && (!localDesc.getPayloads().empty() || localDesc.hasDataChannel())) {
+		/* Don't fill ports if no codecs are defined unless it is an application stream. The stream is not valid and should be disabled.*/
 		if (linphone_core_zero_rtp_port_for_stream_inactive_enabled(getCCore()) &&
 		    (localDesc.getDirection() == SalStreamInactive)) {
 			localDesc.rtp_port = 0;
@@ -880,6 +880,10 @@ void MS2Stream::applyJitterBufferParams(RtpSession *session) {
 			params.nom_size = linphone_core_get_video_jittcomp(getCCore());
 			params.adaptive = linphone_core_video_adaptive_jittcomp_enabled(getCCore());
 			break;
+		case SalApplication: // disable jitter buffer for application
+			params.nom_size = 0;
+			params.adaptive = false;
+			break;
 		default:
 			lError() << "applyJitterBufferParams(): should not happen";
 			break;
@@ -941,8 +945,8 @@ void MS2Stream::initDtlsParams(MediaStream *ms) {
 			dtlsParams.role =
 			    MSDtlsSrtpRoleUnset; /* Default is unset, then check if we have a result SalMediaDescription */
 			media_stream_enable_dtls(ms, &dtlsParams);
-			if (ms_datachannel_supported()) { //TODO: check if we must do that according 
-				lError() << "JOHAN: datachannel supported";
+			if (ms_datachannel_supported()) { //TODO: check if we must do that according to SDP
+				lError() << "DTC: datachannel supported";
 				media_stream_enable_datachannel(ms);
 			}
 			ms_free(certificate);
@@ -1027,6 +1031,7 @@ void MS2Stream::configureRtpTransport(RtpSession *session) {
 				rtcpFuncData = getCCore()->rtptf->video_rtcp_func_data;
 				break;
 			case SalText:
+			case SalApplication:
 				break;
 			case SalOther:
 				break;
@@ -1409,6 +1414,8 @@ void MS2Stream::stop() {
 		case SalText:
 			statsType = LINPHONE_CALL_STATS_TEXT;
 			break;
+		case SalApplication:
+			break;
 		default:
 			break;
 	}
@@ -1549,6 +1556,9 @@ void MS2Stream::handleEvents() {
 				break;
 			case MSText:
 				text_stream_iterate((TextStream *)ms);
+				break;
+			case MSApplication:
+				application_stream_iterate((ApplicationStream *)ms);
 				break;
 			default:
 				lError() << "handleStreamEvents(): unsupported stream type";

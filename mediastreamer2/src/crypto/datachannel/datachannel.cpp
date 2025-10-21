@@ -102,18 +102,18 @@ void _MSDataChannelContext::attachDtlsHdskCb(MSDtlsSrtpContext *DtlsCtx) {
 			rtc::impl::SctpTransport::Configuration config =
 			    {}; // TODO: get configuration somewhere MTU and max message size
 
-			ms_error("JOHAN: DTLS handshake done on %p, create a Sctp transport", DtlsCtx);
+			ms_error("DTC: DTLS handshake done on %p, create a Sctp transport", DtlsCtx);
 			try {
 				self->mSctpTransport = std::make_shared<rtc::impl::SctpTransport>(
 				    DtlsCtx, config, ports,
 				    // recv callback
-				    [](rtc::message_ptr) { ms_error("JOHAN recv message callback"); },
+				    [](rtc::message_ptr) { ms_error("DTC recv message callback"); },
 				    // amount callback
 				    [](uint16_t streamId, size_t amount) {
-					    ms_error("JOHAN amount callback : %d, %ld", streamId, amount);
+					    ms_error("DTC amount callback : %d, %ld", streamId, amount);
 				    },
 				    [weakThis](rtc::impl::SctpTransport::State state) {
-					    PLOG_ERROR << "JOHAN state change callback dtc : " << state;
+					    PLOG_ERROR << "DTC state change callback dtc : " << state;
 					    auto shared_this = weakThis.lock();
 					    if (!shared_this) return;
 
@@ -168,7 +168,7 @@ extern "C" void ms_datachannel_context_destroy(MSDataChannelContext *ctx) {
 	}
 	if (ctx->mSctpTransport != NULL) {
 		ctx->mSctpTransport->stop();
-		ms_message("JOHAN datachannel context destroy Sctp stop done");
+		ms_message("DTC datachannel context destroy Sctp stop done");
 		ctx->mSctpTransport = nullptr;
 	}
 

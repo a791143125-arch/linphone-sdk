@@ -141,6 +141,8 @@ void SalStreamDescription::fillStreamDescriptionFromSdp(const SalMediaDescriptio
 		type = SalVideo;
 	} else if (mtype.compare("text") == 0) {
 		type = SalText;
+	} else if (mtype.compare("application") == 0) {
+		type = SalApplication;
 	} else {
 		type = SalOther;
 		typeother = mtype;
@@ -592,6 +594,8 @@ void SalStreamDescription::setProtoInCfg(SalStreamConfiguration &cfg, const std:
 			proto = SalProtoUdpTlsRtpSavp;
 		} else if (protoAsString.compare("UDP/TLS/RTP/SAVPF") == 0) {
 			proto = SalProtoUdpTlsRtpSavpf;
+		} else if (protoAsString.compare("UDP/DTLS/SCTP") == 0) {
+			proto = SalProtoUdpDtlsSctp;
 		} else {
 			proto = SalProtoOther;
 			protoOther = protoAsString;
@@ -637,7 +641,7 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 	setProtoInCfg(actualCfg, protoStr);
 	/* Read DTLS specific attributes : check is some are found in the stream description otherwise copy the session
 	 * description one(which are at least set to Invalid) */
-	if (((actualCfg.proto == SalProtoUdpTlsRtpSavpf) || (actualCfg.proto == SalProtoUdpTlsRtpSavp))) {
+	if (((actualCfg.proto == SalProtoUdpTlsRtpSavpf) || (actualCfg.proto == SalProtoUdpTlsRtpSavp)) || (actualCfg.proto == SalProtoUdpDtlsSctp)) {
 		attribute = belle_sdp_media_description_get_attribute(media_desc, "setup");
 		if (attribute && (value = belle_sdp_attribute_get_value(attribute)) != NULL) {
 			if (strncmp(value, "actpass", 7) == 0) {
@@ -978,6 +982,10 @@ bool SalStreamDescription::hasDtls() const {
 	return getChosenConfiguration().hasDtls();
 }
 
+bool SalStreamDescription::hasDataChannel() const {
+	return getChosenConfiguration().hasDataChannel();
+}
+
 bool SalStreamDescription::hasZrtp() const {
 	return getChosenConfiguration().hasZrtp();
 }
@@ -1117,7 +1125,9 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 
 	media_desc = belle_sdp_media_description_create(L_STRING_TO_C(getTypeAsString()), rtp_port, 1,
 	                                                L_STRING_TO_C(getProtoAsString()), NULL);
+
 	if (!actualCfg.payloads.empty()) {
+		lError()<<"DTC : toSdpMediaDescription with payload: "<<actualCfg.payloads.size();
 		for (const auto &pt : actualCfg.payloads) {
 			mime_param = belle_sdp_mime_parameter_create(pt->mime_type, payload_type_get_number(pt), pt->clock_rate,
 			                                             pt->channels > 0 ? pt->channels : -1);
@@ -1130,8 +1140,16 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 		}
 	} else {
 		/* to comply with SDP we cannot have an empty payload type number list */
-		/* as it happens only when mline is declined with a zero port, it does not matter to put whatever codec*/
-		belle_sip_list_t *format = belle_sip_list_append(NULL, 0);
+		lError()<<"DTC : toSdpMediaDescription empty payload ";
+		bctbx_list_t *format = NULL;
+		if (actualCfg.hasDataChannel()) {
+			/* when this stream is of type application -> we only support webrtc datachannel with this type of stream */
+			lError()<<"DTC : toSdpMediaDescription has datachannel";
+			format = bctbx_list_append(format, (void *)(intptr_t)BELLE_SDP_FMT_WEBRTC_DATACHANNEL);
+		} else {
+			/* as it happens only when mline is declined with a zero port, it does not matter to put whatever codec*/
+			format = bctbx_list_append(format, 0);
+		}
 		belle_sdp_media_set_media_formats(belle_sdp_media_description_get_media(media_desc), format);
 	}
 
@@ -1376,7 +1394,7 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 
 void SalStreamDescription::addDtlsAttributesToMediaDesc(const SalStreamConfiguration &cfg,
                                                         belle_sdp_media_description_t *media_desc) const {
-	if ((cfg.proto == SalProtoUdpTlsRtpSavpf) || (cfg.proto == SalProtoUdpTlsRtpSavp)) {
+	if ((cfg.proto == SalProtoUdpTlsRtpSavpf) || (cfg.proto == SalProtoUdpTlsRtpSavp) || (cfg.proto == SalProtoUdpDtlsSctp)) {
 		if ((cfg.dtls_role != SalDtlsRoleInvalid) && (!cfg.dtls_fingerprint.empty())) {
 			const auto setupAttrValue = SalStreamConfiguration::getSetupAttributeForDtlsRole(cfg.dtls_role);
 			if (!setupAttrValue.empty()) {

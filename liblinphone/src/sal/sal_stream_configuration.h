@@ -94,6 +94,7 @@ public:
 	/*these are switch case, so that when a new proto is added we can't forget to modify this function*/
 	bool hasSrtp() const;
 	bool hasDtls() const;
+	bool hasDataChannel() const;
 	bool hasZrtp() const;
 	bool hasLimeIk() const;
 
