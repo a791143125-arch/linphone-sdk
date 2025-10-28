@@ -617,6 +617,7 @@ void belle_sip_channel_parse_stream(belle_sip_channel_t *obj, int end_of_stream)
 	while ((num = (int)belle_sip_channel_input_stream_get_readable_length(&obj->input_stream)) > 0) {
 
 		if (obj->input_stream.state == WAITING_MESSAGE_START) {
+			belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- WAITING_MESSAGE_START");
 			int i;
 			/*first, make sure there is \r\n in the buffer, otherwise, micro parser cannot conclude, because we need a
 			 * complete request or response line somewhere*/
@@ -654,6 +655,7 @@ void belle_sip_channel_parse_stream(belle_sip_channel_t *obj, int end_of_stream)
 		}
 
 		if (obj->input_stream.state == MESSAGE_AQUISITION) {
+			belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- MESSAGE_AQUISITION");
 			/*search for \r\n\r\n*/
 			char *end_of_message = NULL;
 			if ((end_of_message = strstr(obj->input_stream.read_ptr, "\r\n\r\n"))) {
@@ -666,10 +668,17 @@ void belle_sip_channel_parse_stream(belle_sip_channel_t *obj, int end_of_stream)
 				*end_of_message = '\0'; /*this is in order for the following log to print the message only to its end.*/
 				/*belle_sip_message("channel [%p] read message of [%i] bytes:\n%.40s...",obj, bytes_to_parse,
 				 * obj->input_stream.read_ptr);*/
+				belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- about to parse_raw -- read_ptr = "
+				                  "[%s], bytes_to_parse = %d",
+				                  obj->input_stream.read_ptr, bytes_to_parse);
 				obj->input_stream.msg =
 				    belle_sip_message_parse_raw(obj->input_stream.read_ptr, bytes_to_parse, &read_size);
 				*end_of_message = tmp;
 				obj->input_stream.read_ptr += read_size;
+				belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- finished parse_raw -- "
+				                  "end_of_message = [%s], read_size = %zu",
+				                  end_of_message, read_size);
+
 				if (obj->input_stream.msg && read_size > 0) {
 					belle_sip_message("channel [%p] [%i] bytes parsed", obj, (int)read_size);
 					belle_sip_object_ref(obj->input_stream.msg);
@@ -698,11 +707,19 @@ void belle_sip_channel_parse_stream(belle_sip_channel_t *obj, int end_of_stream)
 					obj->inhibit_input_logging_buffer = 0;
 					continue;
 				}
-			} else break; /*The message isn't finished to be receive, we need more data*/
+			} else {
+				belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- break -- The message isn't finished "
+				                  "to be receive, we need more data");
+				break; /*The message isn't finished to be receive, we need more data*/
+			}
 		}
 
 		if (obj->input_stream.state == BODY_AQUISITION) {
-			if (acquire_body(obj, end_of_stream) == BELLE_SIP_STOP) break;
+			belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- BODY_AQUISITION");
+			if (acquire_body(obj, end_of_stream) == BELLE_SIP_STOP) {
+				belle_sip_message("debugtrace -- belle_sip_channel_parse_stream -- body == BELLE_SIP_STOP");
+				break;
+			}
 		}
 	}
 }
@@ -1154,8 +1171,8 @@ static void belle_sip_channel_handle_error(belle_sip_channel_t *obj) {
 			                             belle_sip_object_ref(obj));
 			return;
 		} /*else we have already tried all the ip addresses, so give up and notify the error*/
-	}     /*else the channel was previously working good with the current ip address but now fails, so let's notify the
-	         error*/
+	} /*else the channel was previously working good with the current ip address but now fails, so let's notify the
+	     error*/
 
 	obj->state = BELLE_SIP_CHANNEL_ERROR;
 	/*Because error notification will in practice trigger the destruction of possible transactions and this channel,

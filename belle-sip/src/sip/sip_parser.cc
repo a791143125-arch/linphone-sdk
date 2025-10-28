@@ -428,6 +428,7 @@ bellesip::SIP::Parser::Parser() {
 }
 
 void *bellesip::SIP::Parser::parse(const string &input, const string &rule, size_t *parsedSize, bool fullMatch) {
+	bctbx_message("debugtrace -- bellesip::SIP::Parser::parse -- input = [%s]", input.c_str());
 	string parsedRule = rule;
 	*parsedSize = 0;
 	replace(parsedRule.begin(), parsedRule.end(), '_', '-');
@@ -435,7 +436,9 @@ void *bellesip::SIP::Parser::parse(const string &input, const string &rule, size
 	if (*parsedSize < input.size()) {
 		bctbx_warning("[bellesip-sip-parser] Parsing ended prematuraly at pos %llu", (unsigned long long)*parsedSize);
 	}
-
+	if (elem == nullptr) {
+		bctbx_message("debugtrace -- bellesip::SIP::Parser::parse -- returning nullptr");
+	}
 	return elem;
 }
 
