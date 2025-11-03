@@ -124,20 +124,20 @@ belle_sip_message_t *belle_sip_message_parse(const char *value) {
 }
 
 belle_sip_message_t *belle_sip_message_parse_raw(const char *buff, size_t buff_length, size_t *message_length) {
-	belle_sip_message("debugtrace -- belle_sip_message_parse_raw -- buff = [%s]", buff);
+	bctbx_message("debugtrace -- belle_sip_message_parse_raw -- buff = [%s]", buff);
 	auto parser = bellesip::SIP::Parser::getInstance();
 	auto object = parser->parse(buff, "message", message_length);
 	if (object) {
 		auto context = BELLE_SIP_PARSER_CONTEXT(object);
 		belle_sip_message_t *message = reinterpret_cast<belle_sip_message_t *>(context->obj);
-		belle_sip_message("debugtrace -- belle_sip_message_parse_raw -- parsed message body = [%s]",
-		                  belle_sip_message_get_body(message));
+		bctbx_message("debugtrace -- belle_sip_message_parse_raw -- parsed message body = [%s]",
+		              belle_sip_message_get_body(message));
 		belle_sip_object_unref(context);
 		if (belle_sip_message_is_request(message) && !belle_sip_request_get_uri(BELLE_SIP_REQUEST(message)) &&
 		    !belle_sip_request_get_absolute_uri(BELLE_SIP_REQUEST(message))) {
 			// There was an error parsing the request-uri, so the parsed message is not valid
 			belle_sip_object_unref(message);
-			belle_sip_message("debugtrace -- belle_sip_message_parse_raw -- error in request uri, return nullptr");
+			bctbx_message("debugtrace -- belle_sip_message_parse_raw -- error in request uri, return nullptr");
 			return nullptr;
 		}
 		return message;

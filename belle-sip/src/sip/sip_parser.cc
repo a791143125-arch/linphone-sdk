@@ -428,7 +428,7 @@ bellesip::SIP::Parser::Parser() {
 }
 
 void *bellesip::SIP::Parser::parse(const string &input, const string &rule, size_t *parsedSize, bool fullMatch) {
-	belle_sip_message("debugtrace -- bellesip::SIP::Parser::parse -- input = [%s]", input.c_str());
+	bctbx_message("debugtrace -- bellesip::SIP::Parser::parse -- input = [%s]", input.c_str());
 	string parsedRule = rule;
 	*parsedSize = 0;
 	replace(parsedRule.begin(), parsedRule.end(), '_', '-');

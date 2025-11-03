@@ -1232,6 +1232,37 @@ static void testHop(void) {
 	belle_sip_object_unref(hop);
 }
 
+static void testParserMysteryBug(void) {
+	const char *raw_message = "" // REPLACE WITH WIRESHARK BUGGING LOGS
+	    belle_sip_stack_t *stack = belle_sip_stack_new(NULL);
+	belle_sip_channel_t *channel = belle_sip_stream_channel_new_client(stack, NULL, LISTENING_POINT_PORT, NULL,
+	                                                                   "127.0.0.1", LISTENING_POINT_PORT, TRUE);
+
+	belle_sip_message_t *message;
+	belle_sip_header_content_length_t *ctlt;
+
+	channel->input_stream.write_ptr = strcpy(channel->input_stream.write_ptr, raw_message);
+	channel->input_stream.write_ptr += strlen(raw_message);
+
+	belle_sip_channel_parse_stream(channel, FALSE);
+
+	BC_ASSERT_PTR_NOT_NULL(channel->incoming_messages);
+	BC_ASSERT_PTR_NOT_NULL(channel->incoming_messages->data);
+
+	message = BELLE_SIP_MESSAGE(channel->incoming_messages->data);
+
+	ctlt = belle_sip_message_get_header_by_type(message, belle_sip_header_content_length_t);
+	BC_ASSERT_PTR_NOT_NULL(ctlt);
+	/*
+	BC_ASSERT_EQUAL((unsigned int)belle_sip_header_content_length_get_content_length(ctlt),
+	                (unsigned int)strlen(belle_sip_message_get_body(message)), unsigned int, "%u");
+	BC_ASSERT_EQUAL((unsigned int)belle_sip_header_content_length_get_content_length(ctlt),
+	                (unsigned int)belle_sip_message_get_body_size(message), unsigned int, "%u");
+	*/
+	belle_sip_object_unref(channel);
+	belle_sip_object_unref(stack);
+}
+
 /* NOTE - ORDER IS IMPORTANT - MUST TEST fread() AFTER fprintf() */
 static test_t message_tests[] = {
     TEST_NO_TAG("REGISTER", testRegisterMessage),
@@ -1264,7 +1295,8 @@ static test_t message_tests[] = {
     TEST_NO_TAG("HTTP 200 Ok", testHttp200Ok),
     TEST_NO_TAG("Channel parser for HTTP reponse", channel_parser_http_response),
     TEST_NO_TAG("Get body size", testGetBody),
-    TEST_NO_TAG("Create hop from uri", testHop)};
+    TEST_NO_TAG("Create hop from uri", testHop),
+    TEST_NO_TAG("ParserMysteryBugAttempt", testParserMysteryBug)};
 
 test_suite_t belle_sip_message_test_suite = {"Message",
                                              NULL,
