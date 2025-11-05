@@ -1093,6 +1093,15 @@ void ServerConference::finalizeCreation() {
 	}
 }
 
+bool ServerConference::allSupportMixerToClientExtension() const {
+	for (const auto &device : getParticipantDevices()) {
+		if (!device->isMixerToClientExtensionNegotiated()) {
+			return false;
+		}
+	}
+	return true;
+}
+
 // -----------------------------------------------------------------------------
 
 void ServerConference::subscribeReceived(const shared_ptr<EventSubscribe> &event) {
@@ -1324,6 +1333,24 @@ shared_ptr<ConferenceParticipantDeviceEvent> ServerConference::notifyParticipant
 	incrementLastNotify();
 	auto event = Conference::notifyParticipantDeviceMediaCapabilityChanged(creationTime, isFullState, participant,
 	                                                                       participantDevice);
+#ifdef HAVE_DB_STORAGE
+	if (mConfParams->chatEnabled()) {
+		getCore()->getPrivate()->mainDb->addEvent(event);
+	}
+#endif // HAVE_DB_STORAGE
+	return event;
+}
+
+std::shared_ptr<ConferenceParticipantDeviceEvent>
+ServerConference::notifyParticipantDeviceMuted(time_t creationTime,
+                                               bool isFullState,
+                                               const std::shared_ptr<Participant> &participant,
+                                               const std::shared_ptr<ParticipantDevice> &participantDevice) {
+	if (!allSupportMixerToClientExtension()) {
+		// Increment last notify before notifying participants so that the delta can be calculated correctly
+		incrementLastNotify();
+	}
+	auto event = Conference::notifyParticipantDeviceMuted(creationTime, isFullState, participant, participantDevice);
 #ifdef HAVE_DB_STORAGE
 	if (mConfParams->chatEnabled()) {
 		getCore()->getPrivate()->mainDb->addEvent(event);
@@ -2000,6 +2027,7 @@ bool ServerConference::addParticipant(const std::shared_ptr<Call> call) {
 		if (!mMixerSession && supportsMedia()) {
 			mMixerSession.reset(new MixerSession(*getCore().get()));
 			mMixerSession->setSecurityLevel(mConfParams->getSecurityLevel());
+			mMixerSession->addListener(this);
 		}
 
 		// Add participant to the conference participant list
@@ -3156,6 +3184,25 @@ bool ServerConference::checkClientCompatibility(const shared_ptr<Call> &call,
 	return true; // The client is compatible
 }
 
+void ServerConference::handleMixerToClientFlag(const std::shared_ptr<CallSession> &session) {
+	auto sessionDevice = findParticipantDevice(session);
+	if (sessionDevice) {
+		bool mMixerToClientExtensionNegotiatedBefore = sessionDevice->isMixerToClientExtensionNegotiated();
+		sessionDevice->updateMixerToClientExtensionNegotiated();
+		if (mMixerToClientExtensionNegotiatedBefore != sessionDevice->isMixerToClientExtensionNegotiated()) {
+#ifdef HAVE_ADVANCED_IM
+			if (mEventHandler) {
+				lInfo()
+				    << *session << " in " << *this << " linked to " << *sessionDevice
+				    << " changed mixer to client extension support, therefore sending NOTIFYs to update audio stream "
+				       "direction of muted participant devices";
+				mEventHandler->notifyMixerToClientFlagChanged(sessionDevice);
+			}
+#endif // HAVE_ADVANCED_IM
+		}
+	}
+}
+
 void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSession> &session,
                                                  CallSession::State state,
                                                  BCTBX_UNUSED(const std::string &message)) {
@@ -3346,6 +3393,7 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
 						} else {
 							participantDeviceJoined(session);
 						}
+						handleMixerToClientFlag(session);
 					} else {
 						lError() << *device << ", which associated to call " << *cppCall
 						         << ", has already been added to " << *this
@@ -4025,6 +4073,10 @@ ServerConference::verifyVideoDirection(const std::shared_ptr<CallSession> &sessi
 		}
 	}
 	return videoDir;
+}
+
+void ServerConference::onMuted(uint32_t ssrc, bool muted) {
+	notifyMutedDevice(ssrc, muted);
 }
 
 LINPHONE_END_NAMESPACE

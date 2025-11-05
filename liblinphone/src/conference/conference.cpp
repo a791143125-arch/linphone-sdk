@@ -1045,26 +1045,18 @@ void Conference::notifySpeakingDevice(uint32_t ssrc, bool isSpeaking) {
 	lDebug() << "IsSpeaking: unable to notify speaking device because there is no device found.";
 }
 
+int Conference::participantDeviceMuted(const std::shared_ptr<ParticipantDevice> &device, bool muted) {
+	_linphone_participant_device_notify_is_muted(device->toC(), muted);
+	lInfo() << *device << " in " << *this << " has " << (muted ? "muted" : "unmuted") << " itself";
+	notifyParticipantDeviceMuted(time(nullptr), false, device->getParticipant(), device);
+	mPendingParticipantsMutes.erase(device->getSsrc(LinphoneStreamTypeAudio));
+	return 0;
+}
+
 void Conference::notifyMutedDevice(uint32_t ssrc, bool muted) {
-	for (const auto &participant : mParticipants) {
-		for (const auto &device : participant->getDevices()) {
-			if (device->getSsrc(LinphoneStreamTypeAudio) == ssrc) {
-				_linphone_participant_device_notify_is_muted(device->toC(), muted);
-				for (const auto &l : mConfListeners) {
-					l->onParticipantDeviceIsMuted(device, muted);
-				}
-				mPendingParticipantsMutes.erase(ssrc);
-				return;
-			}
-		}
-	}
-	for (const auto &device : getMe()->getDevices()) {
+	for (const auto &device : getParticipantDevices()) {
 		if (device->getSsrc(LinphoneStreamTypeAudio) == ssrc) {
-			_linphone_participant_device_notify_is_muted(device->toC(), muted);
-			for (const auto &l : mConfListeners) {
-				l->onParticipantDeviceIsMuted(device, muted);
-			}
-			mPendingParticipantsMutes.erase(ssrc);
+			participantDeviceMuted(device, muted);
 			return;
 		}
 	}
@@ -1076,10 +1068,7 @@ void Conference::notifyMutedDevice(uint32_t ssrc, bool muted) {
 
 void Conference::notifyLocalMutedDevices(bool muted) {
 	for (const auto &device : getMe()->getDevices()) {
-		_linphone_participant_device_notify_is_muted(device->toC(), muted);
-		for (const auto &l : mConfListeners) {
-			l->onParticipantDeviceIsMuted(device, muted);
-		}
+		participantDeviceMuted(device, muted);
 	}
 }
 
@@ -1413,6 +1402,23 @@ Conference::notifyParticipantDeviceMediaCapabilityChanged(time_t creationTime,
 
 	for (const auto &l : mConfListeners) {
 		l->onParticipantDeviceMediaCapabilityChanged(event, participantDevice);
+	}
+	return event;
+}
+
+shared_ptr<ConferenceParticipantDeviceEvent>
+Conference::notifyParticipantDeviceMuted(time_t creationTime,
+                                         const bool isFullState,
+                                         const std::shared_ptr<Participant> &participant,
+                                         const std::shared_ptr<ParticipantDevice> &participantDevice) {
+	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
+	    EventLog::Type::ConferenceParticipantDeviceMediaCapabilityChanged, creationTime, mConferenceId,
+	    participant->getAddress(), participantDevice->getAddress(), participantDevice->getName());
+	event->setFullState(isFullState);
+	event->setNotifyId(mLastNotify);
+
+	for (const auto &l : mConfListeners) {
+		l->onParticipantDeviceIsMuted(participantDevice, participantDevice->getIsMuted());
 	}
 	return event;
 }

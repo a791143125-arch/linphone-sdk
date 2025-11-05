@@ -36,6 +36,7 @@ struct _MSAudioConference;
 struct _MSAudioEndpoint;
 
 typedef void (*MSAudioConferenceNotifyActiveTalker)(struct _MSAudioConference *, struct _MSAudioEndpoint *ep);
+typedef void (*MSAudioConferenceNotifyMuted)(struct _MSAudioConference *, uint32_t ssrc, bool_t muted);
 
 /**
  * The MSStreamSecurityLevel represents the security level of the streams in a mixer
@@ -72,6 +73,7 @@ typedef enum {
 struct _MSAudioConferenceParams {
 	int samplerate; /**< Conference audio sampling rate in Hz: 8000, 16000 ...*/
 	MSAudioConferenceNotifyActiveTalker active_talker_callback;
+	MSAudioConferenceNotifyMuted muted_callback;
 	MSStreamSecurityLevel security_level;
 	MSConferenceMode mode;
 	void *user_data;

@@ -404,6 +404,10 @@ LINPHONE_PUBLIC void sal_address_unref(SalAddress *addr);
 
 LINPHONE_PUBLIC void linphone_event_set_state(LinphoneEvent *lev, LinphoneSubscriptionState state);
 
+LINPHONE_PUBLIC const char *
+linphone_participant_device_get_call_id(const LinphoneParticipantDevice *participant_device);
+LINPHONE_PUBLIC bool_t
+linphone_participant_device_is_mixer_to_client_negotiated(const LinphoneParticipantDevice *participant_device);
 LINPHONE_PUBLIC void linphone_participant_device_set_state(LinphoneParticipantDevice *participant_device,
                                                            LinphoneParticipantDeviceState state);
 LINPHONE_PUBLIC LinphoneCore *linphone_participant_device_get_core(const LinphoneParticipantDevice *participant_device);

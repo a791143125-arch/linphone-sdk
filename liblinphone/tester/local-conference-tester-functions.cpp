@@ -1169,11 +1169,20 @@ bool does_all_participants_have_matching_ekt(std::list<LinphoneCoreManager *> me
 
 void check_muted(std::initializer_list<std::reference_wrapper<CoreManager>> coreMgrs,
                  const LinphoneParticipantDevice *device,
-                 std::list<LinphoneCoreManager *> mutedMgrs) {
+                 std::list<LinphoneCoreManager *> mutedMgrs,
+                 const LinphoneAddress *confAddr) {
 	const LinphoneAddress *device_address = linphone_participant_device_get_address(device);
+	const char *device_call_id = linphone_participant_device_get_call_id(device);
 	bool_t expect_mute = FALSE;
 	for (const auto &mgr : mutedMgrs) {
-		expect_mute |= (linphone_address_weak_equal(device_address, mgr->identity));
+		LinphoneCall *participant_call = linphone_core_get_call_by_remote_address2(mgr->lc, confAddr);
+		if (device_call_id && participant_call) {
+			SalOp *op = linphone_call_get_op(participant_call);
+			const char *manager_call_id = L_STRING_TO_C(op->getCallId());
+			expect_mute |= (strcmp(device_call_id, manager_call_id) == 0);
+		} else {
+			expect_mute |= (linphone_address_weak_equal(device_address, mgr->identity));
+		}
 	}
 
 	BC_ASSERT_TRUE(CoreManagerAssert(coreMgrs).waitUntil(chrono::seconds(10), [&device, &expect_mute] {
@@ -1349,18 +1358,25 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 					LinphoneMediaDirection thumbnail_dir =
 					    linphone_participant_device_get_thumbnail_stream_capability(device);
 					bool is_thumbnail_inactive = false;
+
+					bool supports_rtp_volumes =
+					    (linphone_config_get_int(linphone_core_get_config(mgr->lc), "rtp", "use_volumes", 1) == 1);
 					if (participant) {
 						LinphoneParticipantRole role = linphone_participant_get_role(participant);
-						expected_audio_direction =
-						    ((role == LinphoneParticipantRoleSpeaker) ? LinphoneMediaDirectionSendRecv
-						                                              : LinphoneMediaDirectionRecvOnly);
+						if (role == LinphoneParticipantRoleListener) {
+							expected_audio_direction = LinphoneMediaDirectionRecvOnly;
+							video_check &= ((video_dir == LinphoneMediaDirectionRecvOnly) ||
+							                (video_dir == LinphoneMediaDirectionInactive));
+						} else {
+							if (linphone_participant_device_get_is_muted(device) && !supports_rtp_volumes) {
+								expected_audio_direction = LinphoneMediaDirectionRecvOnly;
+							} else {
+								expected_audio_direction = LinphoneMediaDirectionSendRecv;
+							}
+						}
 						LinphoneMediaDirection audio_dir =
 						    linphone_participant_device_get_stream_capability(device, LinphoneStreamTypeAudio);
 						audio_direction_check &= (audio_dir == expected_audio_direction);
-						if (role == LinphoneParticipantRoleListener) {
-							video_check &= ((video_dir == LinphoneMediaDirectionRecvOnly) ||
-							                (video_dir == LinphoneMediaDirectionInactive));
-						}
 						// Thumbnail
 						try {
 							auto participant_mgr_it =
@@ -2494,7 +2510,7 @@ void create_conference_base(time_t start_time,
 							BC_ASSERT_PTR_NOT_NULL(device);
 							if (device) {
 								check_muted({focus, marie, pauline, laure, michelle, berthe}, device,
-								            {pauline.getCMgr()});
+								            {pauline.getCMgr()}, confAddr);
 								linphone_participant_device_set_user_data(device, mgr->lc);
 								LinphoneParticipantDeviceCbs *cbs =
 								    linphone_factory_create_participant_device_cbs(linphone_factory_get());
@@ -2668,7 +2684,7 @@ void create_conference_base(time_t start_time,
 		}
 
 		if (!all_listeners) {
-			ms_message("Marie mutes its microphone");
+			ms_message("%s mutes its microphone", linphone_core_get_identity(marie.getLc()));
 			LinphoneConference *marie_conference = linphone_core_search_conference_2(marie.getLc(), confAddr);
 			BC_ASSERT_PTR_NOT_NULL(marie_conference);
 			if (marie_conference) {
@@ -2699,7 +2715,7 @@ void create_conference_base(time_t start_time,
 							BC_ASSERT_PTR_NOT_NULL(device);
 							if (device) {
 								check_muted({focus, marie, pauline, laure, michelle, berthe}, device,
-								            {marie.getCMgr(), pauline.getCMgr()});
+								            {marie.getCMgr(), pauline.getCMgr()}, confAddr);
 							}
 						}
 						bctbx_list_free_with_data(participant_device_list,
@@ -2775,7 +2791,7 @@ void create_conference_base(time_t start_time,
 							BC_ASSERT_PTR_NOT_NULL(device);
 							if (device) {
 								check_muted({focus, marie, pauline, laure, michelle, berthe}, device,
-								            {pauline.getCMgr()});
+								            {pauline.getCMgr()}, confAddr);
 							}
 						}
 						bctbx_list_free_with_data(participant_device_list,

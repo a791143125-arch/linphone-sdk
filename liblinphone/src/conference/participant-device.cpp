@@ -51,14 +51,16 @@ ParticipantDevice::ParticipantDevice(const std::shared_ptr<Participant> &partici
                                      const std::string &name)
     : mParticipant(participant), mName(name), mSession(session) {
 	std::shared_ptr<Address> gruu;
-	if (mSession && mSession->getRemoteContactAddress()) {
+	if (mSession) {
 		gruu = mSession->getRemoteContactAddress();
-	} else {
+	}
+	if (!gruu) {
 		gruu = Address::create(participant->getAddress()->getUri());
 	}
 	setAddress(gruu);
 	updateMediaCapabilities();
 	updateStreamAvailabilities();
+	updateMixerToClientExtensionNegotiated();
 }
 
 ParticipantDevice::ParticipantDevice(const std::shared_ptr<Participant> &participant,
@@ -253,7 +255,7 @@ void ParticipantDevice::setUserData(void *ud) {
 	mUserData = ud;
 }
 
-const std::string &ParticipantDevice::getCallId() const{
+const std::string &ParticipantDevice::getCallId() const {
 	if (mCallId.empty() && mSession) {
 		const auto &log = mSession->getLog();
 		mCallId = log->getCallId();
@@ -442,6 +444,16 @@ bool ParticipantDevice::setStreamCapability(const LinphoneMediaDirection &direct
 	if (!idxFound || (streams[type].direction != direction)) {
 		streams[type].direction = direction;
 		_linphone_participant_device_notify_stream_capability_changed(toC(), direction, type);
+		const auto conference = getConference();
+		const auto session = (conference ? conference->getMainSession() : nullptr);
+		auto participant = getParticipant();
+		if (session && !dynamic_pointer_cast<MediaSession>(session)->isMixerToClientExtensionNegotiated() &&
+		    (type == LinphoneStreamTypeAudio) && (participant->getRole() == Participant::Role::Speaker)) {
+			auto expectedMuted = (direction == LinphoneMediaDirectionRecvOnly);
+			if (mIsMuted != expectedMuted) {
+				getConference()->participantDeviceMuted(getSharedFromThis(), expectedMuted);
+			}
+		}
 		return true;
 	}
 	return false;
@@ -936,6 +948,19 @@ void ParticipantDevice::setDisconnectionData(bool initiated, int code, LinphoneR
 		mDisconnectionReason = std::string("Reason: SIP;cause=") + std::to_string(code) +
 		                       ";text=" + std::string(linphone_reason_to_string(reason));
 	}
+}
+
+void ParticipantDevice::updateMixerToClientExtensionNegotiated() {
+	if (mSession) {
+		const auto mMediaSession = dynamic_pointer_cast<MediaSession>(mSession);
+		mMixerToClientExtensionNegotiated = (mMediaSession && mMediaSession->isMixerToClientExtensionNegotiated());
+	} else {
+		mMixerToClientExtensionNegotiated = false;
+	}
+}
+
+bool ParticipantDevice::isMixerToClientExtensionNegotiated() const {
+	return mMixerToClientExtensionNegotiated;
 }
 
 LinphoneParticipantDeviceCbsIsSpeakingChangedCb ParticipantDeviceCbs::getIsSpeakingChanged() const {

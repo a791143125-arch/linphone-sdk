@@ -259,6 +259,11 @@ public:
 	                                      const bool isFullState,
 	                                      const std::shared_ptr<Participant> &participant,
 	                                      const std::shared_ptr<ParticipantDevice> &participantDevice);
+	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
+	notifyParticipantDeviceMuted(time_t creationTime,
+	                             const bool isFullState,
+	                             const std::shared_ptr<Participant> &participant,
+	                             const std::shared_ptr<ParticipantDevice> &participantDevice);
 
 	void notifySpeakingDevice(uint32_t ssrc, bool isSpeaking);
 	void notifyMutedDevice(uint32_t ssrc, bool muted);
@@ -351,6 +356,7 @@ public:
 	virtual int stopRecording();
 	virtual bool isRecording() const;
 
+	int participantDeviceMuted(const std::shared_ptr<ParticipantDevice> &device, bool muted);
 	bool getMicrophoneMuted() const;
 	void setMicrophoneMuted(bool muted);
 	float getRecordVolume() const;

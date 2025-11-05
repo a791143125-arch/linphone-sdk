@@ -34,6 +34,7 @@ MS2AudioMixer::MS2AudioMixer(MixerSession &session) : StreamMixer(session) {
 	MSAudioConferenceParams ms_conf_params;
 	ms_conf_params.samplerate = linphone_config_get_int(mSession.getCCore()->config, "sound", "conference_rate", 16000);
 	ms_conf_params.active_talker_callback = &MS2AudioMixer::sOnActiveTalkerChanged;
+	ms_conf_params.muted_callback = &MS2AudioMixer::sOnMuted;
 	ms_conf_params.security_level = StreamMixer::securityLevelToMsSecurityLevel(session.getSecurityLevel());
 	LinphoneConfig *config = linphone_core_get_config(mSession.getCCore());
 	ms_conf_params.mode = static_cast<MSConferenceMode>(
@@ -86,6 +87,18 @@ void MS2AudioMixer::onActiveTalkerChanged(MSAudioEndpoint *ep) {
 	StreamsGroup *sg = (StreamsGroup *)ms_audio_endpoint_get_user_data(ep);
 	for (auto &l : mListeners) {
 		l->onActiveTalkerChanged(sg);
+	}
+}
+
+void MS2AudioMixer::sOnMuted(MSAudioConference *audioconf, uint32_t ssrc, bool_t muted) {
+	const MSAudioConferenceParams *params = ms_audio_conference_get_params(audioconf);
+	MS2AudioMixer *zis = static_cast<MS2AudioMixer *>(params->user_data);
+	zis->onMuted(ssrc, muted);
+}
+
+void MS2AudioMixer::onMuted(uint32_t ssrc, bool muted) {
+	for (auto &l : mListeners) {
+		l->onMuted(ssrc, muted);
 	}
 }
 

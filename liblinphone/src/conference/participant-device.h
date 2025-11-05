@@ -224,6 +224,9 @@ public:
 	void setSendAddedNotify(bool sendNotify);
 	bool addedNotifySent() const;
 
+	void updateMixerToClientExtensionNegotiated();
+	bool isMixerToClientExtensionNegotiated() const;
+
 protected:
 	std::shared_ptr<Conference> getConference() const;
 
@@ -249,6 +252,7 @@ private:
 	bool mIsSpeaking = false;
 	bool mIsScreenSharing = false;
 	bool mSendAddedNotify = true;
+	bool mMixerToClientExtensionNegotiated = true;
 
 	// The following boolean tells if the device is changing the SUBSCRIBE event. In fact, it may happen that the client
 	// and server get out of sychronization and the recovery process kicks in. The client unsubscribes and send a new
