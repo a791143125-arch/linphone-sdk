@@ -424,18 +424,8 @@ static void audio_stream_base(const char *audio_file_marielle,
 	rtp_profile_set_payload(profile, 0, &payload_type_opus);
 	rtp_profile_set_payload(profile, 8, &payload_type_pcma8000);
 
-	// JBParameters jitter_params_marielle;
 	RtpSession *marielle_rtp_session = audio_stream_get_rtp_session(marielle);
-	// rtp_session_get_jitter_buffer_params(marielle_rtp_session, &jitter_params_marielle);
-	// jitter_params_marielle.adaptive = FALSE;
-	// rtp_session_set_jitter_buffer_params(marielle_rtp_session, &jitter_params_marielle);
-
-	// JBParameters jitter_params_margaux;
 	RtpSession *margaux_rtp_session = audio_stream_get_rtp_session(margaux);
-	// rtp_session_get_jitter_buffer_params(margaux_rtp_session, &jitter_params_margaux);
-	// jitter_params_margaux.adaptive = FALSE;
-	// rtp_session_set_jitter_buffer_params(margaux_rtp_session, &jitter_params_margaux);
-
 	rtp_session_enable_adaptive_jitter_compensation(marielle_rtp_session, FALSE);
 	rtp_session_enable_adaptive_jitter_compensation(margaux_rtp_session, FALSE);
 
@@ -452,42 +442,7 @@ static void audio_stream_base(const char *audio_file_marielle,
 
 	if (config_change_ms == 0) {
 		ms_filter_add_notify_callback(marielle->soundread, notify_cb, &marielle_stats, TRUE);
-
-		JBParameters jitter_params_marielle;
-		marielle_rtp_session = audio_stream_get_rtp_session(marielle);
-		rtp_session_get_jitter_buffer_params(marielle_rtp_session, &jitter_params_marielle);
-		if (jitter_params_marielle.adaptive) {
-			ms_message("** marielle jitter buffer is adaptive");
-		} else {
-			ms_message("** marielle jitter buffer is NOT adaptive");
-		}
-
-		JBParameters jitter_params_margaux;
-		margaux_rtp_session = audio_stream_get_rtp_session(margaux);
-		rtp_session_get_jitter_buffer_params(margaux_rtp_session, &jitter_params_margaux);
-		if (jitter_params_margaux.adaptive) {
-			ms_message("** margaux jitter buffer is adaptive");
-		} else {
-			ms_message("** margaux jitter buffer is NOT adaptive");
-		}
-
 		wait_for_until(&marielle->ms, &margaux->ms, &marielle_stats.number_of_EndOfFile, 1, audio_stop_ms);
-
-		marielle_rtp_session = audio_stream_get_rtp_session(marielle);
-		rtp_session_get_jitter_buffer_params(marielle_rtp_session, &jitter_params_marielle);
-		if (jitter_params_marielle.adaptive) {
-			ms_message("** marielle jitter buffer is adaptive");
-		} else {
-			ms_message("** marielle jitter buffer is NOT adaptive");
-		}
-
-		margaux_rtp_session = audio_stream_get_rtp_session(margaux);
-		rtp_session_get_jitter_buffer_params(margaux_rtp_session, &jitter_params_margaux);
-		if (jitter_params_margaux.adaptive) {
-			ms_message("** margaux jitter buffer is adaptive");
-		} else {
-			ms_message("** margaux jitter buffer is NOT adaptive");
-		}
 
 	} else {
 		int dummy = 0;
