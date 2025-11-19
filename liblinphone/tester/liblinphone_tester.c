@@ -550,6 +550,7 @@ void liblinphone_tester_add_suites(void) {
 	liblinphone_tester_add_suite_with_default_time(&srtp_ice_capability_negotiation_test_suite, 116);
 	liblinphone_tester_add_suite_with_default_time(&zrtp_ice_capability_negotiation_test_suite, 95);
 	liblinphone_tester_add_suite_with_default_time(&dtls_srtp_ice_capability_negotiation_test_suite, 101);
+	liblinphone_tester_add_suite_with_default_time(&transcription_test_suite, 101);
 #ifdef VIDEO_ENABLED
 	liblinphone_tester_add_suite_with_default_time(&video_test_suite, 19);
 	liblinphone_tester_add_suite_with_default_time(&call_video_test_suite, 620);

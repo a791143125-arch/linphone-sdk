@@ -811,6 +811,26 @@ typedef struct _LinphoneSignalInformation LinphoneSignalInformation;
  */
 typedef struct _LinphoneBearerToken LinphoneBearerToken;
 
+// -----------------------------------------------------------------------------
+// Transcription
+// -----------------------------------------------------------------------------
+
+/**
+ * @brief Object that handles the transcription.
+ * It handles the formating of the transcription data for it to be usable by an app.
+ * Applications need to provide a callback to handle the display of the transcription using the api provided.
+ * Each transcribed sentence is associated to an id that can be used to access all the information regarding the
+ * sentence.
+ * @ingroup call
+ */
+typedef struct _LinphoneTranscription LinphoneTranscription;
+
+/**
+ * @brief Object that represents a callback attached to a transcription.
+ * @ingroup call
+ **/
+typedef struct _LinphoneTranscriptionCbs LinphoneTranscriptionCbs;
+
 #ifdef __cplusplus
 }
 #endif // ifdef __cplusplus

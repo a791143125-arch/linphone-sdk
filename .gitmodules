@@ -85,3 +85,6 @@
 [submodule "oboe"]
 	path = msoboe/oboe
 	url = https://github.com/google/oboe
+[submodule "external/whispercpp"]
+	path = external/whispercpp
+	url = https://gitlab.linphone.org/BC/public/external/whisper.cpp.git

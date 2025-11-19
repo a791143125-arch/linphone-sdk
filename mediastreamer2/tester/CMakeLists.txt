@@ -45,6 +45,13 @@ if(TurboJpeg_FOUND)
 	list(APPEND MS2_LIBS_FOR_TESTER ${TurboJpeg_TARGET})
 endif()
 
+if(Whisper_FOUND)
+	list(APPEND MS2_LIBS_FOR_TESTER ${Whisper_TARGET})
+endif()
+
+if(Vosk_FOUND)
+	list(APPEND MS2_LIBS_FOR_TESTER ${Vosk_TARGET})
+endif()
 
 if(ZLIB_FOUND)
 	list(APPEND MS2_LIBS_FOR_TESTER ${ZLIB_TARGET})
@@ -147,6 +154,12 @@ set(SOURCE_FILES_CXX
 	mediastreamer2_double_encryption_tester.cpp
 	mediastreamer2_tester_utils.cpp
 )
+
+if(AUDIO_TRANSCRIPTION_ENABLED)
+	list(APPEND SOURCE_FILES_C mediastreamer2_audio_transcription_tester.c)
+	list(APPEND SOURCE_FILES_CXX mediastreamer2_tester_transcription_unit_whisper.cpp)
+	list(APPEND SOURCE_FILES_CXX mediastreamer2_tester_transcription_unit_vosk.cpp)
+endif()
 
 if(ZLIB_FOUND)
 	list(APPEND SOURCE_FILES_CXX smff_tester.cpp)

@@ -40,6 +40,7 @@
 #include "media-session.h"
 #include "mixers.h"
 #include "nat/ice-service.h"
+#include "transcription/transcription.h"
 
 using namespace ::std;
 
@@ -242,6 +243,13 @@ void MS2AudioStream::configureAudioStream() {
 			ms_free(statestr);
 		}
 	}
+	if (linphone_core_transcription_enabled(getCCore())) {
+		audio_stream_enable_transcription(mStream, true);
+		const char *model_path = linphone_core_get_transcription_model_path(getCCore());
+		const char *method = linphone_core_get_transcription_method(getCCore());
+		audio_stream_set_transcription_model_path(mStream, model_path);
+		audio_stream_set_transcription_method(mStream, method);
+	}
 	audio_stream_enable_automatic_gain_control(mStream, linphone_core_agc_enabled(getCCore()));
 	bool_t enabled = !!linphone_config_get_int(linphone_core_get_config(getCCore()), "sound", "noisegate", 0);
 	audio_stream_enable_noise_gate(mStream, enabled);
@@ -361,6 +369,7 @@ void MS2AudioStream::configureConference() {
 		}
 	}
 }
+
 void MS2AudioStream::render(const OfferAnswerContext &params, CallSession::State targetState) {
 	const auto &stream = params.getResultStreamDescription();
 
@@ -611,6 +620,14 @@ void MS2AudioStream::render(const OfferAnswerContext &params, CallSession::State
 			auto features = audio_stream_get_features(mStream);
 			features |= AUDIO_STREAM_FEATURE_VAD;
 			audio_stream_set_features(mStream, features);
+		}
+
+		if (linphone_core_transcription_enabled(getCCore())) {
+			audio_stream_set_active_speaker_callback(mStream, &MS2AudioStream::sAudioStreamActiveSpeakerCb, this);
+
+			LinphoneTranscription *transcription = linphone_core_get_transcription(getCCore());
+			// TODO use a listener to handle the transcription from audiostream
+			Transcription::toCpp(transcription)->setAudioStream(mStream);
 		}
 
 		audio_stream_set_audio_route_changed_callback(mStream, &MS2AudioStream::audioRouteChangeCb, &getCore());

@@ -313,6 +313,7 @@ set(LINPHONE_CXX_OBJECTS_PRIVATE_HEADER_FILES
 	search/search-request.h
 	search/search-result.h
 	signal-information/signal-information.h
+	transcription/transcription.h
 	utils/background-task.h
 	utils/custom-params.h
 	utils/general-internal.h
@@ -476,6 +477,8 @@ set(LINPHONE_CXX_OBJECTS_SOURCE_FILES
 	c-wrapper/api/c-nat-policy.cpp
 	c-wrapper/api/c-vcard.cpp
 	c-wrapper/api/c-bearer-token.cpp
+	c-wrapper/api/c-transcription.cpp
+	c-wrapper/api/c-transcription-cbs.cpp
 	c-wrapper/internal/c-sal.cpp
 	c-wrapper/internal/c-tools.cpp
 	call/call-log.cpp
@@ -623,6 +626,7 @@ set(LINPHONE_CXX_OBJECTS_SOURCE_FILES
 	search/search-result.cpp
 	search/remote-contact-directory.cpp
 	signal-information/signal-information.cpp
+	transcription/transcription.cpp
 	utils/background-task.cpp
 	utils/custom-params.cpp
 	utils/fs.cpp

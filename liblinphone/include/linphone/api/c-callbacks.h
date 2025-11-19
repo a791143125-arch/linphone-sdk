@@ -128,6 +128,21 @@ typedef void (*LinphoneAlertCbsTerminatedCb)(LinphoneAlert *alert);
  */
 
 /**
+ * @addtogroup call
+ * @{
+ */
+
+/**
+ * Callback for notifying about a transcription ready to be displayed.
+ * @param transcription #LinphoneTranscription object @notnil
+ */
+typedef void (*LinphoneTranscriptionCbsDisplayCb)(LinphoneTranscription *transcription);
+
+/**
+ * @}
+ **/
+
+/**
  * @addtogroup call_control
  * @{
  **/

@@ -18,11 +18,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "mediastreamer2/mediastream.h"
 #include "bctoolbox/defs.h"
 #include "bctoolbox/port.h"
 
 #include "common.h"
 #include "mediastreamer2/msequalizer.h"
+#include "mediastreamer2/mstranscript.h"
 #include "mediastreamer2/msvolume.h"
 #include <math.h>
 #ifdef VIDEO_ENABLED
@@ -158,6 +160,10 @@ typedef struct _MediastreamDatas {
 	FecStream *fec_stream;
 	RtpBundle *fec_bundle;
 	uint8_t fec_level;
+
+	bool_t enable_transcription;
+	const char *transcription_model_path;
+	const char *transcription_method;
 } MediastreamDatas;
 
 // MAIN METHODS
@@ -238,6 +244,8 @@ const char *usage =
     "[ --zrtp (enable zrtp) ]\n"
     "[ --fec <level> possible values are: 0 (fec enabled but nothing sent), 1 (1D, L=10), 2 (1D interleaved, L=5, "
     "D=5), 3 (2D, L=5, D=5), 4 (2D, L=4, D=4) and 5 (2D, L=3, D=3) ]\n"
+    "[ --transcript (enable transcription) ]\n"
+    "[ --model-path <path> set the path to the trasncription model ]\n"
 #if TARGET_OS_IPHONE
     "[ --speaker route audio to speaker ]\n"
 #endif
@@ -359,6 +367,8 @@ MediastreamDatas *init_default_args(void) {
 	args->video_display_filter = NULL;
 
 	args->enable_fec = FALSE;
+
+	args->enable_transcription = FALSE;
 
 	return args;
 }
@@ -665,6 +675,11 @@ bool_t parse_args(int argc, char **argv, MediastreamDatas *out) {
 				ms_error("Invalid value for --fec");
 				return FALSE;
 			}
+		} else if (strcmp(argv[i], "--transcript") == 0) {
+			out->enable_transcription = TRUE;
+		} else if (strcmp(argv[i], "--model-path") == 0) {
+			i++;
+			out->transcription_model_path = argv[i];
 		} else {
 			ms_error("Unknown option '%s'\n", argv[i]);
 			return FALSE;
@@ -901,6 +916,9 @@ void setup_media_streams(MediastreamDatas *args) {
 		audio_stream_set_echo_canceller_params(args->audio, args->ec_len_ms, args->ec_delay_ms, args->ec_framesize);
 		audio_stream_enable_echo_limiter(args->audio, args->el);
 		audio_stream_enable_adaptive_bitrate_control(args->audio, args->rc_algo == RCAlgoSimple);
+		audio_stream_enable_transcription(args->audio, args->enable_transcription);
+		audio_stream_set_transcription_model_path(args->audio, args->transcription_model_path);
+		audio_stream_set_transcription_method(args->audio, args->transcription_method);
 		if (capt)
 			ms_snd_card_set_preferred_sample_rate(capt,
 			                                      rtp_profile_get_payload(args->profile, args->payload)->clock_rate);

@@ -322,6 +322,13 @@ LINPHONE_PUBLIC LinphoneChatMessageCbs *linphone_factory_create_chat_message_cbs
  */
 LINPHONE_PUBLIC LinphoneMagicSearchCbs *linphone_factory_create_magic_search_cbs(const LinphoneFactory *factory);
 
+/**
+ * Create a LinphoneTranscriptionCbs object that holds callbacks for events happening on transcription.
+ * @param factory #LinphoneFactory singleton object @notnil
+ * @return A new #LinphoneTranscriptionCbs object @notnil
+ */
+LINPHONE_PUBLIC LinphoneTranscriptionCbs *linphone_factory_create_transcription_cbs(const LinphoneFactory *factory);
+
 LINPHONE_PUBLIC LinphoneDictionary *linphone_factory_create_dictionary(const LinphoneFactory *factory);
 
 /**

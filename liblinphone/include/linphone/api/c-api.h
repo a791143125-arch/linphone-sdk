@@ -84,6 +84,8 @@
 #include "linphone/api/c-remote-contact-directory.h"
 #include "linphone/api/c-search-result.h"
 #include "linphone/api/c-signal-information.h"
+#include "linphone/api/c-transcription-cbs.h"
+#include "linphone/api/c-transcription.h"
 #include "linphone/api/c-types.h"
 #include "linphone/api/c-video-source-descriptor.h"
 

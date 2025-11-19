@@ -87,3 +87,6 @@
 #cmakedefine ENABLE_OPENGL_PROFILING 1
 
 #cmakedefine ENABLE_BAUDOT 1
+
+#cmakedefine AUDIO_TRANSCRIPTION_ENABLED 1
+

@@ -37,6 +37,7 @@
 #include <mediastreamer2/msscreensharing.h>
 #include <mediastreamer2/mssndcard.h>
 #include <mediastreamer2/msticker.h>
+#include <mediastreamer2/mstranscript.h>
 #include <mediastreamer2/msvideo.h>
 #include <mediastreamer2/msvideoqualitycontroller.h>
 #include <mediastreamer2/mswebcam.h>
@@ -561,6 +562,10 @@ typedef void (*MSAudioRouteChangedCallback)(void *audioStream,
                                             char *newInputPort,
                                             char *newOutputPort);
 
+typedef void (*AudioTranscriptionCallback)(void *linphone_transcription,
+                                           struct _MSFilter *transcript_filter,
+                                           unsigned int id,
+                                           void *event);
 struct _AudioStream {
 	MediaStream ms;
 	MSSndCard *playcard;
@@ -620,6 +625,15 @@ struct _AudioStream {
 	bool_t force_software_ec;
 	bool_t use_gc;
 	bool_t use_agc;
+
+	bool_t use_transcription;
+	const char *transcription_model_path;
+	enum transcript_method transcription_method;
+	MSFilter *transcript;
+	MSFilter *tee_transcript;
+	MSFilter *resampler_transcript;
+	AudioTranscriptionCallback transcription_cb;
+	void *transcription_api_pointer;
 
 	bool_t mic_eq_active;
 	bool_t spk_eq_active;
@@ -1258,6 +1272,30 @@ MS2_PUBLIC void audio_stream_set_baudot_pause_timeout(AudioStream *stream, uint8
  * @param[in] enabled Whether to enable or disable Baudot tones detection.
  */
 MS2_PUBLIC void audio_stream_enable_baudot_detection(AudioStream *stream, bool_t enabled);
+
+/**
+ * enable transcription, must be done before start().
+ * @param[in] stream The AudioStream object.
+ * @param[in] enabled Whether to enable or disable transcription.
+ * */
+MS2_PUBLIC void audio_stream_enable_transcription(AudioStream *stream, bool_t enabled);
+
+/**
+ * Set the path to the transcription model.
+ * @param[in] stream The AudioStream object.
+ * @param[in] model_path The path to the transcription model.
+ */
+MS2_PUBLIC void audio_stream_set_transcription_model_path(AudioStream *stream, const char *model_path);
+
+/**
+ * Set the method of transcription from implemented ones ( "vosk" or "whispercpp_overlap").
+ * @param[in] stream The AudioStream object.
+ * @param[in] method Transcription method.
+ */
+MS2_PUBLIC void audio_stream_set_transcription_method(AudioStream *stream, const char *model_path);
+
+MS2_PUBLIC void
+audio_stream_set_transcription_callback(AudioStream *s, AudioTranscriptionCallback cb, void *user_pointer);
 
 /**
  * @}

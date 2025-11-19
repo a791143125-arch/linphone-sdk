@@ -66,6 +66,10 @@ set(HEADER_FILES
 	mstee.h
 	msticker.h
 	mstonedetector.h
+	mstranscript.h
+	abstract-transcript.h
+	whisper-cpp-overlap-transcript.h
+	vosk-transcript.h
 	msutils.h
 	msv4l.h
 	msvaddtx.h

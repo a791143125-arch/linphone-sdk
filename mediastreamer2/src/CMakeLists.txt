@@ -245,6 +245,14 @@ endif()
 if(SpeexDSP_FOUND)
 	list(APPEND VOIP_SOURCE_FILES_C audiofilters/speexec.c)
 endif()
+if(AUDIO_TRANSCRIPTION_ENABLED)
+	list(APPEND VOIP_SOURCE_FILES_CXX 
+		audiofilters/transcript.cpp
+		audiofilters/whisper-cpp-overlap-transcript.cpp
+		audiofilters/vosk-transcript.cpp
+		audiofilters/abstract-transcript.cpp
+	)
+endif()
 
 if(ENABLE_VIDEO)
 	list(APPEND VOIP_SOURCE_FILES_C
@@ -637,6 +645,18 @@ endif()
 if(JNI_FOUND)
 	target_include_directories(mediastreamer2 PRIVATE ${JNI_INCLUDE_DIRS})
 	target_link_libraries(mediastreamer2 PRIVATE ${JNI_LIBRARIES})
+endif()
+
+if(Whisper_FOUND)
+	target_include_directories(mediastreamer2 PRIVATE ${WHISPER_INCLUDE_DIRS})
+endif()
+
+if(Vosk_FOUND)
+	target_include_directories(mediastreamer2 PRIVATE ${VOSK_INCLUDE_DIRS})
+endif()
+
+if(JsonCPP_FOUND)
+	target_link_libraries(mediastreamer2 PUBLIC ${JsonCPP_TARGET})
 endif()
 
 if(BUILD_SHARED_LIBS)

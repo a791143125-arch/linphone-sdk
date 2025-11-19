@@ -84,6 +84,8 @@
 #include "linphone/api/c-nat-policy.h"
 #include "linphone/api/c-recorder-params.h"
 #include "linphone/api/c-recorder.h"
+#include "linphone/api/c-transcription.h"
+#include "linphone/api/c-types.h"
 #include "linphone/core.h"
 #include "linphone/core_utils.h"
 #include "linphone/logging.h"
@@ -1748,6 +1750,13 @@ static void sound_config_read(LinphoneCore *lc) {
 	    lc, linphone_config_get_bool(lc->config, "sound", "disable_record_on_mute", FALSE));
 	linphone_core_set_remote_ringback_tone(lc, linphone_config_get_string(lc->config, "sound", "ringback_tone", NULL));
 
+	tmp = linphone_config_get_int(lc->config, "transcription", "enabled", tmp);
+	linphone_core_enable_transcription(lc, !!tmp);
+	tmpbuf = linphone_config_get_string(lc->config, "transcription", "model_path", tmpbuf);
+	linphone_core_set_transcription_model_path(lc, tmpbuf);
+	tmpbuf = linphone_config_get_string(lc->config, "transcription", "method", tmpbuf);
+	linphone_core_set_transcription_method(lc, tmpbuf);
+
 	/*just parse requested stream feature once at start to print out eventual errors*/
 	linphone_core_get_audio_features(lc);
 }
@@ -2153,6 +2162,49 @@ static void rtp_config_read(LinphoneCore *lc) {
 	else lc->rtp_conf.video_multicast_ttl = 1; /*local network*/
 	if ((tmp_int = linphone_config_get_int(lc->config, "rtp", "video_multicast_enabled", -1)) > 0)
 		linphone_core_enable_video_multicast(lc, !!tmp_int);
+}
+
+void linphone_core_enable_transcription(LinphoneCore *lc, bool_t val) {
+	lc->transcription_conf.enabled = val;
+	if (linphone_core_ready(lc)) {
+		linphone_config_set_int(lc->config, "transcription", "enabled", val);
+	}
+}
+
+bool_t linphone_core_transcription_enabled(const LinphoneCore *lc) {
+	return lc->transcription_conf.enabled;
+}
+
+LinphoneTranscription *linphone_core_get_transcription(const LinphoneCore *core) {
+	return core->transcription;
+}
+
+void linphone_core_set_transcription(LinphoneCore *core, LinphoneTranscription *transcription) {
+	if (core->transcription) {
+		linphone_transcription_unref(core->transcription);
+		core->transcription = NULL;
+	}
+	if (transcription) {
+		core->transcription = linphone_transcription_ref(transcription);
+	}
+}
+
+void linphone_core_set_transcription_model_path(LinphoneCore *lc, const char *model_path) {
+	lc->transcription_conf.model_path = model_path;
+	if (linphone_core_ready(lc)) linphone_config_set_string(lc->config, "transcription", "model_path", model_path);
+}
+
+const char *linphone_core_get_transcription_model_path(const LinphoneCore *lc) {
+	return lc->transcription_conf.model_path;
+}
+
+void linphone_core_set_transcription_method(LinphoneCore *lc, const char *method) {
+	lc->transcription_conf.method = method;
+	if (linphone_core_ready(lc)) linphone_config_set_string(lc->config, "transcription", "method", method);
+}
+
+const char *linphone_core_get_transcription_method(const LinphoneCore *lc) {
+	return lc->transcription_conf.method;
 }
 
 static OrtpPayloadType *find_payload(
@@ -7874,7 +7926,10 @@ void _linphone_core_stop_async_end(LinphoneCore *lc) {
 		linphone_video_activation_policy_unref(lc->video_policy);
 		lc->video_policy = NULL;
 	}
-
+	if (lc->transcription) {
+		linphone_transcription_unref(lc->transcription);
+		lc->transcription = NULL;
+	}
 	linphone_core_free_payload_types(lc);
 	if (lc->supported_formats) ms_free((void *)lc->supported_formats);
 	lc->supported_formats = NULL;
