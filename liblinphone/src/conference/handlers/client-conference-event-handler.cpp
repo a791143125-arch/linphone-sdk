@@ -818,6 +818,8 @@ void ClientConferenceEventHandler::requestFullState() {
 
 bool ClientConferenceEventHandler::notAlreadySubscribed() const {
 	bool notSubscribed = false;
+	lInfo() << __func__ << " DEBUG DEBUG handler " << this << " managedByListEventhandler " << managedByListEventhandler
+	        << " ev " << ev << " subscriptionWanted " << subscriptionWanted;
 	if (managedByListEventhandler) {
 		notSubscribed =
 		    !getCore()->getPrivate()->clientListEventHandler->alreadySubscribed(getConferenceId().getLocalAddress());

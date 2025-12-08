@@ -90,6 +90,8 @@ bool ClientConferenceListEventHandler::subscribe(const shared_ptr<Account> &acco
 		try {
 			const std::shared_ptr<ClientConferenceEventHandler> handler(handlerWkPtr);
 			const ConferenceId &conferenceId = handler->getConferenceId();
+			lInfo() << __func__ << " DEBUG DEBUG list handler " << this << " - conference id " << conferenceId
+			        << " handler " << handler;
 			if (identityAddress->weakEqual(*conferenceId.getLocalAddress())) {
 				shared_ptr<AbstractChatRoom> cr = getCore()->findChatRoom(conferenceId, false);
 				if (!cr) {
@@ -184,6 +186,7 @@ void ClientConferenceListEventHandler::unsubscribe(const std::shared_ptr<Account
 }
 
 bool ClientConferenceListEventHandler::alreadySubscribed(const std::shared_ptr<Address> &address) const {
+	lInfo() << __func__ << " DEBUG DEBUG list handler " << this << " address " << *address;
 	auto event = findEvent(address);
 	return (event != nullptr);
 }
@@ -277,11 +280,16 @@ void ClientConferenceListEventHandler::notifyReceived(std::shared_ptr<Event> not
 
 const std::shared_ptr<EventSubscribe>
 ClientConferenceListEventHandler::findEvent(const std::shared_ptr<Address> &address) const {
-	auto it = std::find_if(levs.begin(), levs.end(), [&address](const auto &lev) {
-		return (*Address::create(lev->getOp()->getFrom()) == *address);
+	auto addressWithoutGruu = address->getUriWithoutGruu();
+	auto it = std::find_if(levs.begin(), levs.end(), [&addressWithoutGruu](const auto &lev) {
+		lInfo() << __func__ << " DEBUG DEBUG lev " << lev << " from " << lev->getOp()->getFrom() << " address "
+		        << addressWithoutGruu;
+		return addressWithoutGruu == Address(lev->getOp()->getFrom()).getUriWithoutGruu();
 	});
 
+	lInfo() << __func__ << " DEBUG DEBUG lev found: " << (it != levs.end());
 	if (it != levs.end()) return *it;
+	lInfo() << __func__ << " DEBUG DEBUG lev not found";
 	return nullptr;
 }
 
