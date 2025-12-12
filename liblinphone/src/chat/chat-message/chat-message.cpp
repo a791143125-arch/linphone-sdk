@@ -2015,6 +2015,20 @@ long long ChatMessage::getStorageId() const {
 	return d->storageId;
 }
 
+shared_ptr<EventLog> ChatMessage::getEventLog() const {
+	L_D();
+	shared_ptr<AbstractChatRoom> chatRoom(d->mChatRoom.lock());
+	if (chatRoom) {
+		const auto &storageId = getStorageId();
+		L_ASSERT(storageId >= 0);
+		unique_ptr<MainDb> &mainDb = chatRoom->getCore()->getPrivate()->mainDb;
+		return mainDb->getEvent(mainDb, storageId);
+	} else {
+		lError() << "ChatMessage [" << this << "] is not associated to any chatroom";
+	}
+	return nullptr;
+}
+
 shared_ptr<AbstractChatRoom> ChatMessage::getChatRoom() const {
 	L_D();
 	shared_ptr<AbstractChatRoom> chatRoom(d->mChatRoom.lock());
