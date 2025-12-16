@@ -407,17 +407,25 @@ void ChatMessagePrivate::setState(ChatMessage::State newState, LinphoneReason re
 	}
 
 	LinphoneChatMessage *msg = L_GET_C_BACK_PTR(q);
+	lInfo() << __func__ << " DEBUG DEBUG msg " << sharedMessage << " old state change dcallback "
+	        << linphone_chat_message_get_message_state_changed_cb(msg);
 	if (linphone_chat_message_get_message_state_changed_cb(msg))
 		linphone_chat_message_get_message_state_changed_cb(msg)(
 		    msg, LinphoneChatMessageState(state), linphone_chat_message_get_message_state_changed_cb_user_data(msg));
 
 	LinphoneChatMessageCbs *cbs = linphone_chat_message_get_callbacks(msg);
+	lInfo() << __func__ << " DEBUG DEBUG msg " << sharedMessage << " new callbacks " << cbs;
+	if (cbs) {
+		lInfo() << __func__ << " DEBUG DEBUG msg " << sharedMessage << " new callbacks " << cbs << " state changed "
+		        << linphone_chat_message_cbs_get_msg_state_changed(cbs);
+	}
 	if (cbs && linphone_chat_message_cbs_get_msg_state_changed(cbs))
 		linphone_chat_message_cbs_get_msg_state_changed(cbs)(msg, (LinphoneChatMessageState)state);
 	_linphone_chat_message_notify_msg_state_changed(msg, (LinphoneChatMessageState)state);
 
 	auto listenersCopy = mListeners; // To allow listener to be removed while iterating
 	for (auto &listener : listenersCopy) {
+		lInfo() << __func__ << " DEBUG DEBUG msg " << sharedMessage << " listener " << listener;
 		listener->onChatMessageStateChanged(q->getSharedFromThis(), state);
 	}
 	if (state == ChatMessage::State::Displayed) {

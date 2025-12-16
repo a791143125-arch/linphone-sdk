@@ -136,6 +136,7 @@ const bctbx_list_t *linphone_chat_message_get_callbacks_list(const LinphoneChatM
 			LinphoneChatMessageCbs *cbs = static_cast<LinphoneChatMessageCbs *>(bctbx_list_get_data(it));              \
 			linphone_chat_message_set_current_callbacks(msg, cbs);                                                     \
 			LinphoneChatMessageCbs##cbName##Cb cb = linphone_chat_message_cbs_get_##functionName(cbs);                 \
+			ms_message("%s - DEBUG DEBUG cbs %p callback %p", __func__, cbs, cb);                                      \
 			if (cb) cb(__VA_ARGS__);                                                                                   \
 		}                                                                                                              \
 		linphone_chat_message_set_current_callbacks(msg, nullptr);                                                     \
@@ -524,6 +525,7 @@ LinphoneChatMessageStateChangedCb linphone_chat_message_get_message_state_change
 
 void linphone_chat_message_set_message_state_changed_cb(LinphoneChatMessage *msg,
                                                         LinphoneChatMessageStateChangedCb cb) {
+	ms_message("%s - DEBUG DEBUG ", __func__);
 	msg->message_state_changed_cb = cb;
 }
 

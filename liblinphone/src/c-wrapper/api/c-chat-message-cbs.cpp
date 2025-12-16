@@ -83,6 +83,7 @@ linphone_chat_message_cbs_get_msg_state_changed(const LinphoneChatMessageCbs *cb
 
 void linphone_chat_message_cbs_set_msg_state_changed(LinphoneChatMessageCbs *cbs,
                                                      LinphoneChatMessageCbsMsgStateChangedCb cb) {
+	ms_message("%s - DEBUG DEBUG cbs %p callback %p", __func__, cbs, cb);
 	cbs->msg_state_changed = cb;
 }
 
