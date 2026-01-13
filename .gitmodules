@@ -93,4 +93,4 @@
 	url = https://github.com/libusb/hidapi.git
 [submodule "external/usrsctp"]
 	path = external/usrsctp
-	url = https://github.com/sctplab/usrsctp.git
+	url = https://gitlab.linphone.org/BC/public/external/usrsctp.git
