@@ -22,6 +22,7 @@
 #define _SAL_STREAM_CONFIGURATION_H_
 
 #include <list>
+#include <optional>
 #include <vector>
 
 #include "ortp/rtpsession.h"
@@ -55,6 +56,7 @@ typedef struct SalSrtpCryptoAlgo {
 	std::string master_key;
 } SalSrtpCryptoAlgo;
 
+
 LINPHONE_BEGIN_NAMESPACE
 
 class SalMediaDescription;
@@ -65,6 +67,21 @@ class MS2Stream;
 class IceService;
 class SalCallOp;
 class OfferAnswerEngine;
+
+// As defined in RFC8864 section 5.1
+struct SalDataChannelMap {
+	std::vector<std::string> dcsa;
+	std::string label;
+	std::string subprotocol;
+	std::optional<uint32_t> max_retr;
+	std::optional<uint32_t> max_time;
+	uint16_t stream_id;
+	std::optional<uint16_t> priority;
+	std::optional<bool> ordered;
+
+	std::string toSdpDcmapAttr() const; // return stream-id and a ; separated list of all optional value set
+	std::vector<std::string> toSdpDcsaAttrs() const; // return a vector of stream_id dcsa attribute
+};
 
 class LINPHONE_PUBLIC SalStreamConfiguration {
 	friend class SalStreamDescription;
@@ -125,6 +142,12 @@ public:
 	const std::list<std::list<unsigned int>> &getAcapIndexes() const;
 	const unsigned int &getTcapIndex() const;
 
+	uint16_t getSctpLocalPort() const;
+	uint16_t getSctpRemotePort() const;
+	void setSctpLocalPort(uint16_t port);
+	void setSctpRemotePort(uint16_t port);
+	const std::vector<SalDataChannelMap> &getDataChannelMap() const;
+
 	static std::string cryptoToSdpValue(const SalSrtpCryptoAlgo &crypto);
 	static SalSrtpCryptoAlgo fillStrpCryptoAlgoFromString(const std::string &value);
 
@@ -142,7 +165,8 @@ private:
 	int max_rate = 0;
 	bool bundle_only = false;
 	bool implicit_rtcp_fb = false;
-	bool pad[2]; /* Use me */
+	bool delete_media_attributes = false;
+	bool delete_session_attributes = false;
 	OrtpRtcpFbConfiguration rtcp_fb{};
 	OrtpRtcpXrConfiguration rtcp_xr{};
 	SalCustomSdpAttribute *custom_sdp_attributes = nullptr;
@@ -160,9 +184,10 @@ private:
 	std::string dtls_fingerprint;
 	SalDtlsRole dtls_role = SalDtlsRoleInvalid;
 	int ttl = 0; /*for multicast -1 to disable*/
+	std::vector<SalDataChannelMap> dcmap;
+	uint16_t sctp_local_port = 5000;
+	uint16_t sctp_remote_port = 0;
 
-	bool delete_media_attributes = false;
-	bool delete_session_attributes = false;
 	unsigned int tcapIndex = 0;
 	std::list<std::list<unsigned int>> acapIndexes;
 

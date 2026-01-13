@@ -29,9 +29,6 @@ LINPHONE_BEGIN_NAMESPACE
 #define keywordcmp(key, b) strncmp(key, b, sizeof(key))
 
 SalStreamConfiguration::SalStreamConfiguration() {
-	pad[0] = false;
-	pad[1] = false;
-
 	payloads.clear();
 	crypto.clear();
 }
@@ -55,8 +52,6 @@ SalStreamConfiguration::SalStreamConfiguration(const SalStreamConfiguration &oth
 	max_rate = other.max_rate;
 	bundle_only = other.bundle_only;
 	implicit_rtcp_fb = other.implicit_rtcp_fb;
-	pad[0] = other.pad[0];
-	pad[1] = other.pad[1];
 	rtcp_fb = other.rtcp_fb;
 	rtcp_xr = other.rtcp_xr;
 	mid = other.mid;
@@ -78,6 +73,9 @@ SalStreamConfiguration::SalStreamConfiguration(const SalStreamConfiguration &oth
 	acapIndexes = other.acapIndexes;
 	delete_media_attributes = other.delete_media_attributes;
 	delete_session_attributes = other.delete_session_attributes;
+	sctp_local_port = other.sctp_local_port;
+	sctp_remote_port = other.sctp_remote_port;
+	dcmap = other.dcmap;
 }
 
 SalStreamConfiguration &SalStreamConfiguration::operator=(const SalStreamConfiguration &other) {
@@ -93,8 +91,6 @@ SalStreamConfiguration &SalStreamConfiguration::operator=(const SalStreamConfigu
 	max_rate = other.max_rate;
 	bundle_only = other.bundle_only;
 	implicit_rtcp_fb = other.implicit_rtcp_fb;
-	pad[0] = other.pad[0];
-	pad[1] = other.pad[1];
 	rtcp_fb = other.rtcp_fb;
 	rtcp_xr = other.rtcp_xr;
 	mid = other.mid;
@@ -116,6 +112,9 @@ SalStreamConfiguration &SalStreamConfiguration::operator=(const SalStreamConfigu
 	acapIndexes = other.acapIndexes;
 	delete_media_attributes = other.delete_media_attributes;
 	delete_session_attributes = other.delete_session_attributes;
+	sctp_local_port = other.sctp_local_port;
+	sctp_remote_port = other.sctp_remote_port;
+	dcmap = other.dcmap;
 
 	return *this;
 }
@@ -550,6 +549,40 @@ SalSrtpCryptoAlgo SalStreamConfiguration::fillStrpCryptoAlgoFromString(const std
 		lError() << "Unable to extract crypto key informations from crypto argument value " << value;
 	}
 	return keyEnc;
+}
+uint16_t SalStreamConfiguration::getSctpLocalPort() const {
+	return sctp_local_port;
+}
+uint16_t SalStreamConfiguration::getSctpRemotePort() const {
+	return sctp_remote_port;
+}
+void SalStreamConfiguration::setSctpLocalPort(uint16_t port) {
+	sctp_local_port = port;
+}
+void SalStreamConfiguration::setSctpRemotePort(uint16_t port) {
+	sctp_remote_port = port;
+}
+
+const std::vector<SalDataChannelMap> &SalStreamConfiguration::getDataChannelMap() const {
+	return dcmap;
+}
+
+// produce a string to be set in sdp : 
+std::string SalDataChannelMap::toSdpDcmapAttr() const {
+	std::string ret = std::to_string(stream_id) + ' ';
+	if (!label.empty()) {
+		ret += R"(label=")" + label + R"(";)";
+	}
+	// remove the last ; if any (or the ' ' after ther stream id if we have only that)
+	ret.pop_back();
+	return ret;
+}
+std::vector<std::string> SalDataChannelMap::toSdpDcsaAttrs() const {
+	std::vector<std::string> ret{};
+	for (const auto &dcsaStr : dcsa) {
+		ret.push_back(std::to_string(stream_id)+' '+dcsaStr);
+	}
+	return ret;
 }
 
 LINPHONE_END_NAMESPACE

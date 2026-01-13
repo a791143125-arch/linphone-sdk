@@ -870,7 +870,9 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
 	/* Handle RTP bundle negociation */
 	bool bundle_enabled = false;
 	if (!localCfg.mid.empty() && !remoteCfg.mid.empty() && !bundle_owner_mid.empty() &&
-	    (localCfg.mid_rtp_ext_header_id != 0) && (remoteCfg.mid_rtp_ext_header_id != 0)) {
+	    (((localCfg.mid_rtp_ext_header_id != 0) && (remoteCfg.mid_rtp_ext_header_id != 0)) ||
+	     (localCfg.hasDataChannel() && remoteCfg.hasDataChannel()))
+	    ) {
 		resultCfg.mid = remoteCfg.mid;
 		resultCfg.mid_rtp_ext_header_id = remoteCfg.mid_rtp_ext_header_id;
 

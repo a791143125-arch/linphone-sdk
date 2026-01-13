@@ -1678,9 +1678,13 @@ void MediaSessionPrivate::addStreamToBundle(const std::shared_ptr<SalMediaDescri
 			md->bundles.erase(md->bundles.begin());
 		}
 		bundle.addStream(cfg, mid);
-		cfg.mid_rtp_ext_header_id = rtpExtHeaderMidNumber;
-		/* rtcp-mux must be enabled when bundle mode is proposed.*/
-		cfg.rtcp_mux = TRUE;
+		/* do not set RTP/RTCP related attribute to application streams */
+		if (sd.type != SalApplication) {
+			cfg.mid_rtp_ext_header_id = rtpExtHeaderMidNumber;
+			/* rtcp-mux must be enabled when bundle mode is proposed.*/
+			cfg.rtcp_mux = TRUE;
+		}
+		
 		if (mandatoryRtpBundleEnabled() || bundleModeAccepted || sd.type == SalApplication) {
 			// Bundle is offered inconditionally
 			if (bundle.getMidOfTransportOwner() != mid) {

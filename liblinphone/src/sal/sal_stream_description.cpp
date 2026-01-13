@@ -164,6 +164,11 @@ void SalStreamDescription::fillStreamDescriptionFromSdp(const SalMediaDescriptio
 
 	createActualCfg(salMediaDesc, sdp, media_desc);
 
+	// Application stream does not have any rctp elements
+	if (type == SalApplication) {
+		return;
+	}
+
 	/* Get media specific RTCP attribute */
 	rtcp_addr = rtp_addr;
 	// Set here the RTCP port because we must know if rtcp_mux is enabled or not
@@ -688,6 +693,37 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 	actualCfg.dir = dir;
 
 	actualCfg.payloads.clear();
+
+	// Parse attributes specific to application stream
+	if (type == SalApplication) {
+		lError()<<"DTC: parsing application stream attributes";
+
+		// We shall have a sctp port (this one is not a negotiation, we have remote and local one)
+		if ((attribute = belle_sdp_media_description_get_attribute(media_desc, "sctp-port")) != NULL) {
+			if ((value = belle_sdp_attribute_get_value(attribute)) != NULL) {
+				try {
+					unsigned long int_value = std::stoul(value);
+					if (int_value > UINT16_MAX) {
+						lError()<<"DTC: Application stream remote sctp-port invalid:"<<int_value;
+					} else {
+						actualCfg.setSctpRemotePort(static_cast<uint16_t>(int_value));
+					}
+				} catch (const std::exception& e) {
+					lError()<<"DTC: Application stream remote sctp-port invalid:"<<value;
+				}
+				lError()<<"DTC: Application stream with remote sctp-port :"<<actualCfg.getSctpRemotePort();
+			}
+		} else {
+			lError()<<"DTC: Application stream but no sctp-port provided";
+		}
+
+		// application stream are webrtc datachannel only: parse the dcmap (and dcsa) attributes
+
+		// when parsing application stream : no payload, no rtcp, no lime Ik, no crypto or zrtp
+		addActualConfiguration(actualCfg);
+		return;
+	}
+
 	/* Get media payload types */
 	sdpParsePayloadTypes(actualCfg, media_desc);
 
@@ -1208,10 +1244,30 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 	}
 	if (dirStr) belle_sdp_media_description_add_attribute(media_desc, belle_sdp_attribute_create(dirStr, NULL));
 
+	addMidAttributesToSdp(actualCfg, media_desc);
+
+	/* when this stream is a application - webrtc datachannel: do not include any rtp/rtcp relevant attributes */
+	if (actualCfg.hasDataChannel()) {
+		// insert datachannel related attributes (sctp-port, dcmap, dcsa)
+		std::string sctpAttrValue = std::to_string(actualCfg.getSctpLocalPort());
+		belle_sdp_media_description_add_attribute(
+		    media_desc, belle_sdp_attribute_create("sctp-port", sctpAttrValue.c_str()));
+		// loop on dcmap attributes
+		for (const auto &dcmapAttr : actualCfg.getDataChannelMap()) {
+			belle_sdp_media_description_add_attribute(
+			    media_desc, belle_sdp_attribute_create("dcmap", dcmapAttr.toSdpDcmapAttr().c_str()));
+			// add dcsa attributes if any
+			for (const auto &dcsaAttr : dcmapAttr.toSdpDcsaAttrs()) {
+				belle_sdp_media_description_add_attribute(
+				    media_desc, belle_sdp_attribute_create("dcsa", dcsaAttr.c_str()));
+			}
+		}
+		return media_desc;
+	}
+
 	if (actualCfg.rtcp_mux) {
 		belle_sdp_media_description_add_attribute(media_desc, belle_sdp_attribute_create("rtcp-mux", NULL));
 	}
-	addMidAttributesToSdp(actualCfg, media_desc);
 
 	if (actualCfg.mixer_to_client_extension_id != 0) {
 		char *value = bctbx_strdup_printf("%i urn:ietf:params:rtp-hdrext:csrc-audio-level",

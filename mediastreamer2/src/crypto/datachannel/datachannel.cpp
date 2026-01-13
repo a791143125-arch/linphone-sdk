@@ -180,9 +180,9 @@ bool ms_datachannel_supported() {
 	return false;
 }
 
-extern "C" MSDataChannelContext *ms_datachannel_context_new(struct _MSMediaStreamSessions *sessions) {
+extern "C" MSDataChannelContext *ms_datachannel_context_new(BCTBX_UNUSED(struct _MSMediaStreamSessions *sessions)) {
 	return nullptr;
 }
-extern "C" void ms_datachannel_context_destroy(MSDataChannelContext *ctx) {
+extern "C" void ms_datachannel_context_destroy(BCTBX_UNUSED(MSDataChannelContext *ctx)) {
 }
 #endif // HAVE_DATACHANNEL
