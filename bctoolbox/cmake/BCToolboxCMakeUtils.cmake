@@ -138,7 +138,7 @@ function(bc_compute_full_version OUTPUT_VERSION)
 			OUTPUT_VARIABLE GIT_DESCRIBE_VERSION
 			OUTPUT_STRIP_TRAILING_WHITESPACE
 			RESULT_VARIABLE GIT_DESCRIBE_STATUS
-			WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+			WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
 		)
 		if(NOT GIT_DESCRIBE_STATUS EQUAL 0)
 			message(FATAL_ERROR "fail to get GIT describe version")
@@ -183,7 +183,7 @@ function(bc_compute_full_version OUTPUT_VERSION)
 			set(short_project_version "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 			if(NOT (short_project_version VERSION_EQUAL short_git_version))
 				message(FATAL_ERROR
-					"project and git version are not compatible (project: '${PROJECT_VERSION}', git: '${full_version}', at: '${CMAKE_CURRENT_SOURCE_DIR}'): "
+					"project (name: " ${PROJECT_NAME} ") and git version are not compatible (project: '${PROJECT_VERSION}', git: '${full_version}', at: '${CMAKE_CURRENT_LIST_DIR}'): "
 					"major and minor version are not equal !"
 				)
 			endif()
