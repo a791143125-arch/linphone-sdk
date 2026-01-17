@@ -48,6 +48,7 @@ void MediaSessionParamsPrivate::clone(const MediaSessionParamsPrivate *src) {
 	videoEnabled = src->videoEnabled;
 	videoDirection = src->videoDirection;
 	dataChannelEnabled = src->dataChannelEnabled;
+	dcmaps = src->dcmaps;
 	videoMulticastEnabled = src->videoMulticastEnabled;
 	usedVideoCodec = src->usedVideoCodec;
 	receivedFps = src->receivedFps;
@@ -407,6 +408,26 @@ void MediaSessionParams::enableVideoMulticast(bool value) {
 void MediaSessionParams::enableDataChannel(bool value) {
 	L_D();
 	d->dataChannelEnabled = value;
+}
+
+bool MediaSessionParams::addDataChannel(const std::string &dcmap) {
+	L_D();
+	auto sdcmap = SalDataChannelMap::from_string(dcmap);
+	if (sdcmap) {
+		d->dcmaps.push_back(*sdcmap);
+		// when datachannel is added succesfully (dcmap is valid), enable it
+		d->dataChannelEnabled = true;
+		lError()<<"DTC: add params "<<dcmap<<" to call";
+		return true;
+	} else {
+		lWarning()<<"Unable to add invalid dcmap attribute to call params: "<<dcmap;
+		return false;
+	}
+}
+
+const std::vector<SalDataChannelMap> &MediaSessionParams::getDataChannels() const {
+	L_D();
+	return d->dcmaps;
 }
 
 float MediaSessionParams::getReceivedFps() const {

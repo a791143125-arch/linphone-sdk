@@ -2031,6 +2031,11 @@ void MediaSessionPrivate::fillLocalStreamDescription(SalStreamDescription &strea
 				cfg.frame_marking_extension_id = RTP_EXTENSION_FRAME_MARKING;
 			}
 		}
+
+		if (type == SalApplication) {
+			lError()<<"DTC: fillLocalStreamDescription add dcmap of size "<<getParams()->getDataChannels().size()<<" to cfg";
+			cfg.dcmap = getParams()->getDataChannels();
+		}
 		bool isInactive = (dir == SalStreamInactive);
 		if (!isInactive) {
 			if (getParams()->rtpBundleEnabled()) {
@@ -2981,20 +2986,17 @@ void MediaSessionPrivate::makeLocalMediaDescription(bool localIsOfferer,
 
 	lError()<<"DTC: in makeLocalMd addApplicationStream:"<<addApplicationStream<<" (getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS):"<<(getNegotiatedMediaEncryption() == LinphoneMediaEncryptionDTLS)<<" getParams()->rtpBundleEnabled():"<< rtpBundleEnabled<<" getCurrentParams()->dataChannelEnabled():"<<getCurrentParams()->dataChannelEnabled()<<" getParams()->dataChannelEnabled():"<<getParams()->dataChannelEnabled();
 	if (addApplicationStream || oldApplicationStream.has_value()) {
+		// TODO: this is useless as application stream has no payload, shall we instead check already assigned datachannel?
 		std::list<OrtpPayloadType *> alreadyAssignedApplicationPayloads;
 		if (oldApplicationStream.has_value()) {
 			alreadyAssignedApplicationPayloads = (*oldApplicationStream)->already_assigned_payloads;
 		}
 		const auto remoteApplicationStreamIdx = remoteMd ? remoteMd->findFirstStreamIdxOfType(SalApplication, 0) : -1;
 		lError()<<"DTC: in makeLocalMd remoteApplicationStreamIdx: "<< remoteApplicationStreamIdx;
-		//const auto proto = getMdProto(SalApplication, remoteApplicationStreamIdx, remoteMd, offerNegotiatedMediaProtocolOnly,
-		  //                            addCapabilityNegotiationAttributes, encList);
-		const auto proto = SalProtoUdpDtlsSctp; // application stream can only be UDP/DTLS/SCTP
-		lError()<<"DTC: in makeLocalMd proto is: "<< proto;
 		const auto applicationStreamIdx = refMd ? refMd->findFirstStreamIdxOfType(SalApplication, 0) : -1;
 		lError()<<"DTC: in makeLocalMd applicationStreamIdx: "<< applicationStreamIdx;
 		SalStreamDescription &applicationStream = addStreamToMd(md, applicationStreamIdx, oldMd);
-		fillLocalStreamDescription(applicationStream, md, getParams()->dataChannelEnabled(), "Application", SalApplication, proto,
+		fillLocalStreamDescription(applicationStream, md, getParams()->dataChannelEnabled(), "Application", SalApplication, SalProtoUdpDtlsSctp,
 		                           SalStreamSendRecv, {}, "dc",
 		                           getParams()->getPrivate()->getCustomSdpMediaAttributes(LinphoneStreamTypeApplication));
 		applicationStream.setSupportedEncryptions(encList);

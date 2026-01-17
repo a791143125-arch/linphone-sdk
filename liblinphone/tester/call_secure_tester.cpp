@@ -2262,7 +2262,8 @@ static void call_datachannel(void) {
 
 	LinphoneCallParams *marie_params = linphone_core_create_call_params(marie->lc, NULL);
 	linphone_call_params_set_media_encryption(marie_params, LinphoneMediaEncryptionDTLS);
-	linphone_call_params_enable_datachannel(marie_params, true);
+	linphone_call_params_add_datachannel(marie_params, "1 label=\"confcontrol\";subprotocol=\"bcdcp\"");
+	linphone_call_params_add_datachannel(marie_params, "2 label=\"soundstuff\";subprotocol=\"bcdcp\"");
 
 	LinphoneCallParams *pauline_params = linphone_core_create_call_params(pauline->lc, NULL);
 	linphone_call_params_set_media_encryption(pauline_params, LinphoneMediaEncryptionDTLS);
@@ -2277,6 +2278,9 @@ static void call_datachannel(void) {
 	BC_ASSERT_EQUAL(linphone_call_params_get_media_encryption(params), LinphoneMediaEncryptionDTLS, int, "%d");
 	params = linphone_call_get_current_params(linphone_core_get_current_call(marie->lc));
 	BC_ASSERT_EQUAL(linphone_call_params_get_media_encryption(params), LinphoneMediaEncryptionDTLS, int, "%d");
+
+	int dummy=0;
+	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 1000);
 
 	end_call(pauline, marie);
 	linphone_core_manager_destroy(marie);

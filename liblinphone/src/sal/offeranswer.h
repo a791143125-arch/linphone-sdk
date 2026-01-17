@@ -123,6 +123,8 @@ private:
 
 	static int getExtensionId(int localExtensionId, int remoteExtensionId);
 
+	static std::vector<SalDataChannelMap> getCompatibleDcmap(const std::vector<SalDataChannelMap> &local, const std::vector<SalDataChannelMap> &remote);
+
 	MSFactory *mMsFactory = nullptr;
 	bool mUseOneMatchingCodec = false;
 	bool mAnswerWithOwnNumbering = false;

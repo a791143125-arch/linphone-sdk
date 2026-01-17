@@ -32,6 +32,7 @@ struct _MSMediaStreamSessions;
 typedef struct _MSDataChannelContext MSDataChannelContext;
 
 MS2_PUBLIC MSDataChannelContext *ms_datachannel_context_new(struct _MSMediaStreamSessions *sessions);
+MS2_PUBLIC void ms_datachannel_context_start(struct _MSMediaStreamSessions *sessions);
 MS2_PUBLIC void ms_datachannel_context_destroy(MSDataChannelContext *ctx);
 #ifdef __cplusplus
 }

@@ -945,10 +945,6 @@ void MS2Stream::initDtlsParams(MediaStream *ms) {
 			dtlsParams.role =
 			    MSDtlsSrtpRoleUnset; /* Default is unset, then check if we have a result SalMediaDescription */
 			media_stream_enable_dtls(ms, &dtlsParams);
-			if (ms_datachannel_supported()) { //TODO: check if we must do that according to SDP
-				lError() << "DTC: datachannel supported";
-				media_stream_enable_datachannel(ms);
-			}
 			ms_free(certificate);
 			ms_free(key);
 		} else {
@@ -1594,7 +1590,15 @@ void MS2Stream::handleEvents() {
 				}
 				break;
 			case ORTP_EVENT_SRTP_ENCRYPTION_CHANGED:
+				encryptionChanged();
+				break;
 			case ORTP_EVENT_DTLS_ENCRYPTION_CHANGED:
+				if (ms_datachannel_supported()) { //TODO: check if we must do that according to SDP
+					if (evd->info.dtls_stream_encrypted) {
+						lError() << "DTC: datachannel supported in ORTP_EVENT_DTLS_ENCRYPTION_CHANGED stream type " << ms->type;;
+						media_stream_enable_datachannel(ms);
+					}
+				}
 				encryptionChanged();
 				break;
 			case ORTP_EVENT_ICE_CHECK_LIST_DEFAULT_CANDIDATE_VERIFIED:

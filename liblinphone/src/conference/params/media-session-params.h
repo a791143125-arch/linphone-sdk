@@ -77,6 +77,7 @@ public:
 	void enableVideo(bool value);
 	void enableVideoMulticast(bool value);
 	void enableDataChannel(bool value);
+	bool addDataChannel(const std::string &dcmap);
 	float getReceivedFps() const;
 	LinphoneVideoDefinition *getReceivedVideoDefinition() const;
 	float getSentFps() const;
@@ -90,6 +91,7 @@ public:
 	bool videoEnabled() const;
 	bool videoMulticastEnabled() const;
 	bool dataChannelEnabled() const;
+	const std::vector<SalDataChannelMap> &getDataChannels() const;
 
 	void enableFec(bool value);
 	bool fecEnabled() const;

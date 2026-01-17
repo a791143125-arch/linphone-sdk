@@ -201,6 +201,44 @@ OrtpPayloadType *OfferAnswerEngine::genericMatch(const std::list<OrtpPayloadType
 	return NULL;
 }
 
+std::vector<SalDataChannelMap> OfferAnswerEngine::getCompatibleDcmap(const std::vector<SalDataChannelMap> &local,
+						const std::vector<SalDataChannelMap> &remote) {
+	std::vector<SalDataChannelMap> ret{};
+	for (const auto &rmap : remote) {
+		auto rid = rmap.getId();
+		bool idMatch = false;
+		for (const auto &lmap : local) {
+			// upon reception of the 200Ok, we must check the answer match the invite
+			if (lmap.getId() == rid) {
+				idMatch = true;
+				lError()<<"DTC: Dcmap matching: channel "<<rid<<" found in local";
+				if (rmap.getLabel() == lmap.getLabel() &&
+					rmap.getSubprotocol() == lmap.getSubprotocol() &&
+					rmap.getMaxRetr() == lmap.getMaxRetr() &&
+					rmap.getMaxTime() == lmap.getMaxTime() &&
+					// ordered default to true when not present
+					rmap.getOrdered().value_or(true) == lmap.getOrdered().value_or(true)) {
+					lError()<<"DTC: Dcmap matching: channel "<<rid<<" found in local and matching";
+					ret.push_back(lmap);
+					break;
+				}
+			}
+		}
+
+		// upon reception of the invite, we shall not have any local channel set
+		if (!idMatch) {
+			// this id channel is free, check if we can accept it
+			if (rmap.isSupported()) {
+				lError()<<"DTC: Dcmap matching: channel "<<rid<<" not found in local but supported, accept it";
+				ret.push_back(rmap);
+			} else {
+				lWarning()<<"dcmap: unacceptable datachannel in remote offer: "<<rmap.toSdpDcmapAttr();
+			}
+		}
+	}
+	return ret;
+}
+
 /*
  * Returns a PayloadType from the local list that matches a OrtpPayloadType offered or answered in the remote list
  */
@@ -314,8 +352,8 @@ std::list<OrtpPayloadType *> OfferAnswerEngine::matchPayloads(const std::list<Or
 			}
 		}
 		if (!found) {
-			const auto &p1 = local.front();
-			if (p1) {
+			if (local.size() > 0) {
+				const auto &p1 = local.front();
 				ms_message("Adding %s/%i for compatibility, just in case.", p1->mime_type, p1->clock_rate);
 				PayloadType *cloned_p1 = payload_type_clone(p1);
 				payload_type_set_flag(cloned_p1, PAYLOAD_TYPE_FLAG_CAN_RECV);
@@ -538,7 +576,7 @@ SalStreamDescription OfferAnswerEngine::initiateOutgoingStream(const SalStreamDe
 			local_offer.cfgIndex = localCfgIdx;
 
 			// finalize stream settings based on result configuration
-			if (!resultCfg.payloads.empty() && !OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads)) {
+			if (result.type == SalApplication || (!resultCfg.payloads.empty() && !OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads))) {
 				result.rtp_addr = remote_answer.rtp_addr;
 				result.rtp_port = remote_answer.rtp_port;
 				result.rtcp_addr = remote_answer.rtcp_addr;
@@ -685,11 +723,21 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
 
 	resultCfg.conference_ssrc = remoteCfg.conference_ssrc;
 
-	if (!resultCfg.payloads.empty() && !OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads)) {
-		resultCfg.ptime = remoteCfg.ptime;
-		resultCfg.maxptime = remoteCfg.maxptime;
-	} else {
-		return std::nullopt;
+	lError()<<"DTC: initiateOutgoingConfiguration type is :"<<result.type<<" payloads "<<resultCfg.payloads.size();
+	if (result.type == SalApplication) {
+		auto remoteDcmap = remoteCfg.getDataChannelMap();
+		auto localDcmap = localCfg.getDataChannelMap();
+		lError()<<"DTC: initiateOutgoingConfiguration. remoteCfg.dcmap size:"<<remoteDcmap.size()<<" localCfg.dcmap size:"<<localDcmap.size();
+		// check remote and local dcmap are compatible
+		resultCfg.dcmap = OfferAnswerEngine::getCompatibleDcmap(localCfg.getDataChannelMap(), remoteCfg.getDataChannelMap());
+	} else { // application stream does not have payload
+		if (!resultCfg.payloads.empty() && !OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads)) {
+			resultCfg.ptime = remoteCfg.ptime;
+			resultCfg.maxptime = remoteCfg.maxptime;
+		} else {
+			lError()<<"DTC: initiateOutgoingConfiguration returns no cfg";
+			return std::nullopt;
+		}
 	}
 
 	if (resultCfg.hasSrtp() == true) {
@@ -933,6 +981,18 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
 		return std::nullopt;
 	}
 
+	if (result.type == SalApplication) {
+		auto remoteDcmap = remoteCfg.getDataChannelMap();
+		auto localDcmap = localCfg.getDataChannelMap();
+		lError()<<"DTC: initiateIncomingConfiguration. remoteCfg.dcmap size:"<<remoteDcmap.size()<<" localCfg.dcmap size:"<<localDcmap.size();
+		// check remote and local dcmap are compatible
+		resultCfg.dcmap = OfferAnswerEngine::getCompatibleDcmap(localCfg.getDataChannelMap(), remoteCfg.getDataChannelMap());
+		if (resultCfg.dcmap.empty()) {
+			lWarning()<<"[Initiate Incoming Configuration] Unable to find suitable datachannel in application stream";
+			return std::nullopt;
+		}
+	}
+
 	resultCfg.rtcp_mux = remoteCfg.rtcp_mux && localCfg.rtcp_mux;
 
 	resultCfg.mixer_to_client_extension_id =
@@ -1063,6 +1123,7 @@ OfferAnswerEngine::initiateOutgoing(std::shared_ptr<SalMediaDescription> local_o
 				actualCfg.rtcp_fb.goog_remb_enabled = ls.getChosenConfiguration().rtcp_fb.goog_remb_enabled &
 				                                      rs.getChosenConfiguration().rtcp_fb.goog_remb_enabled;
 				stream.addActualConfiguration(actualCfg);
+				ms_message("Found matching stream in remote");
 			}
 			result->streams.push_back(stream);
 		} else {

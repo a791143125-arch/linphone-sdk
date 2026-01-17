@@ -138,6 +138,7 @@ public:
 	LinphoneVideoDefinition *sentVideoDefinition = nullptr;
 
 	bool dataChannelEnabled = false;
+	std::vector<SalDataChannelMap> dcmaps;
 
 	bool fecEnabled = false;
 	std::shared_ptr<PayloadType> usedFecCodec;

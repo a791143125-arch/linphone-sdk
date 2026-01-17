@@ -570,8 +570,23 @@ const std::vector<SalDataChannelMap> &SalStreamConfiguration::getDataChannelMap(
 // produce a string to be set in sdp : 
 std::string SalDataChannelMap::toSdpDcmapAttr() const {
 	std::string ret = std::to_string(stream_id) + ' ';
+	if (ordered) {
+		ret += R"(ordered=")" + std::string((*ordered?"true":"false")) + R"(";)";
+	}
+	if (!subprotocol.empty()) {
+		ret += R"(subprotocol=")" + subprotocol + R"(";)";
+	}
 	if (!label.empty()) {
 		ret += R"(label=")" + label + R"(";)";
+	}
+	if (max_retr) {
+		ret += R"(max-retr=")" + std::to_string(*max_retr) + R"(";)";
+	}
+	if (max_time) {
+		ret += R"(max-time=")" + std::to_string(*max_time) + R"(";)";
+	}
+	if (priority) {
+		ret += R"(priority=")" + std::to_string(*priority) + R"(";)";
 	}
 	// remove the last ; if any (or the ' ' after ther stream id if we have only that)
 	ret.pop_back();
@@ -583,6 +598,145 @@ std::vector<std::string> SalDataChannelMap::toSdpDcsaAttrs() const {
 		ret.push_back(std::to_string(stream_id)+' '+dcsaStr);
 	}
 	return ret;
+}
+
+// local helpers function
+namespace {
+	std::string decodeEscapedString(const std::string &s) {
+		if (s.size() < 2 || s.front() != '"' || s.back() != '"') throw std::runtime_error("dcmap invalid string param "+s);
+        
+		// remove quotes
+		std::string raw = s.substr(1, s.size() - 2);
+		std::string result;
+		result.reserve(raw.size());
+
+		for (size_t i = 0; i < raw.size(); ++i) {
+			// Parse escaped-char: % HEXDIG HEXDIG
+			if (raw[i] == '%') {
+				if (i + 2 >= raw.size()) throw std::runtime_error("dcmap attribute "+s+": Invalid escape sequence");
+                    		result += static_cast<char>(std::stoi(raw.substr(i + 1, 2), nullptr, 16));
+                    		i += 2;
+            		} else {
+                		result += raw[i];
+           	 	}
+        	}
+        	return result;
+    	}
+}
+// parse a parameter name=value or name="value"
+void SalDataChannelMap::parseParam(const std::string &s) {
+	// split into name/value
+	auto pos = s.find('=');
+	if (pos == std::string::npos) return;
+	std::string name = s.substr(0, pos);
+	std::string val = s.substr(pos + 1);
+
+	if (name == "ordered") {
+		ordered = (val == "true");
+	} else if (name == "label") {
+		label = decodeEscapedString(val);
+        } else if (name == "subprotocol") {
+		subprotocol = decodeEscapedString(val);
+	} else if (name == "max-retr") {
+		max_retr = std::stoul(val);
+	} else if (name == "max-time") {
+		max_time = std::stoul(val);
+	} else if (name == "priority") {
+		unsigned long p = std::stoul(val);
+		if (p <= 65535) priority = static_cast<uint16_t>(p);
+	} else {
+		throw std::runtime_error("Invalid dcmap parameter "+s);
+	}
+}
+
+// build from the attribute value
+std::optional<SalDataChannelMap> SalDataChannelMap::from_string(const std::string &attrValue) {
+	std::stringstream ss(attrValue);
+	// stream-id (must be < 2^16) is mandatory
+	uint32_t long_id;
+	if (!(ss >> long_id) || long_id > 65535) {
+		return std::nullopt;
+	}
+
+	SalDataChannelMap dcmap(static_cast<uint16_t>(long_id));
+
+	// get options (remove possible whitespace)
+	std::string options;
+	std::getline(ss >> std::ws, options);
+	std::stringstream oss(options);
+
+	// Parse options
+	std::string option;
+        while (std::getline(oss>>std::ws, option, ';')) {
+		try {
+			dcmap.parseParam(option);
+		} catch (const std::exception& e) {
+     		   lError()<<"dcmap attribute parsing failed on "<<option<<" : "<<e.what();
+		}
+	}
+
+	// Check mutual exclusivity
+	if (dcmap.max_retr && dcmap.max_time) {
+		return std::nullopt;
+    	}
+	return dcmap;
+}
+	
+void SalDataChannelMap::setLabel(const std::string &s) {
+	label = s;
+}
+void SalDataChannelMap::setSubprotocol(const std::string &s) {
+	subprotocol = s;
+}
+void SalDataChannelMap::setMaxRetr(uint32_t value) {
+	if (max_time) {
+		lError()<<"Dcmap SDP attribute error: max_retr and max_time are mutually exclusive. Ignore setMaxRetr to "<<value;
+	} else {
+		max_retr = value;
+	}
+}
+void SalDataChannelMap::setMaxTime(uint32_t value) {
+	if (max_retr) {
+		lError()<<"Dcmap SDP attribute error: max_retr and max_time are mutually exclusive. Ignore setMaxTime to "<<value;
+	} else {
+		max_time = value;
+	}
+}
+void SalDataChannelMap::setPriority(uint16_t value) {
+	priority = value;
+}
+void SalDataChannelMap::setOrdered(bool value) {
+	ordered = value;
+}
+	
+uint16_t SalDataChannelMap::getId() const {
+	return stream_id;
+}
+const std::string &SalDataChannelMap::getLabel() const {
+	return label;
+}
+const std::string &SalDataChannelMap::getSubprotocol() const {
+	return subprotocol;
+}
+std::optional<uint32_t> SalDataChannelMap::getMaxRetr() const {
+	return max_retr;
+}
+std::optional<uint32_t> SalDataChannelMap::getMaxTime() const {
+	return max_time;
+}
+std::optional<uint16_t> SalDataChannelMap::getPriority() const {
+	return priority;
+}
+std::optional<bool> SalDataChannelMap::getOrdered() const {
+	return ordered;
+}
+// what kind of datachannel can we accept
+// Todo: should that be settable from liblinphone API
+bool SalDataChannelMap::isSupported() const {
+	// We support only our custom subprotocol
+	// Todo: add restrictions on reliability and ordered param?
+	if (subprotocol == "bcdcp") return true;
+	return false;
 }
 
 LINPHONE_END_NAMESPACE

@@ -39,16 +39,20 @@ LINPHONE_BEGIN_NAMESPACE
  */
 
 MS2ApplicationStream::MS2ApplicationStream(StreamsGroup &sg, const OfferAnswerContext &params) : MS2Stream(sg, params) {
+	lError()<<"DTC: MS2ApplicationStream constructor";
 	string bindIp = getBindIp();
 	mStream = application_stream_new2(getCCore()->factory, bindIp.empty() ? nullptr : bindIp.c_str(), mPortConfig.rtpPort,
 	                           mPortConfig.rtcpPort);
 	initializeSessions(&mStream->ms);
+	lError()<<"DTC: MS2ApplicationStream constructor done";
 }
 
 void MS2ApplicationStream::configure(BCTBX_UNUSED(const OfferAnswerContext &params)) {
+	lError()<<"DTC: MS2ApplicationStream configure";
 }
 
 bool MS2ApplicationStream::prepare() {
+	lError()<<"DTC: MS2ApplicationStream prepare";
 	MS2Stream::prepare();
 	if (isTransportOwner()) {
 		application_stream_prepare(mStream);
@@ -57,11 +61,13 @@ bool MS2ApplicationStream::prepare() {
 }
 
 void MS2ApplicationStream::finishPrepare() {
+	lError()<<"DTC: MS2ApplicationStream finishPrepare";
 	MS2Stream::finishPrepare();
 	application_stream_unprepare(mStream);
 }
 
 void MS2ApplicationStream::render(const OfferAnswerContext &params, CallSession::State targetState) {
+	lError()<<"DTC: MS2ApplicationStream render";
 //	const auto &astream = params.getResultStreamDescription();
 	bool basicChangesHandled = handleBasicChanges(params, targetState);
 
@@ -89,6 +95,7 @@ void MS2ApplicationStream::render(const OfferAnswerContext &params, CallSession:
 }
 
 void MS2ApplicationStream::stop() {
+	lError()<<"DTC: MS2ApplicationStream stop";
 	MS2Stream::stop();
 	/* In mediastreamer2, stop actually stops and destroys. We immediately need to recreate the stream object for later
 	 * use, keeping the sessions (for RTP, SRTP, ZRTP etc) that were setup at the beginning. */
@@ -96,6 +103,7 @@ void MS2ApplicationStream::stop() {
 }
 
 void MS2ApplicationStream::finish() {
+	lError()<<"DTC: MS2ApplicationStream finish";
 	if (mStream) {
 		application_stream_stop(mStream);
 		mStream = nullptr;

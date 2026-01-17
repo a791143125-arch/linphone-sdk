@@ -863,31 +863,25 @@ LINPHONE_PUBLIC const LinphoneAudioDevice *
 linphone_call_params_get_output_audio_device(const LinphoneCallParams *params);
 /**
  * Enable application stream.
- * @param call_params #LinphoneCallParams object @notnil
+ * @param params #LinphoneCallParams object @notnil
  * @param enabled A boolean value telling whether to enable application or not.
  **/
-LINPHONE_PUBLIC void linphone_call_params_enable_datachannel(LinphoneCallParams *call_params, bool_t enabled);
+LINPHONE_PUBLIC void linphone_call_params_enable_datachannel(LinphoneCallParams *params, bool_t enabled);
+
+/**
+ * add a datachannel configuration giving its dcmap attribute
+ * @param params #LinphoneCallParams object @notnil
+ * @param dcmap the dcmap attribute configuring the datachannel. See RFC8864 for syntax
+ * @return true when the channel was added successfully: dcmap is valid
+ */
+LINPHONE_PUBLIC bool_t linphone_call_params_add_datachannel(LinphoneCallParams *params, const char *dcmap);
 
 /**
  * Tell whether datachannel is enabled or not.
- * @param call_params #LinphoneCallParams object @notnil
+ * @param params #LinphoneCallParams object @notnil
  * @return A boolean value telling whether datachannel is enabled or not.
  **/
-LINPHONE_PUBLIC bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *call_params);
-
-/**
- * Enable application stream.
- * @param call_params #LinphoneCallParams object @notnil
- * @param enabled A boolean value telling whether to enable application or not.
- **/
-LINPHONE_PUBLIC void linphone_call_params_enable_datachannel(LinphoneCallParams *call_params, bool_t enabled);
-
-/**
- * Tell whether datachannel is enabled or not.
- * @param call_params #LinphoneCallParams object @notnil
- * @return A boolean value telling whether datachannel is enabled or not.
- **/
-LINPHONE_PUBLIC bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *call_params);
+LINPHONE_PUBLIC bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *params);
 
 /************ */
 /* DEPRECATED */

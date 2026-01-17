@@ -69,7 +69,8 @@ class SalCallOp;
 class OfferAnswerEngine;
 
 // As defined in RFC8864 section 5.1
-struct SalDataChannelMap {
+class SalDataChannelMap {
+	private:
 	std::vector<std::string> dcsa;
 	std::string label;
 	std::string subprotocol;
@@ -79,8 +80,35 @@ struct SalDataChannelMap {
 	std::optional<uint16_t> priority;
 	std::optional<bool> ordered;
 
+	void parseParam(const std::string& s);
+
+	public:
+	// factory function from string
+	static std::optional<SalDataChannelMap> from_string(const std::string &attrValue);
+	// build an empty dcmap attribute with only a stream id
+	explicit SalDataChannelMap(uint16_t id) : stream_id(id) {};
+
+	// export to SDP formated strings
 	std::string toSdpDcmapAttr() const; // return stream-id and a ; separated list of all optional value set
 	std::vector<std::string> toSdpDcsaAttrs() const; // return a vector of stream_id dcsa attribute
+	
+	// subprotocol validation: return true if the dcmap setting is supported
+	bool isSupported() const;
+
+	// set/get
+	void setLabel(const std::string &s);
+	void setSubprotocol(const std::string &s);
+	void setMaxRetr(uint32_t value);
+	void setMaxTime(uint32_t value);
+	void setPriority(uint16_t value);
+	void setOrdered(bool value);
+	uint16_t getId() const;
+	const std::string &getLabel() const;
+	const std::string &getSubprotocol() const;
+	std::optional<uint32_t> getMaxRetr() const;
+	std::optional<uint32_t> getMaxTime() const;
+	std::optional<uint16_t> getPriority() const;
+	std::optional<bool> getOrdered() const;
 };
 
 class LINPHONE_PUBLIC SalStreamConfiguration {
