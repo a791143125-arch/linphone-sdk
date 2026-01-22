@@ -98,7 +98,7 @@ void MS2ApplicationStream::stop() {
 	lError()<<"DTC: MS2ApplicationStream stop";
 	MS2Stream::stop();
 	/* In mediastreamer2, stop actually stops and destroys. We immediately need to recreate the stream object for later
-	 * use, keeping the sessions (for RTP, SRTP, ZRTP etc) that were setup at the beginning. */
+	 * use, keeping the sessions (for RTP, SRTP, ZRTP etc) that we setup at the beginning. */
 	mStream = application_stream_new_with_sessions(getCCore()->factory, &mSessions);
 }
 
@@ -108,6 +108,7 @@ void MS2ApplicationStream::finish() {
 		application_stream_stop(mStream);
 		mStream = nullptr;
 	}
+	MS2Stream::finish();
 }
 
 MS2ApplicationStream::~MS2ApplicationStream() {
