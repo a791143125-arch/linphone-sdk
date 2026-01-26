@@ -21,6 +21,8 @@
 #include "belle_sip_internal.h"
 #include "sdp/parser.hh"
 
+#include <charconv>
+
 struct _belle_sdp_mime_parameter {
 	belle_sip_object_t base;
 	int rate;
@@ -938,6 +940,44 @@ GET_SET_STRING(belle_sdp_info, value);
 /************************
  * media
  ***********************/
+namespace {
+const char *belle_sip_fmt_to_string(long fmt) {
+	switch (fmt) {
+		case BELLE_SDP_FMT_WEBRTC_DATACHANNEL:
+			return "webrtc-datachannel";
+		default:
+			return "unknown";
+	}
+}
+
+int belle_sip_string_to_fmt(const char *fmt) {
+	// the fmt should be a number in range 0-127
+	int ret = 0;
+	auto [ptr,ec] = std::from_chars(fmt, fmt + strlen(fmt), ret);
+	if (ec == std::errc()) { // parsing successful
+		if (ret >=0 && ret < 128) {
+			return ret;
+		} else {
+			belle_sip_warning("Out of range fmt parsed in media line : %s", fmt);
+			return BELLE_SDP_FMT_INVALID;
+		}
+	} else if (ec == std::errc::result_out_of_range) { // out of range of integer
+		belle_sip_warning("Out of range fmt parsed in media line : %s", fmt);
+		return BELLE_SDP_FMT_INVALID;
+	} else if (ec == std::errc::invalid_argument) {
+		// not an integer, is it a string we support?
+		if (strcmp(fmt, "webrtc-datachannel") == 0) {
+			return BELLE_SDP_FMT_WEBRTC_DATACHANNEL;
+		} else { // unknown protocol
+			belle_sip_warning("Unknown non numeric fmt parsed in media line : %s", fmt);
+			return BELLE_SDP_FMT_INVALID;
+		}
+	}
+	return BELLE_SDP_FMT_INVALID;
+}
+
+} // anonymous namespace
+
 struct _belle_sdp_media {
 	belle_sip_object_t base;
 	const char *media_type;
@@ -956,7 +996,7 @@ void belle_sdp_media_set_media_formats(belle_sdp_media_t *media, belle_sip_list_
 	media->media_formats = formats;
 }
 void belle_sdp_media_media_formats_add(belle_sdp_media_t *media, const char *fmt) {
-	media->media_formats = belle_sip_list_append(media->media_formats, (void *)(intptr_t)atoi(fmt));
+	media->media_formats = belle_sip_list_append(media->media_formats, (void *)(intptr_t)belle_sip_string_to_fmt(fmt));
 }
 void belle_sdp_media_destroy(belle_sdp_media_t *media) {
 	DESTROY_STRING(media, media_type)
@@ -972,15 +1012,6 @@ void belle_sdp_media_clone(belle_sdp_media_t *media, const belle_sdp_media_t *or
 	media->media_formats = belle_sip_list_copy(orig->media_formats);
 	media->port_count = orig->port_count;
 	CLONE_STRING(belle_sdp_media, protocol, media, orig)
-}
-
-const char *belle_sip_fmt_to_string(long fmt) {
-	switch (fmt) {
-		case BELLE_SDP_FMT_WEBRTC_DATACHANNEL:
-			return "webrtc-datachannel";
-		default:
-			return "unknown";
-	}
 }
 
 belle_sip_error_code belle_sdp_media_marshal(belle_sdp_media_t *media, char *buff, size_t buff_size, size_t *offset) {

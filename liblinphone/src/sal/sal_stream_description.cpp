@@ -697,6 +697,15 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 	// Parse attributes specific to application stream
 	if (type == SalApplication) {
 		lError()<<"DTC: parsing application stream attributes";
+		// When parsing an application stream, check we have a webrtc-datachannel as format.
+		auto fmts = belle_sdp_media_get_media_formats(media);
+		if (belle_sip_list_size(fmts) != 1 || (long)(intptr_t)(fmts->data) != BELLE_SDP_FMT_WEBRTC_DATACHANNEL) {
+			lWarning()<<"Parsing application stream : unsuppored payload - only webrtc-datachannel is supported";
+			// do not try to parse dcmap or sctp-port as this application stream is of unsupported type
+			actualCfg.disable();
+			addActualConfiguration(actualCfg);
+			return;
+		}
 
 		// We shall have a sctp port (this one is not a negotiation, we have remote and local one)
 		if ((attribute = belle_sdp_media_description_get_attribute(media_desc, "sctp-port")) != NULL) {
@@ -727,7 +736,7 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 					lError()<<"DTC: createActualCfg:: Application stream parse dcmap attr :"<<value;
 					actualCfg.dcmap.push_back(std::move(*parsedDcmap));
 				} else {
-					lWarning()<<"ignore unsupported/invalid dcmap atttribute :"<<value;
+					lWarning()<<"ignore unsupported/invalid dcmap attribute :"<<value;
 				}
 			}
 		}
