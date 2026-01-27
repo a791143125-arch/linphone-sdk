@@ -1766,7 +1766,7 @@ SalMediaProto MediaSessionPrivate::getMdProto(SalStreamType type,
 			// Try to align the local media protocol to the one in the offer. It must be validated later on to be
 			// actually put down in the SDP.
 			streamType = remoteStream.getType();
-			auto actualConfiguration = remoteStream.getActualConfiguration();
+			const auto &actualConfiguration = remoteStream.getActualConfiguration();
 			if (actualConfiguration.hasSrtp()) {
 				requested = SalProtoRtpSavpf;
 			} else if (actualConfiguration.hasDtls()) {

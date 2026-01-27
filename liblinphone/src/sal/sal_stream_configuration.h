@@ -109,6 +109,12 @@ class SalDataChannelMap {
 	std::optional<uint32_t> getMaxTime() const;
 	std::optional<uint16_t> getPriority() const;
 	std::optional<bool> getOrdered() const;
+
+	bool operator==(const SalDataChannelMap &other) const;
+	SalDataChannelMap(const SalDataChannelMap&) = default;
+	SalDataChannelMap(SalDataChannelMap&&) = default;
+	SalDataChannelMap& operator=(const SalDataChannelMap&) = default;
+	SalDataChannelMap& operator=(SalDataChannelMap&&) = default;
 };
 
 class LINPHONE_PUBLIC SalStreamConfiguration {
@@ -124,8 +130,10 @@ class LINPHONE_PUBLIC SalStreamConfiguration {
 public:
 	SalStreamConfiguration();
 	SalStreamConfiguration(const SalStreamConfiguration &other);
+	SalStreamConfiguration(SalStreamConfiguration&& other) noexcept;
 	virtual ~SalStreamConfiguration();
 	SalStreamConfiguration &operator=(const SalStreamConfiguration &other);
+	SalStreamConfiguration &operator=(SalStreamConfiguration &&other) noexcept;
 	int equal(const SalStreamConfiguration &other) const;
 	bool operator==(const SalStreamConfiguration &other) const;
 	bool operator!=(const SalStreamConfiguration &other) const;
@@ -197,7 +205,7 @@ private:
 	bool delete_session_attributes = false;
 	OrtpRtcpFbConfiguration rtcp_fb{};
 	OrtpRtcpXrConfiguration rtcp_xr{};
-	SalCustomSdpAttribute *custom_sdp_attributes = nullptr;
+//	SalCustomSdpAttribute *custom_sdp_attributes = nullptr;
 	std::string mid;               /* Media line identifier for RTP bundle mode */
 	int mid_rtp_ext_header_id = 0; /* Identifier for the MID field in the RTP extension header */
 	int mixer_to_client_extension_id = 0;

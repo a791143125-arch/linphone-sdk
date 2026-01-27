@@ -720,7 +720,7 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 				} catch (const std::exception& e) {
 					lError()<<"DTC: Application stream remote sctp-port invalid:"<<value;
 				}
-				lError()<<"DTC: Application stream with remote sctp-port :"<<actualCfg.getSctpRemotePort();
+				lError()<<"DTC: Application stream with remote sctp-port :"<<actualCfg.getSctpRemotePort()<<" in cfg "<<&actualCfg;
 			}
 		} else {
 			lError()<<"DTC: Application stream but no sctp-port provided";

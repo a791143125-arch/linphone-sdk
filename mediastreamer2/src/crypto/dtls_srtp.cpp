@@ -94,7 +94,6 @@ struct _MSDtlsSrtpContext {
 	bool retry_sending;          /**< a flag to set a retry after failed packet sending */
 	std::mutex mtx;              /**< lock any operation on this context */
 	MsDtlsRecvCallback mRecvCb;  /**< callback for data received after handshake */
-	MsDtlsHdskCallback mHdskCb;  /**< callback when handshake is completed */
 
 	_MSDtlsSrtpContext() = delete;
 	_MSDtlsSrtpContext(MSMediaStreamSessions *sessions, MSDtlsSrtpParams *params) {
@@ -377,12 +376,6 @@ int ms_dtls_srtp_rtp_process_on_receive(struct _RtpTransportModifier *t, mblk_t 
 		                                      bits server write - 112 bits client salt - 112 server salt */
 		ctx->mChannelStatus = DtlsStatus::HandshakeOver;
 
-		// TODO: call here the callbak or after the verification on DTLS-SRTP?
-		if (ctx->mHdskCb) {
-			lock.unlock();
-			ctx->mHdskCb(ctx);
-			lock.lock();
-		}
 		/* check the srtp profile get selected during handshake */
 		ctx->mSrtpProtectionProfile = ms_dtls_srtp_bctbx_protection_profile_to_ms_crypto_suite(
 		    bctbx_ssl_get_dtls_srtp_protection_profile(ctx->mDtlsCryptoContext.ssl));
@@ -886,7 +879,6 @@ extern "C" MSDtlsSrtpContext *ms_dtls_srtp_context_new(MSMediaStreamSessions *se
 	}
 
 	context->mRecvCb = nullptr;
-	context->mHdskCb = nullptr;
 	context->mChannelStatus = DtlsStatus::ContextReady;
 	return context;
 }
@@ -913,15 +905,6 @@ extern "C" void ms_dtls_srtp_context_destroy(MSDtlsSrtpContext *ctx) {
 
 	delete ctx;
 	ms_message("DTLS-SRTP context destroyed");
-}
-
-bool ms_dtls_srtp_set_handshake_cb(MSDtlsSrtpContext *ctx, MsDtlsHdskCallback hdsk_cb) {
-	ms_message("DTC dtls ctx %p set Hdsk cb", ctx);
-	if (!ctx) {
-		return false;
-	}
-	ctx->mHdskCb = hdsk_cb;
-	return true;
 }
 
 bool ms_dtls_srtp_set_recv_cb(MSDtlsSrtpContext *ctx, MsDtlsRecvCallback recv_cb) {

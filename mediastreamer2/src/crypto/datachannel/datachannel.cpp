@@ -71,7 +71,6 @@ struct _MSDataChannelContext : public std::enable_shared_from_this<_MSDataChanne
 
 		mKeepAlive.reset();
 	}
-	void attachDtlsHdskCb(MSDtlsSrtpContext *DtlsCtx);
 	void startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx);
 	bool changeState(State newState);
 
@@ -138,59 +137,6 @@ void _MSDataChannelContext::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 	} catch (std::exception const &e) {
 		ms_error("failed to create and start Sctp: %s", e.what());
 	}
-}
-
-void _MSDataChannelContext::attachDtlsHdskCb(MSDtlsSrtpContext *DtlsCtx) {
-	auto weakThis = weak_from_this();
-	ms_dtls_srtp_set_handshake_cb(DtlsCtx, [weakThis](MSDtlsSrtpContext *DtlsCtx) {
-		if (auto self = weakThis.lock()) {
-			self->startDatachannelOnDtls(DtlsCtx);
-#if 0
-			rtc::impl::SctpTransport::Ports ports = {}; // TODO: get Sctp ports from SDP through some parameters?
-			rtc::impl::SctpTransport::Configuration config =
-			    {}; // TODO: get configuration somewhere MTU and max message size
-
-			ms_error("DTC: DTLS handshake done on %p, create a Sctp transport", DtlsCtx);
-			try {
-				self->mSctpTransport = std::make_shared<rtc::impl::SctpTransport>(
-				    DtlsCtx, config, ports,
-				    // recv callback
-				    [](rtc::message_ptr) { ms_error("DTC recv message callback"); },
-				    // amount callback
-				    [](uint16_t streamId, size_t amount) {
-					    ms_error("DTC amount callback : %d, %ld", streamId, amount);
-				    },
-				    [weakThis](rtc::impl::SctpTransport::State state) {
-					    PLOG_ERROR << "DTC state change callback dtc : " << state;
-					    auto shared_this = weakThis.lock();
-					    if (!shared_this) return;
-
-					    switch (state) {
-						    case SctpTransport::State::Connected:
-							    shared_this->changeState(State::Connected);
-							    // shared_this->assignDataChannels();
-							    // mProcessor.enqueue(&PeerConnection::openDataChannels, shared_from_this());
-							    break;
-						    case SctpTransport::State::Failed:
-							    shared_this->changeState(State::Failed);
-							    // mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-							    break;
-						    case SctpTransport::State::Disconnected:
-							    shared_this->changeState(State::Disconnected);
-							    // mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-							    break;
-						    default:
-							    // Ignore
-							    break;
-					    }
-				    });
-				self->mSctpTransport->start();
-			} catch (std::exception const &e) {
-				ms_error("failed to create and start Sctp: %s", e.what());
-			}
-#endif
-		}
-	});
 }
 
 /**

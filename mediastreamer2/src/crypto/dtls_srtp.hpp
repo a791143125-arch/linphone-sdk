@@ -45,14 +45,4 @@ using MsDtlsRecvCallback = std::function<void(unsigned char*, size_t)>;
  * @return  false when the context is null
  */
 bool ms_dtls_srtp_set_recv_cb(MSDtlsSrtpContext *context, MsDtlsRecvCallback recv_cb);
-using MsDtlsHdskCallback = std::function<void(MSDtlsSrtpContext *)>;
-/**
- * set the callback used when the handshake is completed
- *
- * @param[in/out]	context		the DTLS-SRTP context
- * @param[in]		hdsk_cb		function called when the DTLS handshake is completed
- *
- * @return  false when the context is null
- */
-bool ms_dtls_srtp_set_handshake_cb(MSDtlsSrtpContext *context, MsDtlsHdskCallback recv_cb);
 #endif // ms_dtls_srtp_hpp

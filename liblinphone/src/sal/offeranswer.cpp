@@ -728,8 +728,12 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
 		auto remoteDcmap = remoteCfg.getDataChannelMap();
 		auto localDcmap = localCfg.getDataChannelMap();
 		lError()<<"DTC: initiateOutgoingConfiguration. remoteCfg.dcmap size:"<<remoteDcmap.size()<<" localCfg.dcmap size:"<<localDcmap.size();
+		lError()<<"DTC: initiateOutgoingConfiguration. localCfg sctp local "<< localCfg.getSctpLocalPort() << " sctp remote "<<localCfg.getSctpRemotePort();
+		lError()<<"DTC: initiateOutgoingConfiguration. remoteCfg sctp local "<< remoteCfg.getSctpLocalPort() << " sctp remote "<<remoteCfg.getSctpRemotePort();
 		// check remote and local dcmap are compatible
 		resultCfg.dcmap = OfferAnswerEngine::getCompatibleDcmap(localCfg.getDataChannelMap(), remoteCfg.getDataChannelMap());
+		resultCfg.setSctpLocalPort(localCfg.getSctpLocalPort());
+		resultCfg.setSctpRemotePort(remoteCfg.getSctpRemotePort());
 	} else { // application stream does not have payload
 		if (!resultCfg.payloads.empty() && !OfferAnswerEngine::onlyTelephoneEvent(resultCfg.payloads)) {
 			resultCfg.ptime = remoteCfg.ptime;
@@ -991,6 +995,8 @@ OfferAnswerEngine::optional_sal_stream_configuration OfferAnswerEngine::initiate
 			lWarning()<<"[Initiate Incoming Configuration] Unable to find suitable datachannel in application stream";
 			return std::nullopt;
 		}
+		resultCfg.setSctpLocalPort(localCfg.getSctpLocalPort());
+		resultCfg.setSctpRemotePort(remoteCfg.getSctpRemotePort());
 	}
 
 	resultCfg.rtcp_mux = remoteCfg.rtcp_mux && localCfg.rtcp_mux;
