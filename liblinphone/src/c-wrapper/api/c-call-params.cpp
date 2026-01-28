@@ -291,6 +291,9 @@ bool_t linphone_call_params_add_datachannel(LinphoneCallParams *params, const ch
 	return L_GET_CPP_PTR_FROM_C_OBJECT(params)->addDataChannel(dcmap);
 }
 
+void linphone_call_params_set_datachannel_sctp_port(LinphoneCallParams *params, uint16_t port) {
+	L_GET_CPP_PTR_FROM_C_OBJECT(params)->setDataChannelSctpPort(port);
+}
 
 const char *linphone_call_params_get_custom_header(const LinphoneCallParams *params, const char *header_name) {
 	return L_GET_CPP_PTR_FROM_C_OBJECT(params)->getCustomHeader(header_name);

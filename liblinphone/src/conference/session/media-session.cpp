@@ -2033,8 +2033,9 @@ void MediaSessionPrivate::fillLocalStreamDescription(SalStreamDescription &strea
 		}
 
 		if (type == SalApplication) {
-			lError()<<"DTC: fillLocalStreamDescription add dcmap of size "<<getParams()->getDataChannels().size()<<" to cfg";
+			lError()<<"DTC: fillLocalStreamDescription add dcmap of size "<<getParams()->getDataChannels().size()<<" to cfg and local sctp port "<<getParams()->getDataChannelSctpPort();
 			cfg.dcmap = getParams()->getDataChannels();
+			cfg.setSctpLocalPort(getParams()->getDataChannelSctpPort());
 		}
 		bool isInactive = (dir == SalStreamInactive);
 		if (!isInactive) {

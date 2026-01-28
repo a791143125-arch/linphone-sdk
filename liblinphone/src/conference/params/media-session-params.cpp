@@ -48,6 +48,7 @@ void MediaSessionParamsPrivate::clone(const MediaSessionParamsPrivate *src) {
 	videoEnabled = src->videoEnabled;
 	videoDirection = src->videoDirection;
 	dataChannelEnabled = src->dataChannelEnabled;
+	dataChannelSctpPort = src->dataChannelSctpPort;
 	dcmaps = src->dcmaps;
 	videoMulticastEnabled = src->videoMulticastEnabled;
 	usedVideoCodec = src->usedVideoCodec;
@@ -329,6 +330,7 @@ void MediaSessionParams::initDefault(const std::shared_ptr<Core> &core, Linphone
 	/* DO NOT SET input and output audio devices: default values exist at Call level already, and may be updated
 	 * at call startup when for example the sound device list is reloaded.*/
 	d->dataChannelEnabled = false;
+	d->dataChannelSctpPort = 5000;
 }
 
 // -----------------------------------------------------------------------------
@@ -424,10 +426,19 @@ bool MediaSessionParams::addDataChannel(const std::string &dcmap) {
 		return false;
 	}
 }
+void MediaSessionParams::setDataChannelSctpPort(uint16_t port) {
+	L_D();
+	d->dataChannelSctpPort = port;
+}
 
 const std::vector<SalDataChannelMap> &MediaSessionParams::getDataChannels() const {
 	L_D();
 	return d->dcmaps;
+}
+
+uint16_t MediaSessionParams::getDataChannelSctpPort() const {
+	L_D();
+	return d->dataChannelSctpPort;
 }
 
 float MediaSessionParams::getReceivedFps() const {
