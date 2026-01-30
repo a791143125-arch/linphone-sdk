@@ -42,5 +42,16 @@ MS2_PUBLIC void ms_datachannel_context_destroy(MSDataChannelContext *ctx);
  */
 bool ms_datachannel_supported(void);
 
+struct MSDataChannelParams {
+	uint16_t sctp_local_port;
+	uint16_t sctp_remote_port;
+};
+/**
+ * Initiate a Sctp connexion with given parameters and open datachannel(s)
+ * @param[in/out] 	sessions 	set of sessions associated to a stream, get the DTLS context from it and set the datachannel context in it
+ * @param[in]		params		sctp and datachannels parameters
+ */
+void ms_datachannel_create(struct _MSMediaStreamSessions *sessions, MSDataChannelParams &&params);
+
 #endif // __cplusplus
 #endif /* ms_datachannel_h */

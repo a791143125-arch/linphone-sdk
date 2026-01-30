@@ -1613,7 +1613,11 @@ void MS2Stream::handleEvents() {
 								for (const auto&dcmap : dcmaps) {
 									lError() << "DTC: about to open a channel with params: "<<dcmap.toSdpDcmapAttr();
 								}
-								media_stream_enable_datachannel(ms);
+								MSDataChannelParams params;
+								params.sctp_local_port =  cfg.getSctpLocalPort();
+								params.sctp_remote_port =  cfg.getSctpRemotePort();
+								ms_datachannel_create(&(ms->sessions), std::move(params));
+								//media_stream_enable_datachannel(ms);
 							}
 						}
 					}

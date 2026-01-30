@@ -61,15 +61,16 @@ std::ostream &operator<<(std::ostream &os, State state) {
 struct _MSDataChannelContext : public std::enable_shared_from_this<_MSDataChannelContext> {
 	std::shared_ptr<_MSDataChannelContext> mKeepAlive; /**< make sure we keep a ref on ourselves*/
 	std::shared_ptr<rtc::impl::SctpTransport> mSctpTransport;
-	void init() {
-		mKeepAlive = std::shared_ptr<_MSDataChannelContext>(this, [](_MSDataChannelContext *) {});
-	}
-	_MSDataChannelContext() {
+	MSDataChannelParams mParams; /**< configuration parameters */
+
+	_MSDataChannelContext(MSDataChannelParams &&params) : mParams(std::move(params)) {
 		mSctpTransport = nullptr;
 	}
 	~_MSDataChannelContext() {
-
 		mKeepAlive.reset();
+	}
+	void init() {
+		mKeepAlive = std::shared_ptr<_MSDataChannelContext>(this, [](_MSDataChannelContext *) {});
 	}
 	void startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx);
 	bool changeState(State newState);
@@ -95,7 +96,7 @@ bool _MSDataChannelContext::changeState(State newState) {
 }
 
 void _MSDataChannelContext::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
-	rtc::impl::SctpTransport::Ports ports = {}; // TODO: get Sctp ports from SDP through some parameters?
+	rtc::impl::SctpTransport::Ports ports{mParams.sctp_local_port, mParams.sctp_remote_port};
 	rtc::impl::SctpTransport::Configuration config = {}; // TODO: get configuration somewhere MTU and max message size
 
 	ms_error("DTC: startDatachannel on Dtls after handshake done on %p, create a Sctp transport", DtlsCtx);
@@ -146,11 +147,22 @@ void _MSDataChannelContext::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 bool ms_datachannel_supported() {
 	return true;
 }
+void ms_datachannel_create(struct _MSMediaStreamSessions *sessions, MSDataChannelParams &&params) {
+	if (sessions->datachannel_context == NULL) {
+		ms_message("Creating Data Channel context on stream sessions [%p] attached to dtls context %p", sessions,
+	        	   sessions->dtls_context);
+		auto context = new _MSDataChannelContext(std::move(params));
+		context->init();
+		context->startDatachannelOnDtls(sessions->dtls_context);
+		sessions->datachannel_context = context;
+	}
+}
 
 extern "C" MSDataChannelContext *ms_datachannel_context_new(struct _MSMediaStreamSessions *sessions) {
 	ms_message("Creating Data Channel context on stream sessions [%p] attached to dtls context %p", sessions,
 	           sessions->dtls_context);
-	auto context = new _MSDataChannelContext();
+	MSDataChannelParams params;
+	auto context = new _MSDataChannelContext(std::move(params));
 	context->init();
 	return context;
 }
@@ -182,6 +194,7 @@ bool ms_datachannel_supported() {
 extern "C" MSDataChannelContext *ms_datachannel_context_new(BCTBX_UNUSED(struct _MSMediaStreamSessions *sessions)) {
 	return nullptr;
 }
-extern "C" void ms_datachannel_context_destroy(BCTBX_UNUSED(MSDataChannelContext *ctx)) {
-}
+extern "C" void ms_datachannel_context_start(struct _MSMediaStreamSessions *sessions) {}
+extern "C" void ms_datachannel_context_destroy(BCTBX_UNUSED(MSDataChannelContext *ctx)) {}
+void ms_datachannel_start(struct _MSMediaStreamSessions *sessions, const MSDataChannelParams &&params) {}
 #endif // HAVE_DATACHANNEL

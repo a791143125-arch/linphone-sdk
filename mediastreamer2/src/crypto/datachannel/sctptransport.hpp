@@ -67,6 +67,7 @@ public:
 	struct Ports {
 		uint16_t local = DEFAULT_SCTP_PORT;
 		uint16_t remote = DEFAULT_SCTP_PORT;
+		Ports(uint16_t local, uint16_t remote) : local(local), remote(remote) {};
 	};
 	struct Configuration {
 		// Network MTU
