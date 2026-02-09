@@ -1610,14 +1610,12 @@ void MS2Stream::handleEvents() {
 									<<" sctp remote: "<<sctp_remote_port
 									<<" dcmaps size: "<<dcmaps.size();
 
+								MSDataChannelParams params{cfg.getSctpLocalPort(), cfg.getSctpRemotePort()};
 								for (const auto&dcmap : dcmaps) {
 									lError() << "DTC: about to open a channel with params: "<<dcmap.toSdpDcmapAttr();
+									params.channels.try_emplace(dcmap.getId(), dcmap.getSubprotocol(), dcmap.getLabel(), dcmap.getMaxRetr(), dcmap.getMaxTime(), dcmap.getOrdered().value_or(true));
 								}
-								MSDataChannelParams params;
-								params.sctp_local_port =  cfg.getSctpLocalPort();
-								params.sctp_remote_port =  cfg.getSctpRemotePort();
 								ms_datachannel_create(&(ms->sessions), std::move(params));
-								//media_stream_enable_datachannel(ms);
 							}
 						}
 					}

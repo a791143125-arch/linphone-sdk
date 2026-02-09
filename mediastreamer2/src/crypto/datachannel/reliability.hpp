@@ -28,14 +28,8 @@ struct Reliability {
 
 	// Maximum number of retransmissions that are attempted
 	optional<unsigned int> maxRetransmits;
-
-	// For backward compatibility, do not use
-	enum class Type { Reliable = 0, Rexmit, Timed };
-	union {
-		Type typeDeprecated = Type::Reliable;
-		[[deprecated("Use maxPacketLifeTime or maxRetransmits")]] Type type;
-	};
-	std::variant<int, std::chrono::milliseconds> rexmit = 0;
+	Reliability() = default;
+	Reliability(bool ordered, optional<std::chrono::milliseconds> maxPacketLifeTime, optional<unsigned int> maxRetransmits) : unordered(!ordered), maxPacketLifeTime(maxPacketLifeTime), maxRetransmits(maxRetransmits) {}; //TODO: check that life time and retransmit are not both != 0
 };
 
 } // namespace rtc

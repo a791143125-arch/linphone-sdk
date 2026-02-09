@@ -30,6 +30,7 @@
 // from internal.hpp
 const uint16_t DEFAULT_SCTP_PORT = 5000;                  // SCTP port to use by default
 const size_t DEFAULT_LOCAL_MAX_MESSAGE_SIZE = 256 * 1024; // Default local max message size
+const size_t DEFAULT_REMOTE_MAX_MESSAGE_SIZE = 65536;     // Remote max message size if not in SDP
 const size_t DEFAULT_MTU = 1280;                          // IPv6 minimum guaranteed MTU
 const uint16_t MAX_SCTP_STREAMS_COUNT = 1024;             // Max number of negotiated SCTP streams
 

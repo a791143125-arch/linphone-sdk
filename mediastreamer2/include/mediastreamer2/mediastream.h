@@ -214,7 +214,6 @@ MS2_PUBLIC bool_t media_stream_dtls_supported(void);
 
 /* enable DTLS on the media stream */
 MS2_PUBLIC void media_stream_enable_dtls(MediaStream *stream, const MSDtlsSrtpParams *params);
-MS2_PUBLIC void media_stream_enable_datachannel(MediaStream *stream);
 
 MS2_PUBLIC void media_stream_set_rtcp_information(MediaStream *stream, const char *cname, const char *tool);
 

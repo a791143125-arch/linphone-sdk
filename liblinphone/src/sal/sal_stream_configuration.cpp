@@ -692,13 +692,13 @@ std::string SalDataChannelMap::toSdpDcmapAttr() const {
 		ret += R"(label=")" + label + R"(";)";
 	}
 	if (max_retr) {
-		ret += R"(max-retr=")" + std::to_string(*max_retr) + R"(";)";
+		ret += R"(max-retr=)" + std::to_string(*max_retr) + R"(;)";
 	}
 	if (max_time) {
-		ret += R"(max-time=")" + std::to_string(*max_time) + R"(";)";
+		ret += R"(max-time=)" + std::to_string(*max_time) + R"(;)";
 	}
 	if (priority) {
-		ret += R"(priority=")" + std::to_string(*priority) + R"(";)";
+		ret += R"(priority=)" + std::to_string(*priority) + R"(;)";
 	}
 	// remove the last ; if any (or the ' ' after ther stream id if we have only that)
 	ret.pop_back();

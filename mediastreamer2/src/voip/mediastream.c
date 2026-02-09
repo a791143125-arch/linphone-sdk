@@ -411,15 +411,6 @@ void media_stream_enable_dtls(MediaStream *stream, const MSDtlsSrtpParams *param
 	}
 }
 
-void media_stream_enable_datachannel(MediaStream *stream) {
-	if (stream->sessions.datachannel_context == NULL) {
-		ms_message("Create Datachannel context in stream session [%p]", &(stream->sessions));
-		stream->sessions.datachannel_context = ms_datachannel_context_new(&(stream->sessions));
-		ms_datachannel_context_start(&(stream->sessions));
-		media_stream_configure_stun_packet_sending(stream);
-	}
-}
-
 void media_stream_set_ice_check_list(MediaStream *stream, IceCheckList *cl) {
 	stream->ice_check_list = cl;
 	if (stream->ice_check_list != NULL) {

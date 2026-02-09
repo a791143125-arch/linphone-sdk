@@ -698,27 +698,9 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
 		spa.sendv_prinfo.pr_value = to_uint32(*reliability.maxRetransmits);
+	} else {
+	 	spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
 	}
-	// else {
-	// 	spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
-	// }
-	// Deprecated
-	else
-		switch (reliability.typeDeprecated) {
-			case Reliability::Type::Rexmit:
-				spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
-				spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
-				spa.sendv_prinfo.pr_value = to_uint32(std::get<int>(reliability.rexmit));
-				break;
-			case Reliability::Type::Timed:
-				spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
-				spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
-				spa.sendv_prinfo.pr_value = to_uint32(std::get<milliseconds>(reliability.rexmit).count());
-				break;
-			default:
-				spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
-				break;
-		}
 
 	ssize_t ret;
 	if (!message->empty()) {

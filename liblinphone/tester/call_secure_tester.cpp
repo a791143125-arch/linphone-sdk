@@ -2263,7 +2263,7 @@ static void call_datachannel(void) {
 	LinphoneCallParams *marie_params = linphone_core_create_call_params(marie->lc, NULL);
 	linphone_call_params_set_media_encryption(marie_params, LinphoneMediaEncryptionDTLS);
 	linphone_call_params_add_datachannel(marie_params, "1 label=\"confcontrol\";subprotocol=\"bcdcp\"");
-	linphone_call_params_add_datachannel(marie_params, "2 label=\"soundstuff\";subprotocol=\"bcdcp\"");
+	linphone_call_params_add_datachannel(marie_params, "2 label=\"soundstuff\";subprotocol=\"bcdcp\";max-time=50");
 	linphone_call_params_set_datachannel_sctp_port(marie_params, 4000);
 
 	LinphoneCallParams *pauline_params = linphone_core_create_call_params(pauline->lc, NULL);
