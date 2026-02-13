@@ -265,10 +265,16 @@ bool ConferenceParams::isValid() const {
 		lError() << "FlexisipChat backend must be used when group is enabled";
 		return false;
 	}
-	if (mUtf8Subject.empty() && mChatParams->getBackend() == ChatParams::Backend::FlexisipChat) {
-		lError() << "You must set a non empty subject when using the FlexisipChat backend";
+
+	// Check that the subject is valid.
+	std::ostringstream subjectHeaderOstr;
+	subjectHeaderOstr << "Subject: " << mUtf8Subject;
+	auto subjectHeader = belle_sip_header_parse(subjectHeaderOstr.str().c_str());
+	if (!subjectHeader) {
+		lError() << "The subject that has been set is invalid (probably empty or containing only spaces)";
 		return false;
 	}
+	belle_sip_object_unref(subjectHeader);
 	return ret;
 }
 

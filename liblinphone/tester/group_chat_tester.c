@@ -991,6 +991,37 @@ static void group_chat_room_params(void) {
 	linphone_core_manager_destroy(chloe);
 }
 
+static void group_chat_room_params_subject(void) {
+	LinphoneCoreManager *marie = linphone_core_manager_create("marie_rc");
+	linphone_core_manager_start(marie, FALSE);
+
+	// The params with a subject containing only spaces should be invalid
+	LinphoneChatRoomParams *params = linphone_core_create_default_chat_room_params(marie->lc);
+	linphone_chat_room_params_enable_encryption(params, FALSE);
+	linphone_chat_room_params_enable_group(params, TRUE);
+	linphone_chat_room_params_set_subject(params, "   ");
+	BC_ASSERT_FALSE(linphone_chat_room_params_is_valid(params));
+	linphone_chat_room_params_unref(params);
+
+	// The params with an empty subject should be invalid
+	params = linphone_core_create_default_chat_room_params(marie->lc);
+	linphone_chat_room_params_enable_encryption(params, FALSE);
+	linphone_chat_room_params_enable_group(params, TRUE);
+	linphone_chat_room_params_set_subject(params, "");
+	BC_ASSERT_FALSE(linphone_chat_room_params_is_valid(params));
+	linphone_chat_room_params_unref(params);
+
+	// The params with some text in the subject should be valid
+	params = linphone_core_create_default_chat_room_params(marie->lc);
+	linphone_chat_room_params_enable_encryption(params, FALSE);
+	linphone_chat_room_params_enable_group(params, TRUE);
+	linphone_chat_room_params_set_subject(params, "Hello");
+	BC_ASSERT_TRUE(linphone_chat_room_params_is_valid(params));
+	linphone_chat_room_params_unref(params);
+
+	linphone_core_manager_destroy(marie);
+}
+
 static void group_chat_room_creation_core_restart(void) {
 	LinphoneCoreManager *marie = linphone_core_manager_create("marie_rc");
 	LinphoneCoreManager *pauline = linphone_core_manager_create("pauline_rc");
@@ -9849,6 +9880,7 @@ static void group_chat_room_creation_failure_while_on_a_call(void) {
 
 test_t group_chat_tests[] = {
     TEST_NO_TAG("Chat room params", group_chat_room_params),
+    TEST_NO_TAG("Chat room params subject", group_chat_room_params_subject),
     TEST_ONE_TAG("Core restarts as soon as chat room is created", group_chat_room_creation_core_restart, "LeaksMemory"),
     TEST_NO_TAG("Chat room with forced local identity", group_chat_room_creation_with_given_identity),
     TEST_NO_TAG("Group chat room creation server", group_chat_room_creation_server),
