@@ -728,9 +728,9 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 
 		// application stream are webrtc datachannel only: parse the dcmap (and dcsa) attributes
 		// TODO: we also need to parse dcsa attributes
-		for (auto dcmaps = belle_sdp_media_description_find_attributes_with_name(media_desc, "dcmap");
-			dcmaps != NULL; dcmaps = dcmaps->next) {
-			if ((value = belle_sdp_attribute_get_value(static_cast<belle_sdp_attribute_t *>(dcmaps->data))) != NULL) {
+		auto dcmaps = belle_sdp_media_description_find_attributes_with_name(media_desc, "dcmap");
+		for (auto dcmap = dcmaps; dcmap != NULL; dcmap = dcmap->next) {
+			if ((value = belle_sdp_attribute_get_value(static_cast<belle_sdp_attribute_t *>(dcmap->data))) != NULL) {
 				auto parsedDcmap = SalDataChannelMap::from_string(value);
 				if (parsedDcmap != std::nullopt) {
 					lError()<<"DTC: createActualCfg:: Application stream parse dcmap attr :"<<value;
@@ -740,6 +740,8 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 				}
 			}
 		}
+		belle_sip_list_free_with_data(dcmaps, (void (*)(void *))belle_sip_object_unref);
+
 		// when parsing application stream : no payload, no rtcp, no lime Ik, no crypto or zrtp
 		addActualConfiguration(actualCfg);
 		return;
