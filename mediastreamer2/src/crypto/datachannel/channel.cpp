@@ -68,6 +68,7 @@ void Channel::flushPendingMessages() {
 		if (!next) break;
 
 		try {
+			PLOG_ERROR <<"DTC: Flush Pending message: call messageCallback";
 			messageCallback(*next);
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();

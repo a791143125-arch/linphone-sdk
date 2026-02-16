@@ -2262,8 +2262,8 @@ static void call_datachannel(void) {
 
 	LinphoneCallParams *marie_params = linphone_core_create_call_params(marie->lc, NULL);
 	linphone_call_params_set_media_encryption(marie_params, LinphoneMediaEncryptionDTLS);
-	linphone_call_params_add_datachannel(marie_params, "1 label=\"confcontrol\";subprotocol=\"bcdcp\"");
-	linphone_call_params_add_datachannel(marie_params, "2 label=\"soundstuff\";subprotocol=\"bcdcp\";max-time=50");
+	linphone_call_params_add_datachannel(marie_params, "1 label=\"sndLevel\";subprotocol=\"x-linphone-sndlvl\";max-time=50");
+	linphone_call_params_add_datachannel(marie_params, "2 label=\"soundstuff\";subprotocol=\"x-linphone-sndlvl\";max-time=25");
 	linphone_call_params_set_datachannel_sctp_port(marie_params, 4000);
 
 	LinphoneCallParams *pauline_params = linphone_core_create_call_params(pauline->lc, NULL);
@@ -2283,6 +2283,14 @@ static void call_datachannel(void) {
 	int dummy=0;
 	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 1000);
 
+	// exchange data over channel 1
+	auto marieDtc = linphone_call_get_stream(linphone_core_get_current_call(marie->lc), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+	//auto paulineAudioStream = (AudioStream *)linphone_call_get_stream(linphone_core_get_current_call(pauline->lc), LinphoneStreamTypeAudio);
+	// marie send binary hello on channel 1
+	std::byte byteArray[] = { std::byte{0x68}, std::byte{0x65}, std::byte{0x6C}, std::byte{0x6C}, std::byte{0x6F} };
+	marieDtc->send(1, byteArray, 5);
+ 
+	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 500);
 	end_call(pauline, marie);
 	linphone_core_manager_destroy(marie);
 	linphone_core_manager_destroy(pauline);

@@ -1615,7 +1615,7 @@ void MS2Stream::handleEvents() {
 									lError() << "DTC: about to open a channel with params: "<<dcmap.toSdpDcmapAttr();
 									params.channels.try_emplace(dcmap.getId(), dcmap.getSubprotocol(), dcmap.getLabel(), dcmap.getMaxRetr(), dcmap.getMaxTime(), dcmap.getOrdered().value_or(true));
 								}
-								ms_datachannel_create(&(ms->sessions), std::move(params));
+								ms->sessions.datachannel_context = ms_datachannel_create(ms->sessions.dtls_context, std::move(params));
 							}
 						}
 					}

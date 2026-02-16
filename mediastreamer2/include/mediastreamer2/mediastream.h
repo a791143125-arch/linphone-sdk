@@ -126,7 +126,7 @@ struct _MSMediaStreamSessions {
 	MSSrtpCtx *srtp_context;
 	MSZrtpContext *zrtp_context;
 	MSDtlsSrtpContext *dtls_context;
-	MSDataChannelContext *datachannel_context;
+	MSDataChannelHandle *datachannel_context;
 	MSTicker *ticker;
 	bctbx_list_t *auxiliary_sessions; /**< a list of RtpSessions created by the mediastream on new SSRC
 	                                        multiplexed in a bundle */

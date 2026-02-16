@@ -846,9 +846,10 @@ std::optional<bool> SalDataChannelMap::getOrdered() const {
 // what kind of datachannel can we accept
 // Todo: should that be settable from liblinphone API
 bool SalDataChannelMap::isSupported() const {
-	// We support only our custom subprotocol
-	// Todo: add restrictions on reliability and ordered param?
-	if (subprotocol == "bcdcp") return true;
+	// For now we support only our custom subprotocol: x-linphone-sndlvl, it must come with a maxtime
+	if ((subprotocol == "x-linphone-sndlvl")
+		&& (max_time != std::nullopt)
+		&& (max_time.value()> 0)) return true;
 	return false;
 }
 

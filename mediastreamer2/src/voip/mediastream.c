@@ -253,7 +253,7 @@ static void ms_media_stream_bundle_and_sessions_free(void *b) {
 void ms_media_stream_sessions_uninit(MSMediaStreamSessions *sessions) {
 	// destroy Datachannel, then DTLS session first as it may send shutdown packets
 	if (sessions->datachannel_context != NULL) {
-		ms_datachannel_context_destroy(sessions->datachannel_context);
+		ms_datachannel_destroy(sessions->datachannel_context);
 		sessions->datachannel_context = NULL;
 	}
 	if (sessions->dtls_context != NULL) {

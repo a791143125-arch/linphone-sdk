@@ -19,12 +19,11 @@
 #include <atomic>
 #include <shared_mutex>
 
-struct _MSDataChannelContext;
-
+#include "mediastreamer2/ms_datachannel.h"
 namespace rtc::impl {
 
 struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
-	DataChannel(weak_ptr<_MSDataChannelContext> pc, uint16_t id, string label, string protocol, Reliability reliability);
+	DataChannel(weak_ptr<MSDataChannel::Impl> pc, uint16_t id, string label, string protocol, Reliability reliability);
 	~DataChannel();
 
 	void open();
@@ -47,7 +46,7 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	size_t maxMessageSize() const;
 
 protected:
-	const weak_ptr<_MSDataChannelContext> mPeerConnection;
+	const weak_ptr<MSDataChannel::Impl> mPeerConnection;
 
 	uint16_t mId;
 	string mLabel;

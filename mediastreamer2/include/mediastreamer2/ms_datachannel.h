@@ -24,24 +24,19 @@
 #include "mediastreamer2/mscommon.h"
 
 #ifdef __cplusplus
-extern "C" {
-#endif
-/* defined in mediastream.h */
-struct _MSMediaStreamSessions;
-/* an opaque structure containing all context data needed by datachannel */
-typedef struct _MSDataChannelContext MSDataChannelContext;
-
-MS2_PUBLIC void ms_datachannel_context_destroy(MSDataChannelContext *ctx);
-#ifdef __cplusplus
-}
+// This part of the API is available to C++ only code
 #include <optional>
 #include <map>
+#include <memory>
 /**
  * Check if Datachannel is supported
  * @return true if Datachannel is supported
  */
 bool ms_datachannel_supported(void);
 
+/**
+ * a class to describe the set of datachannel we want to open
+ */
 struct MSDataChannelParams {
 	struct ChannelParams {
 		std::string protocol;
@@ -53,25 +48,53 @@ struct MSDataChannelParams {
 	};
 	uint16_t sctp_local_port;
 	uint16_t sctp_remote_port;
-	std::map<uint16_t, ChannelParams> channels;
+	std::map<uint16_t, ChannelParams> channels; /**< actual set of channels to be created, mapped by their id */
 
 	MSDataChannelParams(uint16_t local_port, uint16_t remote_port) : sctp_local_port(local_port), sctp_remote_port(remote_port) {};
 };
-/**
- * Initiate a Sctp connexion with given parameters and open datachannel(s)
- * @param[in/out] 	sessions 	set of sessions associated to a stream, get the DTLS context from it and set the datachannel context in it
- * @param[in]		params		sctp and datachannels parameters
- */
-void ms_datachannel_create(struct _MSMediaStreamSessions *sessions, MSDataChannelParams &&params);
 
+class MSDataChannel {
+	public:
+		struct Impl;
+		MSDataChannel(struct _MSDtlsSrtpContext *dtls_ctx, MSDataChannelParams &&params);
+		~MSDataChannel();
+		/**
+		 * Send a binary message on the datachannel given in id
+ 		 * @param[in]	id	datachannel id
+		 * @param[in]	msg	binary message to be sent
+		 * @param[in]	size	size of the binary buffer
+		 * @return true on sending successful
+		 */
+		bool send(uint16_t id, const std::byte *msg, size_t size);
+
+	private:
+		std::shared_ptr<Impl> pImpl;
+};
+
+// alias the object name to the same typedef used for the C only version
+typedef MSDataChannel MSDataChannelHandle;
+// forward declaration of opaque structure defined in dtls_srtp.h
+struct _MSDtlsSrtpContext;
 /**
- * Send a binary message on the datachannel given in id
- * @param[in]	ctx	the opaque datachannel context
- * @param[in]	id	datachannel id
- * @param[in]	msg	binary message to be sent
- * @param[in]	size	size of the binary buffer
- * @return true on sending successful
+ * Factory function, Initiate a Sctp connexion with given parameters and open datachannel(s)
+ * @param[in] 		dtls_ctx 	the DTLS context to use for SCTP transport
+ * @param[in]		params		sctp and datachannels parameters
+ * @return 		a pointer to the data channel object created, use the ms_datachannel_context_destroy function to destroy
  */
-bool ms_datachannel_send(MSDataChannelContext *ctx, uint16_t id, const std::byte *msg, size_t size);
+MSDataChannelHandle *ms_datachannel_create(struct _MSDtlsSrtpContext *dtls_ctx, MSDataChannelParams &&params);
+
+#else  // __cplusplus : This code if for C only: just declare the MSDataChannelHandle so it can be used as an opaque pointer
+typedef struct MSDataChannel MSDataChannelHandle;
 #endif // __cplusplus
+
+
+// Shared C/C++ interface
+#ifdef __cplusplus
+extern "C" {
+#endif
+MS2_PUBLIC void ms_datachannel_destroy(MSDataChannelHandle *ctx);
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* ms_datachannel_h */

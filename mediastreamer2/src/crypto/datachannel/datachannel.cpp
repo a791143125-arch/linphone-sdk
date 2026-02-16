@@ -61,75 +61,73 @@ std::ostream &operator<<(std::ostream &os, State state) {
 }
 
 } // anonymous namespace
-
-struct _MSDataChannelContext : public std::enable_shared_from_this<_MSDataChannelContext> {
-	std::shared_ptr<_MSDataChannelContext> mKeepAlive; /**< make sure we keep a ref on ourselves : TODO do we really need this ?*/
+struct MSDataChannel::Impl : public std::enable_shared_from_this<MSDataChannel::Impl> {
 	std::shared_ptr<rtc::impl::SctpTransport> mSctpTransport; /**< Sctp transport layer */
 	MSDataChannelParams mParams; /**< configuration parameters */
 	std::map<uint16_t, std::shared_ptr<DataChannel>> mChannels; /**< existing channels indexed by their id */
+	State mState = State::New;
+	rtc::synchronized_callback<State> mStateChangeCallback;
 
-	_MSDataChannelContext(MSDataChannelParams &&params) : mParams(std::move(params)) {
-		mSctpTransport = nullptr;
-	}
-	~_MSDataChannelContext() {
-		mKeepAlive.reset();
-	}
-	void init() {
-		mKeepAlive = std::shared_ptr<_MSDataChannelContext>(this, [](_MSDataChannelContext *) {});
-	}
 	void startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx);
+	Impl(MSDataChannelParams &&params) : mParams(std::move(params)) {}
+	~Impl() {
+		if (mSctpTransport != nullptr) {
+			mSctpTransport->stop();
+			ms_message("DTC datachannel context destroy Sctp stop done");
+		}
+	}
 	bool changeState(State newState);
 	void remoteCloseDataChannels();
 	void openDataChannels();
 	std::pair<std::shared_ptr<DataChannel>, bool> findDataChannel(uint16_t id);
+	bool send(uint16_t id, const std::byte *msg, size_t size);
 
-	State state = State::New;
-	rtc::synchronized_callback<State> mStateChangeCallback;
 };
 
-void _MSDataChannelContext::remoteCloseDataChannels() {
-	ms_error("DTC: remoteCloseDataChannels");
+
+MSDataChannel::MSDataChannel(struct _MSDtlsSrtpContext *dtls_ctx, MSDataChannelParams &&params) : pImpl(std::make_shared<Impl>(std::move(params))) {
+	// init after the instanciation of pImpl so we can extract a weak_ptr
+	pImpl->startDatachannelOnDtls(dtls_ctx);
+}
+MSDataChannel::~MSDataChannel() { }
+
+
+void MSDataChannel::Impl::remoteCloseDataChannels() {
+	ms_error("DTC: remoteCloseData`yyChannels");
 	for (auto &[id, channel] : mChannels) {
 		channel->remoteClose();
 	}
 }
-void _MSDataChannelContext::openDataChannels() {
+void MSDataChannel::Impl::openDataChannels() {
 	ms_error("DTC: openDataChannels");
 	for (auto &[id, channel] : mChannels) {
 		channel->open();
 	}
 }
 
-bool _MSDataChannelContext::changeState(State newState) {
+bool MSDataChannel::Impl::changeState(State newState) {
 
-	if (state == newState || state == State::Closed) {
+	if (mState == newState || mState == State::Closed) {
 		return false;
 	}
-	state = newState;
-
-	std::ostringstream s;
-	s << newState;
-	PLOG_INFO << "Changed state to " << s.str();
+	mState = newState;
+	PLOG_INFO << "Changed state to " << newState;
 
 	mStateChangeCallback(newState);
 
 	return true;
 }
 
-std::pair<std::shared_ptr<DataChannel>, bool> _MSDataChannelContext::findDataChannel(uint16_t id) {
+std::pair<std::shared_ptr<DataChannel>, bool> MSDataChannel::Impl::findDataChannel(uint16_t id) {
 	if (auto it = mChannels.find(id); it != mChannels.end())
 		return std::make_pair(it->second, true);
 	else
 		return std::make_pair(nullptr, false);
 }
 
-void _MSDataChannelContext::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
+void MSDataChannel::Impl::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 	rtc::impl::SctpTransport::Ports ports{mParams.sctp_local_port, mParams.sctp_remote_port};
 	rtc::impl::SctpTransport::Configuration config = {}; // TODO: get configuration somewhere MTU and max message size
-
-	// TODO: Open the data channels from params
-	//DataChannel::DataChannel(weak_ptr<_MSDataChannelContext> msdtc, uint16_t id, string label, string protocol,
-        //	                 Reliability reliability)
 
 	ms_error("DTC: startDatachannel on Dtls after handshake done on %p, create a Sctp transport", DtlsCtx);
 	try {
@@ -183,19 +181,18 @@ void _MSDataChannelContext::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 				    [weakThis](rtc::impl::SctpTransport::State state) {
 					    PLOG_ERROR << "DTC state change callback dtc : " << state;
 					    auto shared_this = weakThis.lock();
-					    if (!shared_this) return;
+					    if (!shared_this) {
+					    	PLOG_ERROR << "DTC state change callback dtc : " << state<<" but unable to get the shared ptr back from the weak one";
+						    return;
+					    }
 
+					    PLOG_ERROR << "DTC state change callback dtc : " << state<<" we have "<<shared_this->mChannels.size()<<" channels";
 					    switch (state) {
 						    case SctpTransport::State::Connected:
-							    {
 							    shared_this->changeState(State::Connected);
 							    // Data channels are only negotiated so they are open in any case
 							    // Just tag them as open so we can now process the message sending
 							    shared_this->openDataChannels();
-							    // Send a Hello just to try it
-							    std::byte byteArray[] = { std::byte{0x68}, std::byte{0x65}, std::byte{0x6C}, std::byte{0x6C}, std::byte{0x6F} };
-							    ms_datachannel_send(shared_this.get(), 1, byteArray, 5);
-							    }
 							    break;
 						    case SctpTransport::State::Failed:
 							    shared_this->changeState(State::Failed);
@@ -229,7 +226,7 @@ namespace rtc::impl {
 		MESSAGE_OPEN = 0x03
 	};
 
-	DataChannel::DataChannel(weak_ptr<_MSDataChannelContext> msdtc, uint16_t id, string label, string protocol,
+	DataChannel::DataChannel(weak_ptr<MSDataChannel::Impl> msdtc, uint16_t id, string label, string protocol,
         	                 Reliability reliability)
 	    : mPeerConnection(msdtc), mId(id), mLabel(std::move(label)), mProtocol(std::move(protocol)),
 	      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
@@ -258,7 +255,7 @@ namespace rtc::impl {
 	void DataChannel::close() {
 		PLOG_VERBOSE << "Closing DataChannel "<<mId;
 
-		shared_ptr<_MSDataChannelContext> ctx;
+		shared_ptr<MSDataChannel::Impl> ctx;
 		{
 			ctx = mPeerConnection.lock();
 		}
@@ -316,7 +313,7 @@ namespace rtc::impl {
 
 	bool DataChannel::outgoing(message_ptr message) {
 		PLOG_ERROR << "DTC: DataChannel outgoing message";
-		shared_ptr<_MSDataChannelContext> ctx;
+		shared_ptr<MSDataChannel::Impl> ctx;
 		{
 			ctx = mPeerConnection.lock();
 
@@ -381,43 +378,29 @@ namespace rtc::impl {
 bool ms_datachannel_supported() {
 	return true;
 }
-void ms_datachannel_create(struct _MSMediaStreamSessions *sessions, MSDataChannelParams &&params) {
-	if (sessions->datachannel_context == NULL) {
-		ms_message("Creating Data Channel context on stream sessions [%p] attached to dtls context %p", sessions,
-	        	   sessions->dtls_context);
-		auto context = new _MSDataChannelContext(std::move(params));
-		context->init();
-		context->startDatachannelOnDtls(sessions->dtls_context);
-		sessions->datachannel_context = context;
-	} else {
-		ms_warning("Create datachannel but context already exists: ignore it");
-	}
+//TODO: move the factory function to be a class method and make the constructor private
+MSDataChannelHandle *ms_datachannel_create(struct _MSDtlsSrtpContext *dtls_ctx, MSDataChannelParams &&params) {
+	ms_message("Creating Data Channel context attached to dtls context %p", dtls_ctx);
+	auto context = new MSDataChannel(dtls_ctx, std::move(params));
+	return context;
 }
 
-extern "C" void ms_datachannel_context_destroy(MSDataChannelContext *ctx) {
+extern "C" void ms_datachannel_destroy(MSDataChannelHandle *ctx) {
 	ms_message("Datachannel context destroy %p", ctx);
 	if (ctx == NULL) {
 		ms_warning("Datachannel context destroy but no context given\n");
 		return;
 	}
-	if (ctx->mSctpTransport != NULL) {
-		ctx->mSctpTransport->stop();
-		ms_message("DTC datachannel context destroy Sctp stop done");
-		ctx->mSctpTransport = nullptr;
-	}
-
 	delete ctx;
 	ms_message("Datachannel context destroyed");
 }
-bool ms_datachannel_send(MSDataChannelContext *ctx, uint16_t id, const std::byte *msg, size_t size) {
+bool MSDataChannel::send(uint16_t id, const std::byte *msg, size_t size) {
+	return pImpl->send(id, msg, size);
+}
+bool MSDataChannel::Impl::send(uint16_t id, const std::byte *msg, size_t size) {
 	// Is there a data channel with this id
-	if (!ctx) {
-		PLOG_ERROR << "ms_datachannel_send but given context is null, ignore";
-		return false;
-	}
-
-	auto channel = ctx->mChannels.find(id);
-	if (channel == ctx->mChannels.end()) {
+	auto channel = mChannels.find(id);
+	if (channel == mChannels.end()) {
 		PLOG_ERROR << "ms_datachannel_send but given channel id "<<id<<" does not match any channel, ignore";
 		return false;
 	}
