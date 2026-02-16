@@ -198,7 +198,7 @@ BELLE_SIP_INSTANCIATE_VPTR(belle_sip_header_t,
 BELLE_SIP_PARSE_WITH_CONTEXT_AND_RULE(header, message_header);
 
 belle_sip_header_t *belle_sip_header_new_dummy(void) {
-	return belle_sip_header_create("dummy", "dummy");
+	return belle_sip_header_create("dummy", "");
 }
 
 void belle_sip_header_set_unparsed_value(belle_sip_header_t *obj, const char *value) {

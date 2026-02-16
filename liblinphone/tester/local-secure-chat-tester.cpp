@@ -411,8 +411,8 @@ static void secure_group_chat_room_with_client_with_uppercase_username() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, TRUE,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    TRUE, LinphoneChatRoomEphemeralModeDeviceManaged);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added

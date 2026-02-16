@@ -820,6 +820,7 @@ create_chat_room_client_side_with_expected_number_of_participants(bctbx_list_t *
                                                                   stats *initialStats,
                                                                   bctbx_list_t *participantsAddresses,
                                                                   const char *initialSubject,
+                                                                  const char *expectedInitialSubject,
                                                                   int expectedParticipantSize,
                                                                   bool_t encrypted,
                                                                   LinphoneChatRoomEphemeralMode mode) {
@@ -838,7 +839,7 @@ create_chat_room_client_side_with_expected_number_of_participants(bctbx_list_t *
 
 	if (!chatRoom) return NULL;
 
-	check_create_chat_room_client_side(lcs, lcm, chatRoom, initialStats, participantsAddresses, initialSubject,
+	check_create_chat_room_client_side(lcs, lcm, chatRoom, initialStats, participantsAddresses, expectedInitialSubject,
 	                                   expectedParticipantSize);
 
 	linphone_chat_room_unref(chatRoom);
@@ -875,8 +876,8 @@ LinphoneChatRoom *create_chat_room_client_side(bctbx_list_t *lcs,
                                                bool_t encrypted,
                                                LinphoneChatRoomEphemeralMode mode) {
 	return create_chat_room_client_side_with_expected_number_of_participants(
-	    lcs, lcm, initialStats, participantsAddresses, initialSubject, (int)bctbx_list_size(participantsAddresses),
-	    encrypted, mode);
+	    lcs, lcm, initialStats, participantsAddresses, initialSubject, initialSubject,
+	    (int)bctbx_list_size(participantsAddresses), encrypted, mode);
 }
 
 static void group_chat_room_params(void) {
@@ -4218,7 +4219,7 @@ static void group_chat_room_creation_successful_if_at_least_one_invited_particip
 	// Marie creates a new group chat room
 	const char *initialSubject = "Colleagues";
 	LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-	    coresList, marie, &initialMarieStats, participantsAddresses, initialSubject, 1, FALSE,
+	    coresList, marie, &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 1, FALSE,
 	    LinphoneChatRoomEphemeralModeDeviceManaged);
 	participantsAddresses = NULL;
 	const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);

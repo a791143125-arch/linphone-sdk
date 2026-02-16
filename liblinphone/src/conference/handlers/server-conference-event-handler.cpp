@@ -146,9 +146,7 @@ std::shared_ptr<Content> ServerConferenceEventHandler::createNotifyFullState(con
 	string subject = conf->getUtf8Subject();
 	ConferenceType confInfo = ConferenceType(entity);
 	ConferenceDescriptionType confDescr = ConferenceDescriptionType();
-	if (!subject.empty()) {
-		confDescr.setSubject(subject);
-	}
+	confDescr.setSubject(subject);
 	const auto &conferenceParams = conf->getCurrentParams();
 	const auto &audioEnabled = conferenceParams->audioEnabled();
 	const LinphoneMediaDirection audioDirection =

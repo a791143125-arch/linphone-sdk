@@ -1086,8 +1086,9 @@ LinphoneStatus Call::updateFromConference(const MediaSessionParams *msp) {
 	return static_pointer_cast<MediaSession>(getActiveSession())->updateFromConference(msp);
 }
 
-LinphoneStatus Call::update(const MediaSessionParams *msp) {
-	return static_pointer_cast<MediaSession>(getActiveSession())->update(msp);
+LinphoneStatus Call::update(const MediaSessionParams *msp, const std::string &subject) {
+	return static_pointer_cast<MediaSession>(getActiveSession())
+	    ->update(msp, CallSession::UpdateMethod::Default, false, subject);
 }
 
 void Call::zoomVideo(float zoomFactor, float *cx, float *cy) {

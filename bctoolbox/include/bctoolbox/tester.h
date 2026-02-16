@@ -224,8 +224,9 @@ BCTBX_PUBLIC int bc_assert(const char *file, int line, int predicate, const char
 	                "Expected NOT " type_format " but it was.", cexpected)
 #define BC_ASSERT_STRING_EQUAL(actual, expected)                                                                       \
 	_BC_ASSERT_PRED("BC_ASSERT_STRING_EQUAL",                                                                          \
-	                cactual &&cexpected && !(strcmp((const char *)(cactual), (const char *)(cexpected))), actual,      \
-	                expected, const char *, "Expected %s but was %s.", cexpected ? cexpected : "nullptr",              \
+	                (cactual && cexpected && !(strcmp((const char *)(cactual), (const char *)(cexpected)))) ||         \
+	                    (!cactual && !cexpected),                                                                      \
+	                actual, expected, const char *, "Expected %s but was %s.", cexpected ? cexpected : "nullptr",      \
 	                cactual ? cactual : "nullptr")
 #define BC_ASSERT_GREATER(actual, min, type, type_format)                                                              \
 	_BC_ASSERT_PRED("BC_ASSERT_GREATER", ((cactual) >= (cexpected)), actual, min, type,                                \

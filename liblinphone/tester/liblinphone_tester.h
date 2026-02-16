@@ -1014,6 +1014,7 @@ LinphoneChatRoom *create_chat_room_client_side_with_expected_number_of_participa
                                                                                     stats *initialStats,
                                                                                     bctbx_list_t *participantsAddresses,
                                                                                     const char *initialSubject,
+                                                                                    const char *expectedInitialSubject,
                                                                                     int expectedParticipantSize,
                                                                                     bool_t encrypted,
                                                                                     LinphoneChatRoomEphemeralMode mode);

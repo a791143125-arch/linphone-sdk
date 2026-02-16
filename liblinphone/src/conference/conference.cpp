@@ -801,7 +801,7 @@ LinphoneStatus Conference::updateMainSession(bool modifyParams) {
 				}
 				currentParams->enableScreenSharing(screenSharingEnabled);
 			}
-			ret = session->update(currentParams);
+			ret = session->update(currentParams, CallSession::UpdateMethod::Default, false, getUtf8Subject());
 			// Restore the screen sharing flag as it was before and change local parameters
 			currentParams->enableScreenSharing(wasScreenSharingEnabled);
 			session->getPrivate()->setParams(currentParams);

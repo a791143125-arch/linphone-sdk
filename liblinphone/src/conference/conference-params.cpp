@@ -265,10 +265,6 @@ bool ConferenceParams::isValid() const {
 		lError() << "FlexisipChat backend must be used when group is enabled";
 		return false;
 	}
-	if (mUtf8Subject.empty() && mChatParams->getBackend() == ChatParams::Backend::FlexisipChat) {
-		lError() << "You must set a non empty subject when using the FlexisipChat backend";
-		return false;
-	}
 	return ret;
 }
 

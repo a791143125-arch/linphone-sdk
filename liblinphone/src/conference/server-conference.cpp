@@ -2115,13 +2115,14 @@ bool ServerConference::addParticipant(const std::shared_ptr<Call> call) {
 			case CallSession::State::Resuming: {
 				if (contactAddress && contactAddress->isValid() &&
 				    !contactAddress->hasParam(Conference::sIsFocusParameter)) {
-					getCore()->doLater([contactAddress, call, session] {
+					auto subject = getUtf8Subject();
+					getCore()->doLater([contactAddress, call, session, subject] {
 						lInfo() << "Updating " << *call << " because contact address "
 						        << (contactAddress ? contactAddress->toString() : "Unknown") << " has not '"
 						        << Conference::sIsFocusParameter << "' parameter";
 						const MediaSessionParams *params = session->getMediaParams();
 						MediaSessionParams *currentParams = params->clone();
-						call->update(currentParams);
+						call->update(currentParams, subject);
 						delete currentParams;
 					});
 				}
@@ -2685,7 +2686,7 @@ void ServerConference::setLocalParticipantStreamCapability(const LinphoneMediaDi
 void ServerConference::setUtf8Subject(const std::string &subject) {
 	const auto previousSubject = getUtf8Subject();
 	Conference::setUtf8Subject(subject);
-	if (subject.compare(previousSubject) != 0) {
+	if (subject != previousSubject) {
 		time_t creationTime = time(nullptr);
 		[[maybe_unused]] auto event = notifySubjectChanged(creationTime, false, getUtf8Subject());
 		if (isChatOnly()) {

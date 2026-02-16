@@ -27,7 +27,11 @@
 
 namespace LinphoneTest {
 
-static void group_chat_room_creation_server_base(bool_t restart_before_changing_subject) {
+static void group_chat_room_creation_server_base(bool_t restart_before_changing_subject,
+                                                 const char *initialSubject,
+                                                 const char *expectedInitialSubject,
+                                                 const char *newSubject,
+                                                 const char *expectedNewSubject) {
 	Focus focus("chloe_rc");
 	{ // to make sure focus is destroyed after clients.
 		ClientConference marie("marie_rc", focus.getConferenceFactoryAddress());
@@ -56,19 +60,19 @@ static void group_chat_room_creation_server_base(bool_t restart_before_changing_
 		linphone_core_enable_gruu_in_conference_address(laure.getLc(), TRUE);
 
 		// Marie creates a new group chat room
-		const char *initialSubject = "Colleagues @work";
-		LinphoneChatRoom *marieCr =
-		    create_chat_room_client_side(coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses,
-		                                 initialSubject, FALSE, LinphoneChatRoomEphemeralModeDeviceManaged);
+		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject,
+		    expectedInitialSubject, (int)bctbx_list_size(participantsAddresses), FALSE,
+		    LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Pauline's side and that the participants are added
 		LinphoneChatRoom *paulineCr = check_creation_chat_room_client_side(
-		    coresList, pauline.getCMgr(), &initialPaulineStats, confAddr, initialSubject, 2, FALSE);
+		    coresList, pauline.getCMgr(), &initialPaulineStats, confAddr, expectedInitialSubject, 2, FALSE);
 		BC_ASSERT_PTR_NOT_NULL(paulineCr);
 		LinphoneChatRoom *laureCr = check_creation_chat_room_client_side(coresList, laure.getCMgr(), &initialLaureStats,
-		                                                                 confAddr, initialSubject, 2, FALSE);
+		                                                                 confAddr, expectedInitialSubject, 2, FALSE);
 		BC_ASSERT_PTR_NOT_NULL(laureCr);
 
 		if (!!restart_before_changing_subject) {
@@ -87,7 +91,6 @@ static void group_chat_room_creation_server_base(bool_t restart_before_changing_
 		paulineCr = pauline.searchChatRoom(pauline.getIdentity().toC(), confAddr);
 		BC_ASSERT_PTR_NOT_NULL(paulineCr);
 		// Marie now changes the subject
-		const char *newSubject = "Let's go drink a beer #party";
 		if (marieCr) {
 			linphone_chat_room_set_subject(marieCr, newSubject);
 		}
@@ -99,13 +102,13 @@ static void group_chat_room_creation_server_base(bool_t restart_before_changing_
 		BC_ASSERT_TRUE(wait_for_list(coresList, &laure.getStats().number_of_subject_changed,
 		                             initialLaureStats.number_of_subject_changed + 1, liblinphone_tester_sip_timeout));
 		if (marieCr) {
-			BC_ASSERT_STRING_EQUAL(linphone_chat_room_get_subject(marieCr), newSubject);
+			BC_ASSERT_STRING_EQUAL(linphone_chat_room_get_subject(marieCr), expectedNewSubject);
 		}
 		if (paulineCr) {
-			BC_ASSERT_STRING_EQUAL(linphone_chat_room_get_subject(paulineCr), newSubject);
+			BC_ASSERT_STRING_EQUAL(linphone_chat_room_get_subject(paulineCr), expectedNewSubject);
 		}
 		if (laureCr) {
-			BC_ASSERT_STRING_EQUAL(linphone_chat_room_get_subject(laureCr), newSubject);
+			BC_ASSERT_STRING_EQUAL(linphone_chat_room_get_subject(laureCr), expectedNewSubject);
 		}
 
 		// Bring Laure offline and remove her from the chat room
@@ -163,11 +166,31 @@ static void group_chat_room_creation_server_base(bool_t restart_before_changing_
 }
 
 static void group_chat_room_creation_server() {
-	group_chat_room_creation_server_base(FALSE);
+	group_chat_room_creation_server_base(FALSE, "Colleagues @work", "Colleagues @work", "Let's go drink a beer #party",
+	                                     "Let's go drink a beer #party");
 }
 
 static void group_chat_room_creation_server_with_client_restart() {
-	group_chat_room_creation_server_base(TRUE);
+	group_chat_room_creation_server_base(TRUE, "Colleagues @work", "Colleagues @work", "Let's go drink a beer #party",
+	                                     "Let's go drink a beer #party");
+}
+
+static void group_chat_room_creation_server_with_empty_subject() {
+	group_chat_room_creation_server_base(FALSE, "", nullptr, "Let's go drink a beer #party",
+	                                     "Let's go drink a beer #party");
+}
+
+static void group_chat_room_creation_server_with_subject_containing_only_spaces() {
+	group_chat_room_creation_server_base(FALSE, "    ", nullptr, "Let's go drink a beer #party",
+	                                     "Let's go drink a beer #party");
+}
+
+static void group_chat_room_creation_server_with_new_empty_subject() {
+	group_chat_room_creation_server_base(FALSE, " Colleagues @work", "Colleagues @work", "", nullptr);
+}
+
+static void group_chat_room_creation_server_with_new_subject_containing_only_spaces() {
+	group_chat_room_creation_server_base(FALSE, "  Colleagues @work ", "Colleagues @work", "    ", nullptr);
 }
 
 static void group_chat_room_server_deletion() {
@@ -578,8 +601,8 @@ static void group_chat_room_with_client_removed_added() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, FALSE,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    FALSE, LinphoneChatRoomEphemeralModeDeviceManaged);
 		LinphoneAddress *confAddr = linphone_address_clone(linphone_chat_room_get_conference_address(marieCr));
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added
@@ -956,7 +979,7 @@ static void group_chat_room_with_client_deletes_chatroom_after_restart() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, 3, false,
+		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, initialSubject, 3, false,
 		    LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
@@ -1121,8 +1144,8 @@ static void group_chat_room_with_client_registering_with_short_register_expires(
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, false,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    false, LinphoneChatRoomEphemeralModeDeviceManaged);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added
@@ -1386,8 +1409,8 @@ static void group_chat_room_with_client_restart_removed_from_server() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, false,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    false, LinphoneChatRoomEphemeralModeDeviceManaged);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added
@@ -1826,8 +1849,8 @@ static void group_chat_room_with_invite_error_when_updating_subject() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 3, false,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 3,
+		    false, LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		LinphoneAddress *confAddr =
 		    marieCr ? linphone_address_clone(linphone_chat_room_get_conference_address(marieCr)) : nullptr;
@@ -2079,8 +2102,8 @@ static void group_chat_room_with_server_database_corruption() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, FALSE,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    FALSE, LinphoneChatRoomEphemeralModeDeviceManaged);
 		LinphoneAddress *confAddr = linphone_address_clone(linphone_chat_room_get_conference_address(marieCr));
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added
@@ -3827,8 +3850,8 @@ static void group_chat_room_add_participant_with_invalid_address() {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, FALSE,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    FALSE, LinphoneChatRoomEphemeralModeDeviceManaged);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Pauline's side and that the participants are added
@@ -3963,8 +3986,8 @@ static void group_chat_room_with_only_participant_with_invalid_address() {
 		linphone_chat_room_params_set_backend(chatRoomParams, LinphoneChatRoomBackendFlexisipChat);
 		linphone_chat_room_params_enable_group(chatRoomParams, TRUE);
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 0, FALSE,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 0,
+		    FALSE, LinphoneChatRoomEphemeralModeDeviceManaged);
 		linphone_chat_room_params_unref(chatRoomParams);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 
@@ -4324,6 +4347,18 @@ static test_t local_conference_chat_basic_tests[] = {
     TEST_ONE_TAG("Group chat room creation local server with client restart",
                  LinphoneTest::group_chat_room_creation_server_with_client_restart,
                  "LeaksMemory"), /* beacause of coreMgr restart*/
+    TEST_ONE_TAG("Group chat room creation local server with empty subject",
+                 LinphoneTest::group_chat_room_creation_server_with_empty_subject,
+                 "LeaksMemory"), /* because of coreMgr restart */
+    TEST_ONE_TAG("Group chat room creation local server with subject containing only spaces",
+                 LinphoneTest::group_chat_room_creation_server_with_subject_containing_only_spaces,
+                 "LeaksMemory"), /* because of coreMgr restart */
+    TEST_ONE_TAG("Group chat room creation local server with new empty subject",
+                 LinphoneTest::group_chat_room_creation_server_with_new_empty_subject,
+                 "LeaksMemory"), /* because of coreMgr restart */
+    TEST_ONE_TAG("Group chat room creation local server with new subject containing only spaces",
+                 LinphoneTest::group_chat_room_creation_server_with_new_subject_containing_only_spaces,
+                 "LeaksMemory"), /* because of coreMgr restart */
     TEST_NO_TAG("Group chat Server chat room deletion", LinphoneTest::group_chat_room_server_deletion),
     TEST_ONE_TAG("Group chat with no participants following database corruption",
                  LinphoneTest::group_chat_room_with_no_participants_following_database_corruption,

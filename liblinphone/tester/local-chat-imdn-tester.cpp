@@ -81,7 +81,7 @@ static void group_chat_room_with_imdn_base(bool_t core_goes_offline) {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, 2, false,
+		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, initialSubject, 2, false,
 		    LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
@@ -786,8 +786,8 @@ static void group_chat_room_with_client_idmn_after_restart_base(const LinphoneTe
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, 3, encrypted,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, initialSubject, 3,
+		    encrypted, LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 		char *conference_address = linphone_address_as_string(confAddr);
@@ -2287,7 +2287,7 @@ static void group_chat_room_with_imdn_chat_room_deleted_on_client_side(void) {
 		participantsAddresses = bctbx_list_append(participantsAddresses, linphone_address_ref(paulineAddr.toC()));
 
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, 3, false,
+		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, initialSubject, 3, false,
 		    LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
@@ -2472,7 +2472,7 @@ static void secure_group_chat_room_with_aggregated_imdn(void) {
 		participantsAddresses = bctbx_list_append(participantsAddresses, linphone_address_ref(paulineAddr.toC()));
 
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, 3, TRUE,
+		    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, initialSubject, 3, TRUE,
 		    LinphoneChatRoomEphemeralModeDeviceManaged);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);

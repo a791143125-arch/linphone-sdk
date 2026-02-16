@@ -519,7 +519,7 @@ void ClientConference::setUtf8Subject(const std::string &subject) {
 	}
 	auto session = dynamic_pointer_cast<MediaSession>(getMainSession());
 	if (session) {
-		if ((subject.compare(mPendingSubject) != 0) || (getUtf8Subject().empty() && !subject.empty())) {
+		if (subject != mPendingSubject || subject != getUtf8Subject()) {
 			mPendingSubject = subject;
 			auto updateSubject = [this, subject]() -> LinphoneStatus {
 				auto session = dynamic_pointer_cast<MediaSession>(getMainSession());

@@ -270,8 +270,8 @@ void group_chat_room_with_client_restart_base(bool encrypted) {
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, encrypted,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    encrypted, LinphoneChatRoomEphemeralModeDeviceManaged);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added
@@ -1695,8 +1695,8 @@ void group_chat_room_with_client_removed_while_stopped_base(const bool_t use_rem
 		// Marie creates a new group chat room
 		const char *initialSubject = "Colleagues (characters: $ £ çà)";
 		LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, 2, encrypted,
-		    LinphoneChatRoomEphemeralModeDeviceManaged);
+		    coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses, initialSubject, initialSubject, 2,
+		    encrypted, LinphoneChatRoomEphemeralModeDeviceManaged);
 		const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 
 		// Check that the chat room is correctly created on Michelle's side and that the participants are added
@@ -2446,8 +2446,8 @@ void group_chat_room_with_duplications_base(bool encrypted) {
 			participantsAddresses = bctbx_list_append(participantsAddresses, linphone_address_ref(paulineAddr.toC()));
 
 			LinphoneChatRoom *marieCr = create_chat_room_client_side_with_expected_number_of_participants(
-			    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, 3, encrypted,
-			    LinphoneChatRoomEphemeralModeDeviceManaged);
+			    coresList, marie.getCMgr(), &marie_stat, participantsAddresses, initialSubject, initialSubject, 3,
+			    encrypted, LinphoneChatRoomEphemeralModeDeviceManaged);
 			BC_ASSERT_PTR_NOT_NULL(marieCr);
 			const LinphoneAddress *confAddr = linphone_chat_room_get_conference_address(marieCr);
 			BC_ASSERT_PTR_NOT_NULL(confAddr);

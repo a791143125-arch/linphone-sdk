@@ -207,7 +207,7 @@ void ClientConferenceEventHandler::conferenceInfoNotifyReceived(const string &xm
 		// 3. Notify ephemeral settings, media, subject and keywords.
 		if (confDescription.present()) {
 			auto &subject = confDescription.get().getSubject();
-			if (subject.present() && !subject.get().empty()) {
+			if (subject.present()) {
 				if (conference->getUtf8Subject() != subject.get()) {
 					conference->Conference::setUtf8Subject(subject.get());
 					if (!isFullState) {
