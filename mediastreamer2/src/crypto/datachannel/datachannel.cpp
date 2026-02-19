@@ -81,6 +81,7 @@ struct MSDataChannel::Impl : public std::enable_shared_from_this<MSDataChannel::
 	void openDataChannels();
 	std::pair<std::shared_ptr<DataChannel>, bool> findDataChannel(uint16_t id);
 	bool send(uint16_t id, const std::byte *msg, size_t size);
+	bool onMessage(uint16_t id, dtcMessageCallback callback);
 
 };
 
@@ -249,6 +250,9 @@ namespace rtc::impl {
 
 	void DataChannel::open() {
 		PLOG_VERBOSE << "Opening DataChannel "<<mId;
+		if (!mIsOpen) {
+			triggerOpen();
+		}
 		mIsOpen = true;
 	}
 
@@ -270,9 +274,9 @@ namespace rtc::impl {
 
 	void DataChannel::remoteClose() { close(); }
 
-	optional<message_variant> DataChannel::receive() {
+	optional<Message> DataChannel::receive() {
 		auto next = mRecvQueue.pop();
-		return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
+		return next ? std::make_optional(std::move(**next)) : nullopt;
 	}
 
 	optional<message_variant> DataChannel::peek() {
@@ -335,8 +339,10 @@ namespace rtc::impl {
 
 	void DataChannel::incoming(message_ptr message) {
 		PLOG_ERROR << "DTC: DataChannel incoming message";
-		if (!message || mIsClosed)
+		if (!message || mIsClosed) {
+			PLOG_ERROR << "DTC: DataChannel incoming message but mIsClosed or empty message";
 			return;
+		}
 
 		switch (message->type) {
 		case Message::Control: {
@@ -360,6 +366,7 @@ namespace rtc::impl {
 			break;
 		case Message::String:
 		case Message::Binary:
+			PLOG_ERROR << "DTC: DataChannel incoming message: String or binary";
 			mRecvQueue.push(message);
 			triggerAvailable(mRecvQueue.size());
 			break;
@@ -394,18 +401,34 @@ extern "C" void ms_datachannel_destroy(MSDataChannelHandle *ctx) {
 	delete ctx;
 	ms_message("Datachannel context destroyed");
 }
+// redirections to Impl
 bool MSDataChannel::send(uint16_t id, const std::byte *msg, size_t size) {
 	return pImpl->send(id, msg, size);
 }
+bool MSDataChannel::onMessage(uint16_t id, dtcMessageCallback callback) {
+	return pImpl->onMessage(id, callback);
+}
+
 bool MSDataChannel::Impl::send(uint16_t id, const std::byte *msg, size_t size) {
 	// Is there a data channel with this id
 	auto channel = mChannels.find(id);
 	if (channel == mChannels.end()) {
-		PLOG_ERROR << "ms_datachannel_send but given channel id "<<id<<" does not match any channel, ignore";
+		PLOG_ERROR << "MSDataChannel::send but given channel id "<<id<<" does not match any channel, ignore";
 		return false;
 	}
 	return channel->second->outgoing(std::make_shared<rtc::Message>(msg, msg+size, rtc::Message::Binary));
 }
+bool MSDataChannel::Impl::onMessage(uint16_t id, dtcMessageCallback callback) {
+	// get the channel
+	auto channel = mChannels.find(id);
+	if (channel == mChannels.end()) {
+		PLOG_ERROR << "MSDataChannel::onMessage but given channel id "<<id<<" does not match any channel, ignore";
+		return false;
+	}
+	channel->second->messageCallback = callback;
+	return true;
+}
+
 #else  // HAVE_DATACHANNEL
 bool ms_datachannel_supported() {
 	return false;

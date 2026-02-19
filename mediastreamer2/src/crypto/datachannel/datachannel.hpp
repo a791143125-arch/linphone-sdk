@@ -32,7 +32,7 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
-	optional<message_variant> receive() override;
+	optional<Message> receive() override;
 	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
 

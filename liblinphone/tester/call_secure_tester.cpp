@@ -2284,8 +2284,12 @@ static void call_datachannel(void) {
 	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 1000);
 
 	// exchange data over channel 1
+	lError()<<"DTC: ok now send message";
+	auto paulineDtc = linphone_call_get_stream(linphone_core_get_current_call(pauline->lc), LinphoneStreamTypeAudio)->sessions.datachannel_context;
+	paulineDtc->onMessage(1, [](const std::vector<std::byte> &msg) {
+				lError()<<"DTC: pauline received on channel 1 a message of size "<<msg.size()<<" first byte is "<<uint8_t(msg[0]);
+			});
 	auto marieDtc = linphone_call_get_stream(linphone_core_get_current_call(marie->lc), LinphoneStreamTypeAudio)->sessions.datachannel_context;
-	//auto paulineAudioStream = (AudioStream *)linphone_call_get_stream(linphone_core_get_current_call(pauline->lc), LinphoneStreamTypeAudio);
 	// marie send binary hello on channel 1
 	std::byte byteArray[] = { std::byte{0x68}, std::byte{0x65}, std::byte{0x6C}, std::byte{0x6C}, std::byte{0x6F} };
 	marieDtc->send(1, byteArray, 5);

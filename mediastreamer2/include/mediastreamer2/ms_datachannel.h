@@ -28,6 +28,7 @@
 #include <optional>
 #include <map>
 #include <memory>
+#include <functional>
 /**
  * Check if Datachannel is supported
  * @return true if Datachannel is supported
@@ -53,6 +54,8 @@ struct MSDataChannelParams {
 	MSDataChannelParams(uint16_t local_port, uint16_t remote_port) : sctp_local_port(local_port), sctp_remote_port(remote_port) {};
 };
 
+using dtcMessageCallback = std::function<void(const std::vector<std::byte>&)>;
+
 class MSDataChannel {
 	public:
 		struct Impl;
@@ -66,6 +69,14 @@ class MSDataChannel {
 		 * @return true on sending successful
 		 */
 		bool send(uint16_t id, const std::byte *msg, size_t size);
+		/**
+		 * Set callback for message reception on a specific channel
+		 * This function must be called after the channel creation but can be set before it is connected
+		 * @param[in]	id 		datachannel id
+		 * @param[in]	callback	function called on message reception
+		 * @return	true on succes, false otherwise (channel does not exist)
+		 */
+		bool onMessage(uint16_t id, dtcMessageCallback callback);
 
 	private:
 		std::shared_ptr<Impl> pImpl;

@@ -18,7 +18,7 @@
 namespace rtc::impl {
 
 struct Channel {
-	virtual optional<message_variant> receive() = 0;
+	virtual optional<Message> receive() = 0;
 	virtual optional<message_variant> peek() = 0;
 	virtual size_t availableAmount() const = 0;
 
@@ -38,7 +38,7 @@ struct Channel {
 	synchronized_stored_callback<> availableCallback;
 	synchronized_stored_callback<> bufferedAmountLowCallback;
 
-	synchronized_callback<message_variant> messageCallback;
+	std::function<void(const binary)> messageCallback;
 
 	std::atomic<size_t> bufferedAmount = 0;
 	std::atomic<size_t> bufferedAmountLowThreshold = 0;
