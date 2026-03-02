@@ -2413,6 +2413,11 @@ void create_conference_base(time_t start_time,
 				linphone_call_params_enable_mic(new_params, FALSE);
 			}
 
+			// DTLS conf creates a datachannel
+			if (encryption == LinphoneMediaEncryptionDTLS) {
+				linphone_call_params_add_datachannel(new_params, "1 subprotocol=\"x-linphone-sndlvl\";max-time=50");
+			}
+
 			// Let Marie to call the conference after lowercasing the conf-id.
 			// In some tests, Marie's core restarts later on in the test and it will call with the unmodified conference
 			// address (the conf-id parameter will be a mix of uppercase and lowercase characters) and this will allow

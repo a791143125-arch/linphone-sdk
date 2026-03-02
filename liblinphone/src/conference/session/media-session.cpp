@@ -2272,7 +2272,9 @@ void MediaSessionPrivate::addConferenceLocalParticipantStreams(bool add,
 			const auto &participantDevice = isInLocalConference
 			                                    ? conference->findParticipantDevice(q->getSharedFromThis())
 			                                    : conference->getMe()->findDevice(q->getSharedFromThis(), true);
+			lError()<<"DTC: addConferenceLocalParticipantStreams";
 			if (participantDevice) {
+				lError()<<"DTC: addConferenceLocalParticipantStreams with participant device";
 				const auto &deviceState = participantDevice->getState();
 				std::string content;
 				std::string deviceLabel;
@@ -2302,6 +2304,7 @@ void MediaSessionPrivate::addConferenceLocalParticipantStreams(bool add,
 				     (deviceState == ParticipantDevice::State::Present) ||
 				     (deviceState == ParticipantDevice::State::OnHold));
 				if (addStream) {
+					lError()<<"DTC: addConferenceLocalParticipantStreams with participant device label"<<deviceLabel;
 					SalStreamDescription &newStream = addStreamToMd(md, foundStreamIdx, oldMd);
 					newStream.type = type;
 
@@ -2944,6 +2947,7 @@ void MediaSessionPrivate::makeLocalMediaDescription(bool localIsOfferer,
 		videoStream.setSupportedEncryptions(encList);
 
 		PayloadTypeHandler::clearPayloadList(videoCodecs);
+		lError()<<"DTC: Done with fillLocalStreamDescription on video and conf part, before addConferenceLocalParticipantStreams "<<addVideoStream;
 
 		addConferenceLocalParticipantStreams(addVideoStream, md, oldMd, pth, encList, SalVideo);
 	}
