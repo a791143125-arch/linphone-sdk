@@ -72,3 +72,4 @@
 #cmakedefine HAVE_STATIC_MSANDROIDCAMERA2
 #cmakedefine HAVE_STATIC_MSWEBRTC
 #cmakedefine HAVE_HIDAPI
+#cmakedefine HAVE_DATACHANNEL

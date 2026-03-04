@@ -408,11 +408,18 @@ void MediaSessionParams::enableVideoMulticast(bool value) {
 }
 
 void MediaSessionParams::enableDataChannel(bool value) {
+#ifdef HAVE_DATACHANNEL
 	L_D();
 	d->dataChannelEnabled = value;
+#else // HAVE_DATACHANNEL
+      if (value) {
+	      lWarning()<<"Enable datachannels in MediaSessionParams but this feature was not enabled at build";
+      }
+#endif // HAVE_DATACHANNEL
 }
 
 bool MediaSessionParams::addDataChannel(const std::string &dcmap) {
+#ifdef HAVE_DATACHANNEL
 	L_D();
 	auto sdcmap = SalDataChannelMap::from_string(dcmap);
 	if (sdcmap) {
@@ -425,10 +432,18 @@ bool MediaSessionParams::addDataChannel(const std::string &dcmap) {
 		lWarning()<<"Unable to add invalid dcmap attribute to call params: "<<dcmap;
 		return false;
 	}
+#else // HAVE_DATACHANNEL
+	lWarning()<<"addDataChannel in MediaSessionParams to #"<<dcmap<<"# but this feature was not enabled at build";
+	return false;
+#endif // HAVE_DATACHANNEL
 }
 void MediaSessionParams::setDataChannelSctpPort(uint16_t port) {
+#ifdef HAVE_DATACHANNEL
 	L_D();
 	d->dataChannelSctpPort = port;
+#else // HAVE_DATACHANNEL
+	lWarning()<<"Set datachannel sctp port to "<<port<<" in MediaSessionParams but this feature was not enabled at build";
+#endif // HAVE_DATACHANNEL
 }
 
 const std::vector<SalDataChannelMap> &MediaSessionParams::getDataChannels() const {

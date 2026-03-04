@@ -20,7 +20,6 @@
 
 #include "mediastreamer2/mediastream.h"
 #include "mediastreamer2/ms_datachannel.h"
-#include <memory>
 
 #ifdef HAVE_DATACHANNEL
 #include "common.hpp"
@@ -80,7 +79,7 @@ struct MSDataChannel::Impl : public std::enable_shared_from_this<MSDataChannel::
 	void remoteCloseDataChannels();
 	void openDataChannels();
 	std::pair<std::shared_ptr<DataChannel>, bool> findDataChannel(uint16_t id);
-	bool send(uint16_t id, const std::byte *msg, size_t size);
+	bool send(uint16_t id, const std::vector<std::byte> &msg);
 	bool onMessage(uint16_t id, dtcMessageCallback callback);
 
 };
@@ -402,21 +401,21 @@ extern "C" void ms_datachannel_destroy(MSDataChannelHandle *ctx) {
 	ms_message("Datachannel context destroyed");
 }
 // redirections to Impl
-bool MSDataChannel::send(uint16_t id, const std::byte *msg, size_t size) {
-	return pImpl->send(id, msg, size);
+bool MSDataChannel::send(uint16_t id, const std::vector<std::byte> &msg) {
+	return pImpl->send(id, msg);
 }
 bool MSDataChannel::onMessage(uint16_t id, dtcMessageCallback callback) {
 	return pImpl->onMessage(id, callback);
 }
 
-bool MSDataChannel::Impl::send(uint16_t id, const std::byte *msg, size_t size) {
+bool MSDataChannel::Impl::send(uint16_t id, const std::vector<std::byte> &msg) {
 	// Is there a data channel with this id
 	auto channel = mChannels.find(id);
 	if (channel == mChannels.end()) {
 		PLOG_ERROR << "MSDataChannel::send but given channel id "<<id<<" does not match any channel, ignore";
 		return false;
 	}
-	return channel->second->outgoing(std::make_shared<rtc::Message>(msg, msg+size, rtc::Message::Binary));
+	return channel->second->outgoing(std::make_shared<rtc::Message>(msg.begin(), msg.end(), rtc::Message::Binary));
 }
 bool MSDataChannel::Impl::onMessage(uint16_t id, dtcMessageCallback callback) {
 	// get the channel
@@ -433,7 +432,6 @@ bool MSDataChannel::Impl::onMessage(uint16_t id, dtcMessageCallback callback) {
 bool ms_datachannel_supported() {
 	return false;
 }
-bool ms_datachannel_send(MSDataChannelContext *ctx, uint16_t id, const std::byte *msg, size_t size) {}
-void ms_datachannel_create(struct _MSMediaStreamSessions *sessions, MSDataChannelParams &&params) {}
-extern "C" void ms_datachannel_context_destroy(BCTBX_UNUSED(MSDataChannelContext *ctx)) {}
+MSDataChannelHandle *ms_datachannel_create(BCTBX_UNUSED(struct _MSDtlsSrtpContext *dtls_ctx), BCTBX_UNUSED(MSDataChannelParams &&params)) { return nullptr;}
+extern "C" void ms_datachannel_destroy(BCTBX_UNUSED(MSDataChannelHandle *ctx)) {}
 #endif // HAVE_DATACHANNEL

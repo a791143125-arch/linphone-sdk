@@ -65,10 +65,9 @@ class MSDataChannel {
 		 * Send a binary message on the datachannel given in id
  		 * @param[in]	id	datachannel id
 		 * @param[in]	msg	binary message to be sent
-		 * @param[in]	size	size of the binary buffer
 		 * @return true on sending successful
 		 */
-		bool send(uint16_t id, const std::byte *msg, size_t size);
+		bool send(uint16_t id, const std::vector<std::byte> &msg);
 		/**
 		 * Set callback for message reception on a specific channel
 		 * This function must be called after the channel creation but can be set before it is connected

@@ -79,6 +79,7 @@ option(ENABLE_EKT_SERVER_PLUGIN "Enable build of the EKT encryption plugin" NO)
 option(ENABLE_DEPRECATED_TESTS "Enable execution of deprecated tests" NO)
 option(ENABLE_BAUDOT "Enable Baudot text transmission." YES)
 option(ENABLE_HIDAPI "Enable the HidAPI support for LibLinphone." ON)
+option(ENABLE_DATACHANNEL "Build with the Datachannel support." NO)
 
 option(ENABLE_SRTP "Build with the SRTP transport support." YES)
 cmake_dependent_option(ENABLE_ZRTP "Build with ZRTP support." YES "ENABLE_SRTP" NO)
@@ -249,6 +250,10 @@ if(ENABLE_HIDAPI)
 		message(WARNING "Could not find the HidAPI library!")
 		set(ENABLE_HIDAPI OFF CACHE BOOL "Enable the HidAPI support for LibLinphone." FORCE)
 	endif()
+endif()
+
+if(ENABLE_DATACHANNEL)
+	set(HAVE_DATACHANNEL 1)
 endif()
 
 if(UNIX AND NOT APPLE)

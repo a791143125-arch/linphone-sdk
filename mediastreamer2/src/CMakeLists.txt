@@ -131,18 +131,7 @@ set(VOIP_SOURCE_FILES_CXX
 	audiofilters/tonedetector.cpp
 	crypto/ms_srtp.cpp
 	crypto/dtls_srtp.cpp
-	crypto/datachannel/channel.hpp
-	crypto/datachannel/channel.cpp
 	crypto/datachannel/datachannel.cpp
-	crypto/datachannel/message.cpp
-	crypto/datachannel/message.hpp
-	crypto/datachannel/reliability.hpp
-	crypto/datachannel/frameinfo.hpp
-	crypto/datachannel/utils.hpp
-	crypto/datachannel/queue.hpp
-	crypto/datachannel/common.hpp
-	crypto/datachannel/sctptransport.cpp
-	crypto/datachannel/sctptransport.hpp
 	utils/filter-wrapper/decoding-filter-wrapper.cpp
 	utils/filter-wrapper/encoding-filter-wrapper.cpp
 	utils/goertzel_state.cpp
@@ -263,7 +252,21 @@ if(ENABLE_RNNOISE)
 		audiofilters/msnoisesuppressor.c
 		)
 endif()
-
+if(ENABLE_DATACHANNEL)
+	list(APPEND VOIP_SOURCE_FILES_CXX
+		crypto/datachannel/channel.hpp
+		crypto/datachannel/channel.cpp
+		crypto/datachannel/message.cpp
+		crypto/datachannel/message.hpp
+		crypto/datachannel/reliability.hpp
+		crypto/datachannel/frameinfo.hpp
+		crypto/datachannel/utils.hpp
+		crypto/datachannel/queue.hpp
+		crypto/datachannel/common.hpp
+		crypto/datachannel/sctptransport.cpp
+		crypto/datachannel/sctptransport.hpp
+	)
+endif()
 if(ENABLE_VIDEO)
 	list(APPEND VOIP_SOURCE_FILES_C
 		utils/bits_rw.c

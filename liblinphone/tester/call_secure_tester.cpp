@@ -2236,6 +2236,7 @@ static void dtls_srtp_to_none_call_with_several_video_switches(void) {
 }
 #endif // VIDEO_ENABLED
 
+#ifdef HAVE_DATACHANNEL
 static void call_datachannel(void) {
 	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
 	linphone_core_set_media_encryption(marie->lc, LinphoneMediaEncryptionDTLS);
@@ -2284,21 +2285,29 @@ static void call_datachannel(void) {
 	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 1000);
 
 	// exchange data over channel 1
-	lError()<<"DTC: ok now send message";
+	std::vector<std::byte> hello = { std::byte{0x68}, std::byte{0x65}, std::byte{0x6C}, std::byte{0x6C}, std::byte{0x6F} };
 	auto paulineDtc = linphone_call_get_stream(linphone_core_get_current_call(pauline->lc), LinphoneStreamTypeAudio)->sessions.datachannel_context;
-	paulineDtc->onMessage(1, [](const std::vector<std::byte> &msg) {
-				lError()<<"DTC: pauline received on channel 1 a message of size "<<msg.size()<<" first byte is "<<uint8_t(msg[0]);
-			});
+	bool messageReceived = false;
+	paulineDtc->onMessage(1, [hello, &messageReceived](const std::vector<std::byte> &msg) {
+					if (hello.size() == msg.size() && std::equal(hello.begin(), hello.end(), msg.begin())) {
+						messageReceived = true;
+					} else {
+						// we received a message but it does not match the one sent
+						lError()<<"Message sent over data channel does not match the one received";
+						BC_FAIL("Datachannel failure");
+					}
+				});
 	auto marieDtc = linphone_call_get_stream(linphone_core_get_current_call(marie->lc), LinphoneStreamTypeAudio)->sessions.datachannel_context;
 	// marie send binary hello on channel 1
-	std::byte byteArray[] = { std::byte{0x68}, std::byte{0x65}, std::byte{0x6C}, std::byte{0x6C}, std::byte{0x6F} };
-	marieDtc->send(1, byteArray, 5);
- 
+	marieDtc->send(1, hello);
 	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 500);
+	BC_ASSERT_TRUE(messageReceived==true);
+
 	end_call(pauline, marie);
 	linphone_core_manager_destroy(marie);
 	linphone_core_manager_destroy(pauline);
 }
+#endif // HAVE_DATACHANNEL
 
 static void call_accepting_all_encryptions(void) {
 	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
@@ -2458,7 +2467,9 @@ static test_t call_secure2_tests[] = {
     TEST_ONE_TAG("DTLS-SRTP call with rtcp-mux", dtls_srtp_audio_call_with_rtcp_mux, "DTLS"),
     TEST_ONE_TAG("DTLS-SRTP call with rtcp-mux not accepted", dtls_srtp_audio_call_with_rtcp_mux_not_accepted, "DTLS"),
     TEST_NO_TAG("Call accepting all encryptions", call_accepting_all_encryptions),
+#ifdef HAVE_DATACHANNEL
     TEST_NO_TAG("Call with datachannel", call_datachannel),
+#endif // HAVE_DATACHANNEL
     TEST_ONE_TAG("EKT call", ekt_call, "CRYPTO"),
     TEST_NO_TAG("EKT call with unmatching keys", unmatching_ekt_call),
     TEST_NO_TAG("EKT call with EKT key update", updating_ekt_call)};
