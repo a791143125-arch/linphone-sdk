@@ -789,8 +789,6 @@ int MSDtlsSrtpContext::processDtlsHandshakePacket(mblk_t *msg) {
 extern "C" void ms_dtls_srtp_set_stream_sessions(MSDtlsSrtpContext *dtls_context,
                                                  MSMediaStreamSessions *stream_sessions) {
 	if (dtls_context != NULL) {
-		ms_error("DTC ms_dtls_srtp_set_stream_sessions ctx %p session %p rtp session %p", dtls_context,
-		         stream_sessions, stream_sessions ? stream_sessions->rtp_session : NULL);
 		dtls_context->mStreamSessions = stream_sessions;
 		if (stream_sessions) {
 			dtls_context->mRtpSession = stream_sessions->rtp_session;
@@ -908,7 +906,6 @@ extern "C" void ms_dtls_srtp_context_destroy(MSDtlsSrtpContext *ctx) {
 }
 
 bool ms_dtls_srtp_set_recv_cb(MSDtlsSrtpContext *ctx, MsDtlsRecvCallback recv_cb) {
-	ms_message("DTC dtls ctx %p set Recv cb", ctx);
 	if (!ctx) {
 		return false;
 	}
@@ -923,11 +920,9 @@ bool ms_dtls_srtp_send(MSDtlsSrtpContext *ctx, const unsigned char *message, siz
 
 	int ret;
 	do {
-		ms_message("DTC dtls ctx %p sending message of %ld bytes", ctx, msg_len);
 		std::lock_guard lock(ctx->mtx);
 		// mCurrentDscp = message->dscp;
 		ret = bctbx_ssl_write(ctx->mDtlsCryptoContext.ssl, message, msg_len);
-		ms_message("DTC dtls ctx %p sent message of %ld bytes ret is %d(%x/-%x)", ctx, msg_len, ret, ret, -ret);
 	} while (ret == BCTBX_ERROR_NET_WANT_WRITE);
 
 	return (ret > 0);

@@ -2296,7 +2296,7 @@ void ClientConference::setLocalParticipantStreamCapability(const LinphoneMediaDi
 				break;
 			case LinphoneStreamTypeApplication:
 				currentParams->enableDataChannel((direction != LinphoneMediaDirectionInactive) &&
-				                                  (direction != LinphoneMediaDirectionInvalid));
+				                                  (direction != LinphoneMediaDirectionInvalid) && ms_datachannel_supported());
 				break;
 			case LinphoneStreamTypeUnknown:
 				lError() << "Unable to set direction of stream of type "

@@ -696,7 +696,6 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 
 	// Parse attributes specific to application stream
 	if (type == SalApplication) {
-		lError()<<"DTC: parsing application stream attributes";
 		// When parsing an application stream, check we have a webrtc-datachannel as format.
 		auto fmts = belle_sdp_media_get_media_formats(media);
 		if (belle_sip_list_size(fmts) != 1 || (long)(intptr_t)(fmts->data) != BELLE_SDP_FMT_WEBRTC_DATACHANNEL) {
@@ -713,27 +712,34 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 				try {
 					unsigned long int_value = std::stoul(value);
 					if (int_value > UINT16_MAX) {
-						lError()<<"DTC: Application stream remote sctp-port invalid:"<<int_value;
+						lError()<<"Application stream remote sctp-port invalid:"<<int_value;
+						actualCfg.disable();
+						addActualConfiguration(actualCfg);
+						return;
 					} else {
 						actualCfg.setSctpRemotePort(static_cast<uint16_t>(int_value));
 					}
 				} catch (const std::exception& e) {
-					lError()<<"DTC: Application stream remote sctp-port invalid:"<<value;
+					lError()<<"Application stream remote sctp-port invalid:"<<value;
+					actualCfg.disable();
+					addActualConfiguration(actualCfg);
+					return;
 				}
-				lError()<<"DTC: Application stream with remote sctp-port :"<<actualCfg.getSctpRemotePort()<<" in cfg "<<&actualCfg;
 			}
 		} else {
-			lError()<<"DTC: Application stream but no sctp-port provided";
+			lError()<<"Application stream but no sctp-port provided in SDP";
+			actualCfg.disable();
+			addActualConfiguration(actualCfg);
+			return;
 		}
 
 		// application stream are webrtc datachannel only: parse the dcmap (and dcsa) attributes
-		// TODO: we also need to parse dcsa attributes
+		// TODO: we also need to parse dcsa attributes - do we need to support it?
 		auto dcmaps = belle_sdp_media_description_find_attributes_with_name(media_desc, "dcmap");
 		for (auto dcmap = dcmaps; dcmap != NULL; dcmap = dcmap->next) {
 			if ((value = belle_sdp_attribute_get_value(static_cast<belle_sdp_attribute_t *>(dcmap->data))) != NULL) {
 				auto parsedDcmap = SalDataChannelMap::from_string(value);
 				if (parsedDcmap != std::nullopt) {
-					lError()<<"DTC: createActualCfg:: Application stream parse dcmap attr :"<<value;
 					actualCfg.dcmap.push_back(std::move(*parsedDcmap));
 				} else {
 					lWarning()<<"ignore unsupported/invalid dcmap attribute :"<<value;
@@ -1186,7 +1192,6 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 	                                                L_STRING_TO_C(getProtoAsString()), NULL);
 
 	if (!actualCfg.payloads.empty()) {
-		lError()<<"DTC : toSdpMediaDescription with payload: "<<actualCfg.payloads.size();
 		for (const auto &pt : actualCfg.payloads) {
 			mime_param = belle_sdp_mime_parameter_create(pt->mime_type, payload_type_get_number(pt), pt->clock_rate,
 			                                             pt->channels > 0 ? pt->channels : -1);
@@ -1199,11 +1204,9 @@ SalStreamDescription::toSdpMediaDescription(const SalMediaDescription *salMediaD
 		}
 	} else {
 		/* to comply with SDP we cannot have an empty payload type number list */
-		lError()<<"DTC : toSdpMediaDescription empty payload ";
 		bctbx_list_t *format = NULL;
 		if (actualCfg.hasDataChannel()) {
 			/* when this stream is of type application -> we only support webrtc datachannel with this type of stream */
-			lError()<<"DTC : toSdpMediaDescription has datachannel";
 			format = bctbx_list_append(format, (void *)(intptr_t)BELLE_SDP_FMT_WEBRTC_DATACHANNEL);
 		} else {
 			/* as it happens only when mline is declined with a zero port, it does not matter to put whatever codec*/

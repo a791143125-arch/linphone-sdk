@@ -9,16 +9,11 @@
 #ifndef RTC_IMPL_SCTP_TRANSPORT_H
 #define RTC_IMPL_SCTP_TRANSPORT_H
 
-// DTC
-#define SCTP_DEBUG 1
+//#define SCTP_DEBUG 1
 
 #include "common.hpp"
 #include "message.hpp"
-// #include "configuration.hpp"
-// #include "global.hpp"
-// #include "processor.hpp"
 #include "queue.hpp"
-// #include "transport.hpp"
 #include "../dtls_srtp.hpp"
 
 #include <condition_variable>

@@ -1593,26 +1593,18 @@ void MS2Stream::handleEvents() {
 				encryptionChanged();
 				break;
 			case ORTP_EVENT_DTLS_ENCRYPTION_CHANGED:
-				if (ms_datachannel_supported()) { //TODO: check if we must do that according to SDP
+				if (ms_datachannel_supported()) {
 					if (evd->info.dtls_stream_encrypted) {
-						lError() << "DTC: datachannel supported in ORTP_EVENT_DTLS_ENCRYPTION_CHANGED stream type " << ms->type;;
 						// Check we are the bundle owner and there is a application stream in the bundle
 						if (bundleEnabled() && mBundleOwner) {
 							auto sd = getMediaSessionPrivate().getResultDesc()->findBestStream(SalApplication);
 							if (sd) {
 								const auto &cfg = (*sd)->getActualConfiguration();
-								auto sctp_local_port = cfg.getSctpLocalPort();
-								auto sctp_remote_port = cfg.getSctpRemotePort();
 								auto dcmaps = cfg.getDataChannelMap();
-								lError() << "DTC: in DTLS event and we are bundle owner and we found an application stream in the group"<<std::endl
-									<<" cfg: "<<&cfg
-									<<" sctp local: "<<sctp_local_port
-									<<" sctp remote: "<<sctp_remote_port
-									<<" dcmaps size: "<<dcmaps.size();
 
 								MSDataChannelParams params{cfg.getSctpLocalPort(), cfg.getSctpRemotePort()};
 								for (const auto&dcmap : dcmaps) {
-									lError() << "DTC: about to open a channel with params: "<<dcmap.toSdpDcmapAttr();
+									// ordered default to true when not present
 									params.channels.try_emplace(dcmap.getId(), dcmap.getSubprotocol(), dcmap.getLabel(), dcmap.getMaxRetr(), dcmap.getMaxTime(), dcmap.getOrdered().value_or(true));
 								}
 								ms->sessions.datachannel_context = ms_datachannel_create(ms->sessions.dtls_context, std::move(params));

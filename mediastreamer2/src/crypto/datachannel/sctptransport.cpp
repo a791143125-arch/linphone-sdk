@@ -378,10 +378,8 @@ void SctpTransport::onBufferedAmount(amount_callback callback) {
 }
 
 void SctpTransport::start() {
-	PLOG_ERROR << "DTC SctpTransport::start";
 	auto weakThis = weak_from_this();
 	ms_dtls_srtp_set_recv_cb(mDtlsContext, [weakThis](unsigned char *message, size_t msg_len) {
-		PLOG_ERROR << "DTC SctpTransport::incomingCb";
 		if (auto self = weakThis.lock()) {
 			auto *b = reinterpret_cast<byte *>(message);
 			self->incoming(make_message(b, b + msg_len));
@@ -493,7 +491,6 @@ unsigned int SctpTransport::maxStream() const {
 }
 
 void SctpTransport::incoming(message_ptr message) {
-	PLOG_ERROR << "DTC SctpTransport::incoming";
 	// There could be a race condition here where we receive the remote INIT before the local one is
 	// sent, which would result in the connection being aborted. Therefore, we need to wait for data
 	// to be sent on our side (i.e. the local INIT) before proceeding.

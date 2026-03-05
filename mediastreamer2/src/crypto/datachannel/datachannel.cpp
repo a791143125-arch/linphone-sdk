@@ -72,7 +72,6 @@ struct MSDataChannel::Impl : public std::enable_shared_from_this<MSDataChannel::
 	~Impl() {
 		if (mSctpTransport != nullptr) {
 			mSctpTransport->stop();
-			ms_message("DTC datachannel context destroy Sctp stop done");
 		}
 	}
 	bool changeState(State newState);
@@ -93,13 +92,11 @@ MSDataChannel::~MSDataChannel() { }
 
 
 void MSDataChannel::Impl::remoteCloseDataChannels() {
-	ms_error("DTC: remoteCloseData`yyChannels");
 	for (auto &[id, channel] : mChannels) {
 		channel->remoteClose();
 	}
 }
 void MSDataChannel::Impl::openDataChannels() {
-	ms_error("DTC: openDataChannels");
 	for (auto &[id, channel] : mChannels) {
 		channel->open();
 	}
@@ -129,7 +126,6 @@ void MSDataChannel::Impl::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 	rtc::impl::SctpTransport::Ports ports{mParams.sctp_local_port, mParams.sctp_remote_port};
 	rtc::impl::SctpTransport::Configuration config = {}; // TODO: get configuration somewhere MTU and max message size
 
-	ms_error("DTC: startDatachannel on Dtls after handshake done on %p, create a Sctp transport", DtlsCtx);
 	try {
 		auto weakThis = weak_from_this();
 		// emplace the datachannels in the context according to param, they'll be considered 
@@ -142,7 +138,6 @@ void MSDataChannel::Impl::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 				    DtlsCtx, config, ports,
 				    // recv callback
 				    [weakThis](rtc::message_ptr message) {
-				    	ms_error("DTC recv message callback");
 					auto shared_this = weakThis.lock();
 					if (!shared_this) return;
 
@@ -175,18 +170,13 @@ void MSDataChannel::Impl::startDatachannelOnDtls(MSDtlsSrtpContext *DtlsCtx) {
 					}
 				    },
 				    // amount callback
-				    [](uint16_t streamId, size_t amount) {
-					    ms_error("DTC amount callback : %d, %ld", streamId, amount);
-				    },
+				    [](uint16_t , size_t) { },
 				    [weakThis](rtc::impl::SctpTransport::State state) {
-					    PLOG_ERROR << "DTC state change callback dtc : " << state;
 					    auto shared_this = weakThis.lock();
 					    if (!shared_this) {
-					    	PLOG_ERROR << "DTC state change callback dtc : " << state<<" but unable to get the shared ptr back from the weak one";
 						    return;
 					    }
 
-					    PLOG_ERROR << "DTC state change callback dtc : " << state<<" we have "<<shared_this->mChannels.size()<<" channels";
 					    switch (state) {
 						    case SctpTransport::State::Connected:
 							    shared_this->changeState(State::Connected);
@@ -315,7 +305,6 @@ namespace rtc::impl {
 
 
 	bool DataChannel::outgoing(message_ptr message) {
-		PLOG_ERROR << "DTC: DataChannel outgoing message";
 		shared_ptr<MSDataChannel::Impl> ctx;
 		{
 			ctx = mPeerConnection.lock();
@@ -337,9 +326,7 @@ namespace rtc::impl {
 	}
 
 	void DataChannel::incoming(message_ptr message) {
-		PLOG_ERROR << "DTC: DataChannel incoming message";
 		if (!message || mIsClosed) {
-			PLOG_ERROR << "DTC: DataChannel incoming message but mIsClosed or empty message";
 			return;
 		}
 
@@ -365,7 +352,6 @@ namespace rtc::impl {
 			break;
 		case Message::String:
 		case Message::Binary:
-			PLOG_ERROR << "DTC: DataChannel incoming message: String or binary";
 			mRecvQueue.push(message);
 			triggerAvailable(mRecvQueue.size());
 			break;
@@ -424,7 +410,7 @@ bool MSDataChannel::Impl::onMessage(uint16_t id, dtcMessageCallback callback) {
 		PLOG_ERROR << "MSDataChannel::onMessage but given channel id "<<id<<" does not match any channel, ignore";
 		return false;
 	}
-	channel->second->messageCallback = callback;
+	channel->second->messageCallback = std::move(callback);
 	return true;
 }
 

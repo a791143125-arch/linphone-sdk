@@ -426,7 +426,6 @@ bool MediaSessionParams::addDataChannel(const std::string &dcmap) {
 		d->dcmaps.push_back(*sdcmap);
 		// when datachannel is added succesfully (dcmap is valid), enable it
 		d->dataChannelEnabled = true;
-		lError()<<"DTC: add params "<<dcmap<<" to call";
 		return true;
 	} else {
 		lWarning()<<"Unable to add invalid dcmap attribute to call params: "<<dcmap;

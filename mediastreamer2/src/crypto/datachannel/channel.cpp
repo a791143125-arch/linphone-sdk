@@ -37,7 +37,6 @@ void Channel::triggerError(string error) {
 }
 
 void Channel::triggerAvailable(size_t count) {
-	PLOG_ERROR << "DTC: Channel::triggerAvailable count "<<count;
 	if (count == 1) {
 		try {
 			availableCallback();
@@ -62,7 +61,6 @@ void Channel::triggerBufferedAmount(size_t amount) {
 }
 
 void Channel::flushPendingMessages() {
-	PLOG_ERROR << "DTC: Channel::flushPendingMessages mOpenTriggered "<<mOpenTriggered;
 	if (!mOpenTriggered) return;
 
 	while (messageCallback) {
@@ -70,7 +68,6 @@ void Channel::flushPendingMessages() {
 		if (!next) break;
 
 		try {
-			PLOG_ERROR <<"DTC: Flush Pending message: call messageCallback";
 			messageCallback(*next);
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
