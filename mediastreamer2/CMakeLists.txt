@@ -83,7 +83,7 @@ option(ENABLE_OPENGL_PROFILING "Measure OpenGL render time (for performance prof
 option(ENABLE_SRTP "Build with the SRTP transport support." YES)
 cmake_dependent_option(ENABLE_ZRTP "Build with ZRTP support." YES "ENABLE_SRTP" NO)
 cmake_dependent_option(ENABLE_GOCLEAR "Build with ZRTP GoClear message support (RFC 6189 - section 5.11)." YES "ENABLE_ZRTP" NO)
-option(ENABLE_DATACHANNEL "Build with the Datachannel support." NO)
+option(ENABLE_DATACHANNEL "Build with the Datachannel support." YES)
 
 option(ENABLE_SOUND "Can be used to turn off all possible sound backends." YES)
 cmake_dependent_option(ENABLE_ALSA "Enable ALSA support." YES "ENABLE_SOUND;LINUX_OR_BSD" NO)
