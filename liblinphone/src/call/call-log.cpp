@@ -114,6 +114,22 @@ void CallLog::setCallId(const string &callId) {
 	mCallId = callId;
 }
 
+const string &CallLog::getCallInfo() const {
+	return mCallInfo;
+}
+
+void CallLog::setCallInfo(const string &callInfo) {
+	mCallInfo = callInfo;
+}
+
+const string &CallLog::getAssertedIdentity() const {
+	return mAssertedIdentity;
+}
+
+void CallLog::setAssertedIdentity(const string &identity) {
+	mAssertedIdentity = identity;
+}
+
 const string &CallLog::getRefKey() const {
 	return mRefKey;
 }

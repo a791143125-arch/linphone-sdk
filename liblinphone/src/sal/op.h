@@ -170,6 +170,12 @@ public:
 	const std::string &getCallId() const {
 		return mCallId;
 	}
+	const std::string &getCallInfo() const {
+		return mCallInfo;
+	}
+	const std::string &getAssertedIdentity() const {
+		return mAssertedIdentity;
+	}
 	std::string getDialogId() const;
 	int getAddressFamily() const;
 	void setRecvCustomHeaders(SalCustomHeader *ch);
@@ -363,6 +369,8 @@ protected:
 	std::string mRemoteContact;
 	void *mUserPointer = nullptr;
 	std::string mCallId = std::string();
+	std::string mCallInfo = std::string();
+	std::string mAssertedIdentity = std::string();
 	std::string mRealm;
 	SalAddress *mServiceRoute = nullptr; // As defined by rfc3608, might be a list
 	SalCustomHeader *mSentCustomHeaders = nullptr;

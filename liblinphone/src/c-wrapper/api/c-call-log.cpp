@@ -51,6 +51,14 @@ const char *linphone_call_log_get_call_id(const LinphoneCallLog *call_log) {
 	return L_STRING_TO_C(CallLog::toCpp(call_log)->getCallId());
 }
 
+const char *linphone_call_log_get_call_info(const LinphoneCallLog *call_log) {
+	return L_STRING_TO_C(CallLog::toCpp(call_log)->getCallInfo());
+}
+
+const char *linphone_call_log_get_asserted_identity(const LinphoneCallLog *call_log) {
+	return L_STRING_TO_C(CallLog::toCpp(call_log)->getAssertedIdentity());
+}
+
 void linphone_call_log_set_call_id(LinphoneCallLog *call_log, const char *call_id) {
 	CallLog::toCpp(call_log)->setCallId(L_C_TO_STRING(call_id));
 }

@@ -1493,6 +1493,8 @@ void CallSession::configure(LinphoneCallDir direction,
 		op->enableCnxIpTo0000IfSendOnly(!!linphone_config_get_default_int(linphone_core_get_config(core), "sip",
 		                                                                  "cnx_ip_to_0000_if_sendonly_enabled", 0));
 		d->log->setCallId(op->getCallId()); /* Must be known at that time */
+		d->log->setCallInfo(op->getCallInfo());
+		d->log->setAssertedIdentity(op->getAssertedIdentity());
 	}
 
 	if (direction == LinphoneCallOutgoing) {
