@@ -720,7 +720,7 @@ void SalStreamDescription::createActualCfg(const SalMediaDescription *salMediaDe
 						actualCfg.setSctpRemotePort(static_cast<uint16_t>(int_value));
 					}
 				} catch (const std::exception& e) {
-					lError()<<"Application stream remote sctp-port invalid:"<<value;
+					lError()<<"Application stream remote sctp-port invalid:"<<value<<" exception: "<<e.what();
 					actualCfg.disable();
 					addActualConfiguration(actualCfg);
 					return;

@@ -33,7 +33,7 @@
  * Check if Datachannel is supported
  * @return true if Datachannel is supported
  */
-bool ms_datachannel_supported(void);
+MS2_PUBLIC bool ms_datachannel_supported(void);
 
 /**
  * a class to describe the set of datachannel we want to open
@@ -91,7 +91,7 @@ struct _MSDtlsSrtpContext;
  * @param[in]		params		sctp and datachannels parameters
  * @return 		a pointer to the data channel object created, use the ms_datachannel_context_destroy function to destroy
  */
-MSDataChannelHandle *ms_datachannel_create(struct _MSDtlsSrtpContext *dtls_ctx, MSDataChannelParams &&params);
+MS2_PUBLIC MSDataChannelHandle *ms_datachannel_create(struct _MSDtlsSrtpContext *dtls_ctx, MSDataChannelParams &&params);
 
 #else  // __cplusplus : This code if for C only: just declare the MSDataChannelHandle so it can be used as an opaque pointer
 typedef struct MSDataChannel MSDataChannelHandle;
