@@ -188,6 +188,11 @@ if(APPLE_FRAMEWORKS)
 	target_link_libraries(belle-sip PRIVATE ${APPLE_FRAMEWORKS})
 endif()
 
+# prevent conflict with c++17 std::byte and windows header
+if(MSVC)
+	target_compile_definitions(belle-sip PRIVATE _HAS_STD_BYTE=0)
+endif()
+
 if(BUILD_SHARED_LIBS)
 	target_compile_definitions(belle-sip PRIVATE "BELLESIP_EXPORTS")
 	if(APPLE)
@@ -200,7 +205,6 @@ if(BUILD_SHARED_LIBS)
 		)
 	endif()
 	if(MSVC)
-		target_compile_definitions(belle-sip PRIVATE _HAS_STD_BYTE=0)
 		install(FILES $<TARGET_PDB_FILE:belle-sip>
 			DESTINATION ${CMAKE_INSTALL_BINDIR}
 			PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
