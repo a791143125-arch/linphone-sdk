@@ -268,11 +268,15 @@ private:
 		switch (state) {
 			case LinphoneChatRoomStateInstantiated: {
 				LinphoneChatRoomCbs *cbs = linphone_factory_create_chat_room_cbs(linphone_factory_get());
-				linphone_chat_room_cbs_set_participant_registration_subscription_requested(
-				    cbs, chat_room_participant_registration_subscription_requested);
 				setup_chat_room_callbacks(cbs);
+				// Wait for the core to reach the GlobalOn state before assigning callbacks. This method may be called
+				// before exiting the Focus constructor leading to a invalid pointer set in the user data callback field
+				if (linphone_core_get_global_state(core) == LinphoneGlobalOn) {
+					linphone_chat_room_cbs_set_participant_registration_subscription_requested(
+					    cbs, chat_room_participant_registration_subscription_requested);
+					linphone_chat_room_cbs_set_user_data(cbs, focus);
+				}
 				linphone_chat_room_add_callbacks(cr, cbs);
-				linphone_chat_room_cbs_set_user_data(cbs, focus);
 				linphone_chat_room_cbs_unref(cbs);
 				break;
 			}

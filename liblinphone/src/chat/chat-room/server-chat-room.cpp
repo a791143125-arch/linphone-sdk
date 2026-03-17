@@ -170,6 +170,7 @@ void ServerChatRoom::notifyParticipantDeviceRegistration(const std::shared_ptr<c
 		lInfo() << *this << ": device " << *participantDevice << " is not part of any participant of the chatroom.";
 		return;
 	}
+	lInfo() << *this << " has been notified that " << *participantDevice << " has just registerted";
 	static_pointer_cast<ServerConference>(getConference())->updateParticipantDeviceSession(pd, true);
 }
 
@@ -257,6 +258,7 @@ void ServerChatRoom::unSubscribeRegistrationForParticipant(BCTBX_UNUSED(const st
 	mRegistrationSubscriptions.erase(p);
 	getConference()->removeInvitedParticipant(identAddress);
 
+	lInfo() << *this << " received a request to unsubscribe client " << *identAddress;
 	LinphoneAddress *laddr = identAddress->toC();
 	LINPHONE_HYBRID_OBJECT_INVOKE_CBS(ChatRoom, getSharedFromThis(),
 	                                  linphone_chat_room_cbs_get_participant_registration_unsubscription_requested,
@@ -300,6 +302,7 @@ bool ServerChatRoom::subscribeRegistrationForParticipants(
 	}
 
 	for (const auto &addr : requestedAddresses) {
+		lInfo() << *this << " received a request to subscribe client " << addr;
 		const auto laddr = addr.toC();
 		// we 'll put here later a context pointer returned by the callback.
 		mRegistrationSubscriptions[addr.toString()].context = nullptr;
