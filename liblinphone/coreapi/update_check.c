@@ -68,23 +68,9 @@ static void update_check_process_response_event(LinphoneUpdateCheck *update, con
 		if (!content.isEmpty()) {
 			char *body = bctbx_strdup(content.getBodyAsUtf8String().c_str());
 			char *last_version = body;
-			char *url = strchr(body, '\t');
-			char *ptr;
-			if (url == NULL) {
-				ms_error("Bad format for update check answer, cannot find TAB between version and URL");
-				update_check_process_terminated(update, LinphoneVersionUpdateCheckError, NULL, NULL);
-				bctbx_free(body);
-				return;
-			}
-			*url = '\0';
-			url++;
-			ptr = strrchr(url, '\r');
-			if (ptr != NULL) *ptr = '\0';
-			ptr = strrchr(url, '\n');
-			if (ptr != NULL) *ptr = '\0';
 			if (update_is_available(update->current_version, last_version)) {
 				update_check_process_terminated(update, LinphoneVersionUpdateCheckNewVersionAvailable, last_version,
-				                                url);
+				                                NULL);
 			} else {
 				update_check_process_terminated(update, LinphoneVersionUpdateCheckUpToDate, NULL, NULL);
 			}
@@ -96,9 +82,6 @@ static void update_check_process_response_event(LinphoneUpdateCheck *update, con
 }
 
 void linphone_core_check_for_update(LinphoneCore *lc, const char *current_version) {
-	bool_t is_desktop = FALSE;
-	const char *platform = NULL;
-	const char *mobilePlatform = NULL;
 	const char *version_check_url_root = linphone_config_get_string(lc->config, "misc", "version_check_url_root", NULL);
 
 	if (current_version == NULL || strlen(current_version) == 0) {
@@ -109,26 +92,8 @@ void linphone_core_check_for_update(LinphoneCore *lc, const char *current_versio
 	if (version_check_url_root != NULL) {
 		char *version_check_url;
 		LinphoneUpdateCheck *update;
-		bctbx_list_t *item;
-		bctbx_list_t *platform_tags = ms_factory_get_platform_tags(linphone_core_get_ms_factory(lc));
 
-		for (item = platform_tags; item != NULL; item = item->next) {
-			const char *tag = (const char *)item->data;
-			if (strcmp(tag, "win32") == 0) platform = "windows";
-			else if (strcmp(tag, "apple") == 0) platform = "macosx";
-			else if (strcmp(tag, "linux") == 0) platform = "linux";
-			else if (strcmp(tag, "ios") == 0) mobilePlatform = "ios";
-			else if (strcmp(tag, "android") == 0) mobilePlatform = "android";
-			else if (strcmp(tag, "desktop") == 0) is_desktop = TRUE;
-		}
-		if (!is_desktop) {
-			platform = mobilePlatform;
-		}
-		if (platform == NULL) {
-			ms_warning("Update checking is not supported on this platform");
-			return;
-		}
-		version_check_url = bctbx_strdup_printf("%s/%s/RELEASE", version_check_url_root, platform);
+		version_check_url = bctbx_strdup_printf("%s", version_check_url_root);
 		ms_message("Checking for new version at: %s", version_check_url);
 
 		update = linphone_update_check_new(lc, current_version);
