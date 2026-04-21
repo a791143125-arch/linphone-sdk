@@ -318,6 +318,7 @@ static bool_t check_card_capability(AudioDeviceID id, bool_t is_input, char *dev
 	CFStringRef dUID = NULL;
 	bool_t ret = FALSE;
 	OSStatus err;
+	UInt32 totalChannels = 0; // To store the total number of input channels
 	AudioObjectPropertyScope theScope = is_input ? kAudioDevicePropertyScopeInput : kAudioDevicePropertyScopeOutput;
 	AudioObjectPropertyAddress theAddress = {kAudioDevicePropertyDeviceName, theScope, 0};
 
@@ -348,6 +349,12 @@ static bool_t check_card_capability(AudioDeviceID id, bool_t is_input, char *dev
 	}
 
 	UInt32 j;
+	// Calculate the total number of channels across all buffers
+	for (j = 0; j < buflist->mNumberBuffers; j++) {
+		totalChannels += buflist->mBuffers[j].mNumberChannels;
+		ms_message("debugtrace -- listing buffers -- totalChannel=%d", totalChannels);
+	}
+
 	for (j = 0; j < buflist->mNumberBuffers; j++) {
 		if (buflist->mBuffers[j].mNumberChannels > 0) {
 			ret = TRUE;
@@ -442,6 +449,7 @@ static void au_card_detect(MSSndCardManager *m) {
 
 		if (card_capacity) {
 			card = ca_card_new(devname, uidname, devices[i], card_capacity);
+			ms_message("debugtrace -- au_card_detect -- name=%s", card->name);
 			ms_snd_card_manager_add_card(m, card);
 		}
 	}
@@ -470,10 +478,10 @@ static OSStatus readRenderProc(void *inRefCon,
 	OSStatus err;
 
 	lreadAudioBufferList.mNumberBuffers = 1;
-	lreadAudioBufferList.mBuffers[0].mDataByteSize = inNumFrames * sizeof(int16_t) * d->common.nchannels;
+	lreadAudioBufferList.mBuffers[0].mDataByteSize = inNumFrames * sizeof(int16_t) * 4; // d->common.nchannels;
 	rm = allocb(lreadAudioBufferList.mBuffers[0].mDataByteSize, 0);
 	lreadAudioBufferList.mBuffers[0].mData = rm->b_wptr;
-	lreadAudioBufferList.mBuffers[0].mNumberChannels = d->common.nchannels;
+	lreadAudioBufferList.mBuffers[0].mNumberChannels = 4; // d->common.nchannels;
 
 	err = AudioUnitRender(d->common.au, inActionFlags, inTimeStamp, inBusNumber, inNumFrames, &lreadAudioBufferList);
 
@@ -483,13 +491,24 @@ static OSStatus readRenderProc(void *inRefCon,
 		return 0;
 	}
 
+	mblk_t *rm_loopbackonly;
+	rm_loopbackonly = allocb(inNumFrames * sizeof(int16_t), 0);
+	int16_t *src = (int16_t *)rm->b_wptr;
+	int16_t *dst = (int16_t *)rm_loopbackonly->b_wptr;
+	for (UInt32 i = 0; i < inNumFrames; i++) {
+		dst[i] = src[i * 4 + 2]; // Copy only the 3rd channel
+	}
+	rm_loopbackonly->b_wptr += inNumFrames * sizeof(int16_t);
+
 	rm->b_wptr += lreadAudioBufferList.mBuffers[0].mDataByteSize;
 	ms_mutex_lock(&d->common.mutex);
 	if (inTimeStamp->mFlags & kAudioTimeStampSampleTimeValid) {
 		d->timestamp = inTimeStamp->mSampleTime;
 	}
 
-	putq(&d->rq, rm);
+	// Replace the original buffer with the partial buffer made from channel 3's input
+	// putq(&d->rq, rm);
+	putq(&d->rq, rm_loopbackonly);
 	ms_mutex_unlock(&d->common.mutex);
 
 	return 0;
@@ -647,8 +666,8 @@ static int audio_unit_open(MSFilter *f, AUCommon *d, bool_t is_read) {
 	// Keep this afftection in case where mSampleRate is 0. Getter can give 0 but setter doesn't accept it. Use the
 	// default rate.
 	asbd.mSampleRate = d->rate;
-	asbd.mBytesPerPacket = asbd.mBytesPerFrame = 2 * d->nchannels;
-	asbd.mChannelsPerFrame = d->nchannels;
+	asbd.mBytesPerPacket = asbd.mBytesPerFrame = 2 * 4; // d->nchannels;
+	asbd.mChannelsPerFrame = 4;                         // d->nchannels;
 	asbd.mBitsPerChannel = 16;
 	asbd.mFormatID = kAudioFormatLinearPCM;
 	asbd.mFormatFlags = kAudioFormatFlagIsPacked | kAudioFormatFlagIsSignedInteger;

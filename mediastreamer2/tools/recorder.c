@@ -102,6 +102,16 @@ int main(int argc, char *argv[]) {
 	ms_factory_create_event_queue(factory);
 
 	if (audio_enabled) {
+		/*
+		MSSndCardManager *cardManager = ms_factory_get_snd_card_manager(factory);
+		MSList *evo4 = ms_snd_card_manager_get_all_cards_with_name(
+		    cardManager, "EVO4 (AppleUSBAudioEngine:Audient:EVO4:1122000:1,2)");
+		sndcard = (MSSndCard *)evo4->data;
+
+		// MSList *macMicrophone = ms_snd_card_manager_get_all_cards_with_name(cardManager,"MacBook Pro Microphone
+		// (BuiltInMicrophoneDevice)"); sndcard = (MSSndCard*) macMicrophone->data;
+		ms_message("capture card is %s", sndcard->name);
+		*/
 		sndcard = ms_snd_card_manager_get_default_capture_card(ms_factory_get_snd_card_manager(factory));
 	}
 	if (video_enabled) {
@@ -130,6 +140,7 @@ int main(int argc, char *argv[]) {
 		int milliseconds = (elapsed % 1000ULL);
 		fprintf(stdout, "Time: %2i mn %2i.%3i seconds\r", minutes, seconds, milliseconds);
 		fflush(stdout);
+		active = seconds < 7;
 	}
 	ms_media_recorder_pause(recorder);
 	fprintf(stdout, "\nStopped.\n");
