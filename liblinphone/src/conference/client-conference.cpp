@@ -330,8 +330,13 @@ std::shared_ptr<ConferenceInfo> ClientConference::createConferenceInfo() const {
 	return createConferenceInfoWithCustomParticipantList(organizer, getFullParticipantList());
 }
 
-MediaSessionParams *ClientConference::createDefaultMediaParams() const {
-	MediaSessionParams *msp = new MediaSessionParams();
+MediaSessionParams *ClientConference::createDefaultMediaParams(const std::shared_ptr<Call> &call) {
+	MediaSessionParams *msp = nullptr;
+	if (call) {
+		msp = call->createCallParams();
+	} else {
+		msp = new MediaSessionParams();
+	}
 	msp->initDefault(getCore(), LinphoneCallOutgoing);
 	if (mConfParams->chatEnabled()) {
 		msp->addCustomContactParameter(Conference::kTextParameter);
@@ -351,6 +356,11 @@ MediaSessionParams *ClientConference::createDefaultMediaParams() const {
 	}
 	if (!!linphone_core_get_add_admin_information_to_contact(getCore()->getCCore())) {
 		msp->addCustomContactParameter(Conference::kAdminParameter, Utils::toString(mMe->isAdmin()));
+	}
+
+	const auto &account = getAccount();
+	if (account) {
+		msp->setAccount(account);
 	}
 
 	// Copy conference capabilities as the application didn't specify any parameter to pass on to the call
@@ -638,16 +648,10 @@ void ClientConference::callFocus() {
 		std::shared_ptr<Address> focusAddress = mFocus->getAddress();
 		lInfo() << *this << ": Calling the conference focus (" << *focusAddress
 		        << ") as there is no session towards the focus yet";
-		LinphoneCallParams *params = linphone_core_create_call_params(getCore()->getCCore(), nullptr);
-		if (!!linphone_core_get_add_admin_information_to_contact(getCore()->getCCore())) {
-			// Participant with the focus call is admin
-			L_GET_CPP_PTR_FROM_C_OBJECT(params)->addCustomContactParameter(Conference::kAdminParameter,
-			                                                               Utils::toString(true));
-		}
-		linphone_call_params_enable_video(params, mConfParams->videoEnabled());
+		auto msp = createDefaultMediaParams();
 		Conference::setUtf8Subject(mPendingSubject);
-		inviteAddresses({}, params);
-		linphone_call_params_unref(params);
+		inviteAddresses({}, msp);
+		delete msp;
 	}
 }
 
@@ -2140,7 +2144,7 @@ void ClientConference::notifyReceived(const std::shared_ptr<Event> &notifyLev, c
 #endif // _MSC_VER
 
 int ClientConference::inviteAddresses(const std::list<std::shared_ptr<Address>> &addresses,
-                                      const LinphoneCallParams *params) {
+                                      const MediaSessionParams *params) {
 	const auto &account = mConfParams->getAccount();
 	const auto organizer =
 	    account ? account->getAccountParams()->getIdentityAddress() : Address::create(getCore()->getIdentityAddress());
@@ -2172,7 +2176,7 @@ int ClientConference::inviteAddresses(const std::list<std::shared_ptr<Address>> 
 	}
 	setMainSession(session);
 	if (params) {
-		mJoiningParams = L_GET_CPP_PTR_FROM_C_OBJECT(params)->clone();
+		mJoiningParams = params->clone();
 	}
 	return 0;
 }
@@ -2467,24 +2471,12 @@ int ClientConference::enter() {
 		}
 	} else {
 		/* Start a new call by indicating that it has to be put into the conference directly */
-		LinphoneCallParams *new_params = linphone_core_create_call_params(getCore()->getCCore(), nullptr);
-		linphone_call_params_enable_video(new_params, mConfParams->videoEnabled());
-		linphone_call_params_set_in_conference(new_params, FALSE);
-		if (!!linphone_core_get_add_admin_information_to_contact(getCore()->getCCore())) {
-			L_GET_CPP_PTR_FROM_C_OBJECT(new_params)
-			    ->addCustomContactParameter(Conference::kAdminParameter, Utils::toString(getMe()->isAdmin()));
-		}
-
-		const std::shared_ptr<Address> &address = getConferenceAddress();
-		const string &confId = address->getUriParamValue(Conference::kConfIdParameter);
-		linphone_call_params_set_conference_id(new_params, confId.c_str());
-
+		auto msp = createDefaultMediaParams();
 		std::string subject = getMe()->isAdmin() ? getUtf8Subject() : std::string();
-
-		linphone_core_invite_address_with_params_2(getCore()->getCCore(), address->toC(), new_params,
+		const std::shared_ptr<Address> &address = getConferenceAddress();
+		linphone_core_invite_address_with_params_2(getCore()->getCCore(), address->toC(), L_GET_C_BACK_PTR(msp),
 		                                           L_STRING_TO_C(subject), nullptr);
-
-		linphone_call_params_unref(new_params);
+		delete msp;
 	}
 	return 0;
 }

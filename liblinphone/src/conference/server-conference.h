@@ -50,7 +50,7 @@ public:
 	virtual ~ServerConference();
 
 	int inviteAddresses(const std::list<std::shared_ptr<Address>> &addresses,
-	                    const LinphoneCallParams *params) override;
+	                    const MediaSessionParams *params) override;
 	bool dialOutAddresses(const std::list<std::shared_ptr<Address>> &addressList) override;
 	void inviteDevice(const std::shared_ptr<ParticipantDevice> &device);
 	void byeDevice(const std::shared_ptr<ParticipantDevice> &device);
@@ -276,6 +276,7 @@ private:
 	void addLocalEndpoint();
 	void removeLocalEndpoint();
 
+	MediaSessionParams *createDefaultMediaParams(const std::shared_ptr<Call> &call = nullptr) override;
 	std::shared_ptr<ConferenceInfo> createConferenceInfo() const override;
 	bool tryAddMeDevice();
 
