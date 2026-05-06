@@ -21,6 +21,8 @@
 #include "belle_sip_internal.h"
 #include "sdp/parser.hh"
 
+#include <charconv>
+
 struct _belle_sdp_mime_parameter {
 	belle_sip_object_t base;
 	int rate;
@@ -938,6 +940,44 @@ GET_SET_STRING(belle_sdp_info, value);
 /************************
  * media
  ***********************/
+namespace {
+const char *belle_sip_fmt_to_string(long fmt) {
+	switch (fmt) {
+		case BELLE_SDP_FMT_WEBRTC_DATACHANNEL:
+			return "webrtc-datachannel";
+		default:
+			return "unknown";
+	}
+}
+
+int belle_sip_string_to_fmt(const char *fmt) {
+	// the fmt should be a number in range 0-127
+	int ret = 0;
+	auto [ptr,ec] = std::from_chars(fmt, fmt + strlen(fmt), ret);
+	if (ec == std::errc()) { // parsing successful
+		if (ret >=0 && ret < 128) {
+			return ret;
+		} else {
+			belle_sip_warning("Out of range fmt parsed in media line : %s", fmt);
+			return BELLE_SDP_FMT_INVALID;
+		}
+	} else if (ec == std::errc::result_out_of_range) { // out of range of integer
+		belle_sip_warning("Out of range fmt parsed in media line : %s", fmt);
+		return BELLE_SDP_FMT_INVALID;
+	} else if (ec == std::errc::invalid_argument) {
+		// not an integer, is it a string we support?
+		if (strcmp(fmt, "webrtc-datachannel") == 0) {
+			return BELLE_SDP_FMT_WEBRTC_DATACHANNEL;
+		} else { // unknown protocol
+			belle_sip_warning("Unknown non numeric fmt parsed in media line : %s", fmt);
+			return BELLE_SDP_FMT_INVALID;
+		}
+	}
+	return BELLE_SDP_FMT_INVALID;
+}
+
+} // anonymous namespace
+
 struct _belle_sdp_media {
 	belle_sip_object_t base;
 	const char *media_type;
@@ -956,7 +996,7 @@ void belle_sdp_media_set_media_formats(belle_sdp_media_t *media, belle_sip_list_
 	media->media_formats = formats;
 }
 void belle_sdp_media_media_formats_add(belle_sdp_media_t *media, const char *fmt) {
-	media->media_formats = belle_sip_list_append(media->media_formats, (void *)(intptr_t)atoi(fmt));
+	media->media_formats = belle_sip_list_append(media->media_formats, (void *)(intptr_t)belle_sip_string_to_fmt(fmt));
 }
 void belle_sdp_media_destroy(belle_sdp_media_t *media) {
 	DESTROY_STRING(media, media_type)
@@ -990,7 +1030,11 @@ belle_sip_error_code belle_sdp_media_marshal(belle_sdp_media_t *media, char *buf
 	if (error != BELLE_SIP_OK) return error;
 
 	for (; list != NULL; list = list->next) {
-		error = belle_sip_snprintf(buff, buff_size, offset, " %li", (long)(intptr_t)list->data);
+		if ((long)(intptr_t)list->data >= 0) {
+			error = belle_sip_snprintf(buff, buff_size, offset, " %li", (long)(intptr_t)list->data);
+		} else {
+			error = belle_sip_snprintf(buff, buff_size, offset, " %s", belle_sip_fmt_to_string((long)(intptr_t)list->data));
+		}
 		if (error != BELLE_SIP_OK) return error;
 	}
 
@@ -1009,7 +1053,12 @@ belle_sdp_media_t *belle_sdp_media_create(const char *media_type,
 	belle_sdp_media_set_media_port(media, media_port);
 	belle_sdp_media_set_port_count(media, port_count);
 	belle_sdp_media_set_protocol(media, protocol);
-	if (static_media_formats) belle_sdp_media_set_media_formats(media, static_media_formats);
+	if (static_media_formats) {
+		belle_sdp_media_set_media_formats(media, static_media_formats);
+		size_t offset=0;
+		char buff[4096];
+		belle_sdp_media_marshal(media, buff, 4096, &offset);
+	}
 	return media;
 }
 GET_SET_STRING(belle_sdp_media, media_type);

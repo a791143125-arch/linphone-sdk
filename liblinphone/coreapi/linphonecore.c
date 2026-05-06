@@ -2369,6 +2369,9 @@ handle_missing_codecs(LinphoneCore *lc, const bctbx_list_t *default_list, bctbx_
 		case MSText:
 			name = "add_missing_text_codecs";
 			break;
+		case MSApplication:
+			name = "add_missing_application_codecs";
+			break;
 		case MSUnknownMedia:
 			break;
 	}
@@ -9259,6 +9262,8 @@ const char *linphone_stream_type_to_string(const LinphoneStreamType type) {
 			return "LinphoneStreamTypeVideo";
 		case LinphoneStreamTypeText:
 			return "LinphoneStreamTypeText";
+		case LinphoneStreamTypeApplication:
+			return "LinphoneStreamTypeApplication";
 		case LinphoneStreamTypeUnknown:
 			return "LinphoneStreamTypeUnknown";
 	}

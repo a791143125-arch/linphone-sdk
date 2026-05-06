@@ -250,6 +250,10 @@ void ms_factory_init_voip(MSFactory *obj) {
 	if (obj->voip_initd) return;
 
 	ms_srtp_init();
+#ifdef HAVE_DATACHANNEL
+	ms_sctp_init();
+#endif // HAVE_DATACHANNEL
+
 	obj->devices_info = ms_devices_info_new();
 #ifdef __ANDROID__
 	obj->android_sound_utils = ms_android_sound_utils_create(obj);
@@ -337,6 +341,9 @@ void ms_factory_uninit_voip(MSFactory *obj) {
 		ms_video_presets_manager_destroy(obj->video_presets_manager);
 #endif
 		ms_srtp_shutdown();
+#ifdef HAVE_DATACHANNEL
+		ms_sctp_shutdown();
+#endif // HAVE_DATACHANNEL
 		if (obj->devices_info) {
 			ms_devices_info_free(obj->devices_info);
 			obj->devices_info = NULL;

@@ -100,6 +100,9 @@ MediaStream *Call::getMediaStream(LinphoneStreamType type) const {
 		case LinphoneStreamTypeText:
 			s = sg.lookupMainStreamInterface<MS2Stream>(SalText);
 			break;
+		case LinphoneStreamTypeApplication:
+			s = sg.lookupMainStreamInterface<MS2Stream>(SalApplication);
+			break;
 		default:
 			break;
 	}
@@ -122,6 +125,9 @@ int Call::getMediaStreamIndex(LinphoneStreamType type) const {
 			break;
 		case LinphoneStreamTypeText:
 			s = sg.lookupMainStream(SalText);
+			break;
+		case LinphoneStreamTypeApplication:
+			s = sg.lookupMainStream(SalApplication);
 			break;
 		default:
 			break;
@@ -146,6 +152,9 @@ size_t Call::getMediaStreamsNb(LinphoneStreamType type) const {
 			break;
 		case LinphoneStreamTypeText:
 			nType = SalText;
+			break;
+		case LinphoneStreamTypeApplication:
+			nType = SalApplication;
 			break;
 		default:
 			return nb;
@@ -275,6 +284,7 @@ shared_ptr<Call> Call::startReferredCall(const MediaSessionParams *params) {
 		msp.initDefault(getCore(), LinphoneCallOutgoing);
 		msp.enableAudio(getCurrentParams()->audioEnabled());
 		msp.enableVideo(getCurrentParams()->videoEnabled());
+		msp.enableDataChannel(getCurrentParams()->dataChannelEnabled());
 		msp.setAccount(getCurrentParams()->getAccount());
 	}
 

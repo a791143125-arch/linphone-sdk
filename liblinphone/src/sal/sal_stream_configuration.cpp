@@ -29,9 +29,6 @@ LINPHONE_BEGIN_NAMESPACE
 #define keywordcmp(key, b) strncmp(key, b, sizeof(key))
 
 SalStreamConfiguration::SalStreamConfiguration() {
-	pad[0] = false;
-	pad[1] = false;
-
 	payloads.clear();
 	crypto.clear();
 }
@@ -55,8 +52,6 @@ SalStreamConfiguration::SalStreamConfiguration(const SalStreamConfiguration &oth
 	max_rate = other.max_rate;
 	bundle_only = other.bundle_only;
 	implicit_rtcp_fb = other.implicit_rtcp_fb;
-	pad[0] = other.pad[0];
-	pad[1] = other.pad[1];
 	rtcp_fb = other.rtcp_fb;
 	rtcp_xr = other.rtcp_xr;
 	mid = other.mid;
@@ -78,9 +73,13 @@ SalStreamConfiguration::SalStreamConfiguration(const SalStreamConfiguration &oth
 	acapIndexes = other.acapIndexes;
 	delete_media_attributes = other.delete_media_attributes;
 	delete_session_attributes = other.delete_session_attributes;
+	sctp_local_port = other.sctp_local_port;
+	sctp_remote_port = other.sctp_remote_port;
+	dcmap = other.dcmap;
 }
 
 SalStreamConfiguration &SalStreamConfiguration::operator=(const SalStreamConfiguration &other) {
+	index = other.index;
 	proto = other.proto;
 	proto_other = other.proto_other;
 	rtp_ssrc = other.rtp_ssrc;
@@ -93,8 +92,8 @@ SalStreamConfiguration &SalStreamConfiguration::operator=(const SalStreamConfigu
 	max_rate = other.max_rate;
 	bundle_only = other.bundle_only;
 	implicit_rtcp_fb = other.implicit_rtcp_fb;
-	pad[0] = other.pad[0];
-	pad[1] = other.pad[1];
+	delete_media_attributes = other.delete_media_attributes;
+	delete_session_attributes = other.delete_session_attributes;
 	rtcp_fb = other.rtcp_fb;
 	rtcp_xr = other.rtcp_xr;
 	mid = other.mid;
@@ -111,11 +110,107 @@ SalStreamConfiguration &SalStreamConfiguration::operator=(const SalStreamConfigu
 	dtls_fingerprint = other.dtls_fingerprint;
 	dtls_role = other.dtls_role;
 	ttl = other.ttl;
-	index = other.index;
 	tcapIndex = other.tcapIndex;
 	acapIndexes = other.acapIndexes;
+	sctp_local_port = other.sctp_local_port;
+	sctp_remote_port = other.sctp_remote_port;
+	dcmap = other.dcmap;
+
+	return *this;
+}
+
+SalStreamConfiguration::SalStreamConfiguration(SalStreamConfiguration&& other) noexcept
+	: index(other.index),
+	  proto(std::move(other.proto)),
+	  proto_other(std::move(other.proto_other)),
+	  rtp_ssrc(other.rtp_ssrc),
+	  rtcp_cname(std::move(other.rtcp_cname)),
+	  payloads(std::move(other.payloads)),
+	  ptime(other.ptime),
+	  maxptime(other.maxptime),
+	  dir(other.dir),
+	  crypto(std::move(other.crypto)),
+	  max_rate(other.max_rate),
+	  bundle_only(other.bundle_only),
+	  implicit_rtcp_fb(other.implicit_rtcp_fb),
+	  delete_media_attributes(other.delete_media_attributes),
+	  delete_session_attributes(other.delete_session_attributes),
+	  rtcp_fb(std::move(other.rtcp_fb)),
+	  rtcp_xr(std::move(other.rtcp_xr)),
+	  mid(std::move(other.mid)),
+	  mid_rtp_ext_header_id(other.mid_rtp_ext_header_id),
+	  mixer_to_client_extension_id(other.mixer_to_client_extension_id),
+	  client_to_mixer_extension_id(other.client_to_mixer_extension_id),
+	  frame_marking_extension_id(other.frame_marking_extension_id),
+	  conference_ssrc(other.conference_ssrc),
+	  set_nortpproxy(other.set_nortpproxy),
+	  rtcp_mux(other.rtcp_mux),
+	  haveZrtpHash(other.haveZrtpHash),
+	  haveLimeIk(other.haveLimeIk),
+	  dtls_fingerprint(std::move(other.dtls_fingerprint)),
+	  dtls_role(other.dtls_role),
+	  ttl(other.ttl),
+	  dcmap(std::move(other.dcmap)),
+	  sctp_local_port(other.sctp_local_port),
+	  sctp_remote_port(other.sctp_remote_port),
+	  tcapIndex(other.tcapIndex),
+	  acapIndexes(std::move(other.acapIndexes))
+{
+	// Copy the zrtphash array
+	memcpy(zrtphash, other.zrtphash, sizeof(zrtphash));
+	memset(other.zrtphash, 0, sizeof(other.zrtphash));
+
+	// Reset the source object's payloads to avoid double-free
+	other.payloads.clear();
+}
+
+SalStreamConfiguration& SalStreamConfiguration::operator=(SalStreamConfiguration&& other) noexcept {
+	if (this == &other) {
+		return *this;
+	}
+
+	// Free existing resources in the current object
+	PayloadTypeHandler::clearPayloadList(payloads);
+
+	index = other.index;
+	proto = other.proto;
+	proto_other = std::move(other.proto_other);
+	rtp_ssrc = other.rtp_ssrc;
+	rtcp_cname = std::move(other.rtcp_cname);
+	payloads = std::move(other.payloads);
+	ptime = other.ptime;
+	maxptime = other.maxptime;
+	dir = other.dir;
+	crypto = std::move(other.crypto);
+	max_rate = other.max_rate;
+	bundle_only = other.bundle_only;
+	implicit_rtcp_fb = other.implicit_rtcp_fb;
 	delete_media_attributes = other.delete_media_attributes;
 	delete_session_attributes = other.delete_session_attributes;
+	rtcp_fb = std::move(other.rtcp_fb);
+	rtcp_xr = std::move(other.rtcp_xr);
+	mid = std::move(other.mid);
+	mid_rtp_ext_header_id = other.mid_rtp_ext_header_id;
+	mixer_to_client_extension_id = other.mixer_to_client_extension_id;
+	client_to_mixer_extension_id = other.client_to_mixer_extension_id;
+	frame_marking_extension_id = other.frame_marking_extension_id;
+	conference_ssrc = other.conference_ssrc;
+	set_nortpproxy = other.set_nortpproxy;
+	rtcp_mux = other.rtcp_mux;
+	haveZrtpHash = other.haveZrtpHash;
+	haveLimeIk = other.haveLimeIk;
+	memcpy(zrtphash, other.zrtphash, sizeof(zrtphash));
+	dtls_fingerprint = std::move(other.dtls_fingerprint);
+	dtls_role = other.dtls_role;
+	ttl = other.ttl;
+	tcapIndex = other.tcapIndex;
+	acapIndexes = std::move(other.acapIndexes);
+	sctp_local_port = other.sctp_local_port;
+	sctp_remote_port = other.sctp_remote_port;
+	dcmap = std::move(other.dcmap);
+
+	other.payloads.clear();
+	memset(other.zrtphash, 0, sizeof(other.zrtphash));
 
 	return *this;
 }
@@ -232,6 +327,12 @@ int SalStreamConfiguration::equal(const SalStreamConfiguration &other) const {
 	if (frame_marking_extension_id != other.frame_marking_extension_id)
 		result |= SAL_MEDIA_DESCRIPTION_FRAME_MARKING_EXTENSION_CHANGED;
 
+	/* datachannel */
+	if (sctp_local_port != other.sctp_local_port || sctp_remote_port != other.sctp_remote_port)
+		result |= SAL_MEDIA_DESCRIPTION_DATACHANNEL_CHANGED;
+	if (dcmap != other.dcmap)
+		result |= SAL_MEDIA_DESCRIPTION_DATACHANNEL_CHANGED;
+
 	return result;
 }
 
@@ -252,6 +353,7 @@ bool SalStreamConfiguration::hasAvpf() const {
 		case SalProtoRtpAvp:
 		case SalProtoRtpSavp:
 		case SalProtoUdpTlsRtpSavp:
+		case SalProtoUdpDtlsSctp:
 		case SalProtoOther:
 			return false;
 	}
@@ -272,6 +374,7 @@ bool SalStreamConfiguration::hasSrtp() const {
 		case SalProtoRtpAvpf:
 		case SalProtoUdpTlsRtpSavpf:
 		case SalProtoUdpTlsRtpSavp:
+		case SalProtoUdpDtlsSctp:
 		case SalProtoOther:
 			return false;
 	}
@@ -282,7 +385,24 @@ bool SalStreamConfiguration::hasDtls() const {
 	switch (proto) {
 		case SalProtoUdpTlsRtpSavpf:
 		case SalProtoUdpTlsRtpSavp:
+		case SalProtoUdpDtlsSctp:
 			return true;
+		case SalProtoRtpSavp:
+		case SalProtoRtpSavpf:
+		case SalProtoRtpAvp:
+		case SalProtoRtpAvpf:
+		case SalProtoOther:
+			return false;
+	}
+	return false;
+}
+
+bool SalStreamConfiguration::hasDataChannel() const {
+	switch (proto) {
+		case SalProtoUdpDtlsSctp:
+			return true;
+		case SalProtoUdpTlsRtpSavpf:
+		case SalProtoUdpTlsRtpSavp:
 		case SalProtoRtpSavp:
 		case SalProtoRtpSavpf:
 		case SalProtoRtpAvp:
@@ -311,6 +431,7 @@ bool SalStreamConfiguration::hasZrtp() const {
 			case SalProtoUdpTlsRtpSavp:
 			case SalProtoRtpSavp:
 			case SalProtoRtpSavpf:
+			case SalProtoUdpDtlsSctp:
 			case SalProtoOther:
 				return false;
 		}
@@ -530,6 +651,206 @@ SalSrtpCryptoAlgo SalStreamConfiguration::fillStrpCryptoAlgoFromString(const std
 		lError() << "Unable to extract crypto key informations from crypto argument value " << value;
 	}
 	return keyEnc;
+}
+uint16_t SalStreamConfiguration::getSctpLocalPort() const {
+	return sctp_local_port;
+}
+uint16_t SalStreamConfiguration::getSctpRemotePort() const {
+	return sctp_remote_port;
+}
+void SalStreamConfiguration::setSctpLocalPort(uint16_t port) {
+	sctp_local_port = port;
+}
+void SalStreamConfiguration::setSctpRemotePort(uint16_t port) {
+	sctp_remote_port = port;
+}
+
+const std::vector<SalDataChannelMap> &SalStreamConfiguration::getDataChannelMap() const {
+	return dcmap;
+}
+
+bool SalDataChannelMap::operator==(const SalDataChannelMap &other) const {
+	return 	dcsa == other.dcsa 
+		&& label == other.label
+		&& subprotocol == other.subprotocol
+		&& max_retr == other.max_retr
+		&& max_time == other.max_time
+		&& stream_id == other.stream_id
+		&& priority == other.priority
+		&& ordered == other.ordered;
+}
+// produce a string to be set in sdp : 
+std::string SalDataChannelMap::toSdpDcmapAttr() const {
+	std::string ret = std::to_string(stream_id) + ' ';
+	if (ordered) {
+		ret += R"(ordered=")" + std::string((*ordered?"true":"false")) + R"(";)";
+	}
+	if (!subprotocol.empty()) {
+		ret += R"(subprotocol=")" + subprotocol + R"(";)";
+	}
+	if (!label.empty()) {
+		ret += R"(label=")" + label + R"(";)";
+	}
+	if (max_retr) {
+		ret += R"(max-retr=)" + std::to_string(*max_retr) + R"(;)";
+	}
+	if (max_time) {
+		ret += R"(max-time=)" + std::to_string(*max_time) + R"(;)";
+	}
+	if (priority) {
+		ret += R"(priority=)" + std::to_string(*priority) + R"(;)";
+	}
+	// remove the last ; if any (or the ' ' after ther stream id if we have only that)
+	ret.pop_back();
+	return ret;
+}
+std::vector<std::string> SalDataChannelMap::toSdpDcsaAttrs() const {
+	std::vector<std::string> ret{};
+	for (const auto &dcsaStr : dcsa) {
+		ret.push_back(std::to_string(stream_id)+' '+dcsaStr);
+	}
+	return ret;
+}
+
+// local helpers function
+namespace {
+	std::string decodeEscapedString(const std::string &s) {
+		if (s.size() < 2 || s.front() != '"' || s.back() != '"') throw std::runtime_error("dcmap invalid string param "+s);
+        
+		// remove quotes
+		std::string raw = s.substr(1, s.size() - 2);
+		std::string result;
+		result.reserve(raw.size());
+
+		for (size_t i = 0; i < raw.size(); ++i) {
+			// Parse escaped-char: % HEXDIG HEXDIG
+			if (raw[i] == '%') {
+				if (i + 2 >= raw.size()) throw std::runtime_error("dcmap attribute "+s+": Invalid escape sequence");
+                    		result += static_cast<char>(std::stoi(raw.substr(i + 1, 2), nullptr, 16));
+                    		i += 2;
+            		} else {
+                		result += raw[i];
+           	 	}
+        	}
+        	return result;
+    	}
+} // anonymous namespace
+
+// parse a parameter name=value or name="value"
+void SalDataChannelMap::parseParam(const std::string &s) {
+	// split into name/value
+	auto pos = s.find('=');
+	if (pos == std::string::npos) return;
+	std::string name = s.substr(0, pos);
+	std::string val = s.substr(pos + 1);
+
+	if (name == "ordered") {
+		ordered = (val == "true");
+	} else if (name == "label") {
+		label = decodeEscapedString(val);
+        } else if (name == "subprotocol") {
+		subprotocol = decodeEscapedString(val);
+	} else if (name == "max-retr") {
+		max_retr = std::stoul(val);
+	} else if (name == "max-time") {
+		max_time = std::stoul(val);
+	} else if (name == "priority") {
+		unsigned long p = std::stoul(val);
+		if (p <= 65535) priority = static_cast<uint16_t>(p);
+	} else {
+		throw std::runtime_error("Invalid dcmap parameter "+s);
+	}
+}
+
+// build from the attribute value
+std::optional<SalDataChannelMap> SalDataChannelMap::from_string(const std::string &attrValue) {
+	std::stringstream ss(attrValue);
+	// stream-id (must be < 2^16) is mandatory
+	uint32_t long_id;
+	if (!(ss >> long_id) || long_id > 65535) {
+		return std::nullopt;
+	}
+
+	SalDataChannelMap dcmap(static_cast<uint16_t>(long_id));
+
+	// get options (remove possible whitespace)
+	std::string options;
+	std::getline(ss >> std::ws, options);
+	std::stringstream oss(options);
+
+	// Parse options
+	std::string option;
+        while (std::getline(oss>>std::ws, option, ';')) {
+		try {
+			dcmap.parseParam(option);
+		} catch (const std::exception& e) {
+     		   lError()<<"dcmap attribute parsing failed on "<<option<<" : "<<e.what();
+		}
+	}
+
+	// Check mutual exclusivity
+	if (dcmap.max_retr && dcmap.max_time) {
+		return std::nullopt;
+    	}
+	return dcmap;
+}
+	
+void SalDataChannelMap::setLabel(const std::string &s) {
+	label = s;
+}
+void SalDataChannelMap::setSubprotocol(const std::string &s) {
+	subprotocol = s;
+}
+void SalDataChannelMap::setMaxRetr(uint32_t value) {
+	if (max_time) {
+		lError()<<"Dcmap SDP attribute error: max_retr and max_time are mutually exclusive. Ignore setMaxRetr to "<<value;
+	} else {
+		max_retr = value;
+	}
+}
+void SalDataChannelMap::setMaxTime(uint32_t value) {
+	if (max_retr) {
+		lError()<<"Dcmap SDP attribute error: max_retr and max_time are mutually exclusive. Ignore setMaxTime to "<<value;
+	} else {
+		max_time = value;
+	}
+}
+void SalDataChannelMap::setPriority(uint16_t value) {
+	priority = value;
+}
+void SalDataChannelMap::setOrdered(bool value) {
+	ordered = value;
+}
+	
+uint16_t SalDataChannelMap::getId() const {
+	return stream_id;
+}
+const std::string &SalDataChannelMap::getLabel() const {
+	return label;
+}
+const std::string &SalDataChannelMap::getSubprotocol() const {
+	return subprotocol;
+}
+std::optional<uint32_t> SalDataChannelMap::getMaxRetr() const {
+	return max_retr;
+}
+std::optional<uint32_t> SalDataChannelMap::getMaxTime() const {
+	return max_time;
+}
+std::optional<uint16_t> SalDataChannelMap::getPriority() const {
+	return priority;
+}
+std::optional<bool> SalDataChannelMap::getOrdered() const {
+	return ordered;
+}
+// what kind of datachannel can we accept
+// Todo: should that be settable from liblinphone API
+bool SalDataChannelMap::isSupported() const {
+	// For now we support only our custom subprotocol: x-linphone-sndlvl, it must come with a maxtime
+	if ((subprotocol == "x-linphone-sndlvl")
+		&& (max_time != std::nullopt)
+		&& (max_time.value()> 0)) return true;
+	return false;
 }
 
 LINPHONE_END_NAMESPACE

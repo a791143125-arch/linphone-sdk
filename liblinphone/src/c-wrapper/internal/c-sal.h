@@ -91,7 +91,7 @@ typedef enum {
 	SalStreamInactive = 3
 } SalStreamDir;
 
-typedef enum { SalAudio = 0, SalVideo = 1, SalText = 2, SalOther = 3 } SalStreamType;
+typedef enum { SalAudio = 0, SalVideo = 1, SalText = 2, SalApplication = 3, SalOther = 4 } SalStreamType;
 
 typedef enum {
 	SalProtoRtpAvp = 0,
@@ -100,7 +100,8 @@ typedef enum {
 	SalProtoRtpSavpf = 3,
 	SalProtoUdpTlsRtpSavp = 4,
 	SalProtoUdpTlsRtpSavpf = 5,
-	SalProtoOther = 6
+	SalProtoUdpDtlsSctp = 6,
+	SalProtoOther = 7
 } SalMediaProto;
 
 typedef enum {
@@ -143,6 +144,7 @@ typedef enum {
 #define SAL_MEDIA_DESCRIPTION_FRAME_MARKING_EXTENSION_CHANGED (1 << 14)
 #define SAL_MEDIA_DESCRIPTION_CONTENT_CHANGED (1 << 15)
 #define SAL_MEDIA_DESCRIPTION_DIRECTION_CHANGED (1 << 16)
+#define SAL_MEDIA_DESCRIPTION_DATACHANNEL_CHANGED (1 << 17)
 
 #ifdef __cplusplus
 extern "C" {

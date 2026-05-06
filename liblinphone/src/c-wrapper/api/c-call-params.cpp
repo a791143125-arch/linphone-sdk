@@ -283,6 +283,18 @@ void linphone_call_params_enable_video(LinphoneCallParams *params, bool_t enable
 	L_GET_CPP_PTR_FROM_C_OBJECT(params)->enableVideo(!!enabled);
 }
 
+void linphone_call_params_enable_datachannel(LinphoneCallParams *params, bool_t enabled) {
+	L_GET_CPP_PTR_FROM_C_OBJECT(params)->enableDataChannel(!!enabled);
+}
+
+bool_t linphone_call_params_add_datachannel(LinphoneCallParams *params, const char *dcmap) {
+	return L_GET_CPP_PTR_FROM_C_OBJECT(params)->addDataChannel(dcmap);
+}
+
+void linphone_call_params_set_datachannel_sctp_port(LinphoneCallParams *params, uint16_t port) {
+	L_GET_CPP_PTR_FROM_C_OBJECT(params)->setDataChannelSctpPort(port);
+}
+
 const char *linphone_call_params_get_custom_header(const LinphoneCallParams *params, const char *header_name) {
 	return L_GET_CPP_PTR_FROM_C_OBJECT(params)->getCustomHeader(header_name);
 }
@@ -426,6 +438,10 @@ bool_t linphone_call_params_screen_sharing_enabled(const LinphoneCallParams *par
 
 bool_t linphone_call_params_video_enabled(const LinphoneCallParams *params) {
 	return L_GET_CPP_PTR_FROM_C_OBJECT(params)->videoEnabled();
+}
+
+bool_t linphone_call_params_datachannel_enabled(const LinphoneCallParams *params) {
+	return L_GET_CPP_PTR_FROM_C_OBJECT(params)->dataChannelEnabled();
 }
 
 bool_t linphone_call_params_fec_enabled(const LinphoneCallParams *params) {

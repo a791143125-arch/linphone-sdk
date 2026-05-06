@@ -554,6 +554,7 @@ set(LINPHONE_CXX_OBJECTS_SOURCE_FILES
 	conference/session/ms2-stream.cpp
 	conference/session/audio-stream.cpp
 	conference/session/rtt-stream.cpp
+	conference/session/application-stream.cpp
 	conference/session/media-session.cpp
 	conference/session/mixer-session.cpp
 	conference/session/audio-mixer.cpp

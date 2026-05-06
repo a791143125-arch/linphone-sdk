@@ -47,6 +47,9 @@ void MediaSessionParamsPrivate::clone(const MediaSessionParamsPrivate *src) {
 	screenSharingEnabled = src->screenSharingEnabled;
 	videoEnabled = src->videoEnabled;
 	videoDirection = src->videoDirection;
+	dataChannelEnabled = src->dataChannelEnabled;
+	dataChannelSctpPort = src->dataChannelSctpPort;
+	dcmaps = src->dcmaps;
 	videoMulticastEnabled = src->videoMulticastEnabled;
 	usedVideoCodec = src->usedVideoCodec;
 	receivedFps = src->receivedFps;
@@ -326,6 +329,8 @@ void MediaSessionParams::initDefault(const std::shared_ptr<Core> &core, Linphone
 	d->micEnabled = true; /* always enabled by default. This switch is unrelated to the Core's mic enablement.*/
 	/* DO NOT SET input and output audio devices: default values exist at Call level already, and may be updated
 	 * at call startup when for example the sound device list is reloaded.*/
+	d->dataChannelEnabled = false;
+	d->dataChannelSctpPort = 5000;
 }
 
 // -----------------------------------------------------------------------------
@@ -402,6 +407,54 @@ void MediaSessionParams::enableVideoMulticast(bool value) {
 	d->videoMulticastEnabled = value;
 }
 
+void MediaSessionParams::enableDataChannel(bool value) {
+#ifdef HAVE_DATACHANNEL
+	L_D();
+	d->dataChannelEnabled = value;
+#else // HAVE_DATACHANNEL
+      if (value) {
+	      lWarning()<<"Enable datachannels in MediaSessionParams but this feature was not enabled at build";
+      }
+#endif // HAVE_DATACHANNEL
+}
+
+bool MediaSessionParams::addDataChannel(const std::string &dcmap) {
+#ifdef HAVE_DATACHANNEL
+	L_D();
+	auto sdcmap = SalDataChannelMap::from_string(dcmap);
+	if (sdcmap) {
+		d->dcmaps.push_back(*sdcmap);
+		// when datachannel is added succesfully (dcmap is valid), enable it
+		d->dataChannelEnabled = true;
+		return true;
+	} else {
+		lWarning()<<"Unable to add invalid dcmap attribute to call params: "<<dcmap;
+		return false;
+	}
+#else // HAVE_DATACHANNEL
+	lWarning()<<"addDataChannel in MediaSessionParams to #"<<dcmap<<"# but this feature was not enabled at build";
+	return false;
+#endif // HAVE_DATACHANNEL
+}
+void MediaSessionParams::setDataChannelSctpPort(uint16_t port) {
+#ifdef HAVE_DATACHANNEL
+	L_D();
+	d->dataChannelSctpPort = port;
+#else // HAVE_DATACHANNEL
+	lWarning()<<"Set datachannel sctp port to "<<port<<" in MediaSessionParams but this feature was not enabled at build";
+#endif // HAVE_DATACHANNEL
+}
+
+const std::vector<SalDataChannelMap> &MediaSessionParams::getDataChannels() const {
+	L_D();
+	return d->dcmaps;
+}
+
+uint16_t MediaSessionParams::getDataChannelSctpPort() const {
+	L_D();
+	return d->dataChannelSctpPort;
+}
+
 float MediaSessionParams::getReceivedFps() const {
 	L_D();
 	return d->receivedFps;
@@ -459,6 +512,11 @@ bool MediaSessionParams::videoEnabled() const {
 bool MediaSessionParams::videoMulticastEnabled() const {
 	L_D();
 	return d->videoMulticastEnabled;
+}
+
+bool MediaSessionParams::dataChannelEnabled() const {
+	L_D();
+	return d->dataChannelEnabled;
 }
 
 // -----------------------------------------------------------------------------

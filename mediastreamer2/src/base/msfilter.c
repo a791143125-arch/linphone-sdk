@@ -406,6 +406,8 @@ const char *ms_format_type_to_string(MSFormatType type) {
 			return "MSVideo";
 		case MSText:
 			return "MSText";
+		case MSApplication:
+			return "MSApplication";
 		case MSUnknownMedia:
 			return "MSUnknownMedia";
 	}

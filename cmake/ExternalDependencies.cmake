@@ -101,6 +101,9 @@ cmake_dependent_option(BUILD_SPEEX_SHARED_LIBS "Choose to build shared or static
 option(BUILD_SQLITE3 "Build sqlite3 library source code from submodule instead of searching it in system libraries." ON)
 cmake_dependent_option(BUILD_SQLITE3_SHARED_LIBS "Choose to build shared or static sqlite3 library." ${BUILD_SHARED_LIBS} "BUILD_SQLITE3" OFF)
 
+cmake_dependent_option(BUILD_USRSCTP "Build SCTP library source code from submodule instead of searching it in system libraries." ON "ENABLE_DATACHANNEL" OFF)
+cmake_dependent_option(BUILD_USRSCTP_SHARED_LIBS "Choose to build shared or static USRSCTP library." ${BUILD_SHARED_LIBS} "BUILD_USRSCTP" OFF)
+
 cmake_dependent_option(BUILD_VO_AMRWBENC "Build vo-amrwbenc library source code from submodule instead of searching it in system libraries." ON "ENABLE_AMRWB" OFF)
 cmake_dependent_option(BUILD_VO_AMRWBENC_SHARED_LIBS "Choose to build shared or static vo-amrwbenc library." ${BUILD_SHARED_LIBS} "BUILD_VO_AMRWBENC" OFF)
 
@@ -1168,6 +1171,20 @@ if(BUILD_LIBSRTP2)
 	endfunction()
 	add_srtp()
 endif()
+
+if(BUILD_USRSCTP)
+	function(add_usrsctp)
+		set(sctp_build_shared_lib ${BUILD_USRSCTP_SHARED_LIBS})
+		set(sctp_build_programs OFF)
+		#set(sctp_build_programs sctp_debug)
+
+		add_subdirectory("external/usrsctp")
+		add_dependencies(sdk usrsctp)
+	endfunction()
+	add_usrsctp()
+endif()
+
+
 
 if(BUILD_OPENCORE_AMR)
 	function(add_opencore_amr)

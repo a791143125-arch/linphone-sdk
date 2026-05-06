@@ -42,7 +42,7 @@
 #cmakedefine SRTP_VERSION ${SRTP_VERSION}
 #cmakedefine HAVE_ZRTP
 #cmakedefine HAVE_GOCLEAR
-#cmakedefine HAVE_DTLS
+#cmakedefine HAVE_DATACHANNEL
 #cmakedefine MS2_USE_OLD_OPENGL_PROTOTYPE
 
 #cmakedefine __ALSA_ENABLED__

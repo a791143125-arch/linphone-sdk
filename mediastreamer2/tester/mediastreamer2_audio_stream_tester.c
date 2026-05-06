@@ -1482,14 +1482,9 @@ static void double_encrypted_rtp_relay_audio_stream_base(bool_t encryption_manda
 	rtp_session_set_payload_type(rtpSession_legA, 121);
 	rtp_session_enable_transfer_mode(rtpSession_legA, TRUE);
 	rtp_session_enable_rtcp(rtpSession_legA, FALSE);
-	MSMediaStreamSessions sessions_legA;
+	MSMediaStreamSessions sessions_legA = {0};
 	sessions_legA.rtp_session = rtpSession_legA;
-	sessions_legA.fec_session = NULL;
-	sessions_legA.srtp_context = NULL;
-	sessions_legA.zrtp_context = NULL;
-	sessions_legA.dtls_context = NULL;
 	sessions_legA.ticker = ms_ticker_new();
-	sessions_legA.auxiliary_sessions = NULL;
 	if (use_ekt) {
 		ms_media_stream_sessions_set_ekt_mode(&sessions_legA, MS_EKT_TRANSFER);
 	} else {
@@ -1516,14 +1511,9 @@ static void double_encrypted_rtp_relay_audio_stream_base(bool_t encryption_manda
 	rtp_session_set_payload_type(rtpSession_legB, 122);
 	rtp_session_enable_transfer_mode(rtpSession_legB, TRUE);
 	rtp_session_enable_rtcp(rtpSession_legB, FALSE);
-	MSMediaStreamSessions sessions_legB;
+	MSMediaStreamSessions sessions_legB = {0};
 	sessions_legB.rtp_session = rtpSession_legB;
-	sessions_legB.fec_session = NULL;
-	sessions_legB.srtp_context = NULL;
-	sessions_legB.zrtp_context = NULL;
-	sessions_legB.dtls_context = NULL;
 	sessions_legB.ticker = ms_ticker_new();
-	sessions_legB.auxiliary_sessions = NULL;
 	if (use_ekt) {
 		ms_media_stream_sessions_set_ekt_mode(&sessions_legB, MS_EKT_TRANSFER);
 	} else {

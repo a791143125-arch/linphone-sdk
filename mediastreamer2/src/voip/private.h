@@ -80,6 +80,16 @@ MS2_PUBLIC int ms_srtp_init(void);
 MS2_PUBLIC void ms_srtp_shutdown(void);
 
 /**
+ * Initialise sctp library, shall be called once but multiple call is supported
+ */
+MS2_PUBLIC void ms_sctp_init(void);
+
+/**
+ * Shutdown the sctp library
+ */
+MS2_PUBLIC void ms_sctp_shutdown(void);
+
+/**
  * Set the backlink in dtls_context to stream sessions context. Used when reinvite force creation of a new stream with
  * same session data
  * @param[in/out]	dtls_context	Dtls context, contains a link to stream session context needed to access srtp

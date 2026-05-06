@@ -2306,6 +2306,10 @@ void ClientConference::setLocalParticipantStreamCapability(const LinphoneMediaDi
 				currentParams->enableRealtimeText((direction != LinphoneMediaDirectionInactive) &&
 				                                  (direction != LinphoneMediaDirectionInvalid));
 				break;
+			case LinphoneStreamTypeApplication:
+				currentParams->enableDataChannel((direction != LinphoneMediaDirectionInactive) &&
+				                                  (direction != LinphoneMediaDirectionInvalid) && ms_datachannel_supported());
+				break;
 			case LinphoneStreamTypeUnknown:
 				lError() << "Unable to set direction of stream of type "
 				         << std::string(linphone_stream_type_to_string(type));

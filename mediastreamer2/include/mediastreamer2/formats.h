@@ -30,7 +30,7 @@ extern "C" {
 /**
  * Simple enum to indicate whether a format is audio or video.
  **/
-typedef enum _MSFormatType { MSAudio, MSVideo, MSText, MSUnknownMedia } MSFormatType;
+typedef enum _MSFormatType { MSAudio, MSVideo, MSText, MSApplication, MSUnknownMedia } MSFormatType;
 
 /**
  * to string from enum.
