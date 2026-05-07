@@ -171,8 +171,7 @@ void CallSessionPrivate::setState(CallSession::State newState, const string &mes
 						const std::shared_ptr<Address> to = Address::create(op->getTo());
 						// Server conference
 						if (to->hasUriParam(Conference::kConfIdParameter)) {
-							shared_ptr<Conference> conference = core->findConference(
-							    ConferenceId(to, to, q->getCore()->createConferenceIdParams()), false);
+							shared_ptr<Conference> conference = core->searchConference(nullptr, to, to, {});
 
 							if (conference) {
 								// The call is for a conference stored in the core
@@ -1041,8 +1040,8 @@ void CallSessionPrivate::setContactOp(const std::optional<std::shared_ptr<Addres
 			// Try with both the To or From headers and the guessed contact address
 			auto core = q->getCore();
 			const auto conferenceIdParams = core->createConferenceIdParams();
-			std::shared_ptr<Conference> conference = core->findConference(
-			    ConferenceId(contactInfo.mAddress, contactInfo.mAddress, conferenceIdParams), false);
+			std::shared_ptr<Conference> conference =
+			    core->searchConference(nullptr, contactInfo.mAddress, contactInfo.mAddress, {});
 			// Find server conference based on From or To header as the tchat conference server may give an address to
 			// the conference that doesn't match the identity address or contact address of any of the accounts held by
 			// the core. For example, flexisip tchat servers based on SDK 5.3, will create chatroom with username
@@ -1054,8 +1053,8 @@ void CallSessionPrivate::setContactOp(const std::optional<std::shared_ptr<Addres
 			} else {
 				guessedConferenceAddress = log->getFromAddress();
 			}
-			std::shared_ptr<Conference> guessedConference = core->findConference(
-			    ConferenceId(guessedConferenceAddress, guessedConferenceAddress, conferenceIdParams), false);
+			std::shared_ptr<Conference> guessedConference =
+			    core->searchConference(nullptr, guessedConferenceAddress, guessedConferenceAddress, {});
 			std::shared_ptr<Address> conferenceAddress;
 			std::shared_ptr<Conference> conferenceFound;
 			if (conference) {
@@ -1591,6 +1590,11 @@ void CallSession::assignAccount(const std::shared_ptr<Account> &account) {
 			d->setDestAccount(account);
 		}
 	}
+}
+
+SalCallOp *CallSession::getOp() const {
+	L_D();
+	return d->op;
 }
 
 bool CallSession::isOpConfigured() {

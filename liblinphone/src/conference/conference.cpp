@@ -65,6 +65,10 @@ const std::string Conference::kAdminParameter = "admin";
 const std::string Conference::kIsFocusParameter = "isfocus";
 const std::string Conference::kTextParameter = "text";
 const std::string Conference::kAnonymousKeyword = "anonymous";
+const std::string Conference::kAlternativeUriPurpose("alternative-uri");
+
+const std::string Conference::kXAlternativeAddressClientHeaderName = "X-Alt-To";
+const std::string Conference::kXAlternativeAddressServerHeaderName = "X-Alt-From";
 
 Conference::Conference(const shared_ptr<Core> &core,
                        std::shared_ptr<CallSessionListener> callSessionListener,
@@ -299,6 +303,10 @@ void Conference::addParticipantDevice(BCTBX_UNUSED(const shared_ptr<Participant>
 	lWarning() << __func__ << " not implemented";
 }
 
+void Conference::unifyConferenceAddress() {
+	lWarning() << __func__ << " not implemented";
+}
+
 void Conference::notifyNewDevice(const std::shared_ptr<ParticipantDevice> &device) {
 	if (device) {
 		const auto &p = device->getParticipant();
@@ -362,7 +370,7 @@ void Conference::fillParticipantAttributes(std::shared_ptr<Participant> &p, cons
 			    << " has been created on the fly, either by inviting addresses or by merging existing calls therefore "
 			    << *p << " is given the role of " << p->getRole();
 		} else {
-			const bool isThereAListener =
+			bool isThereAListener =
 			    std::find_if(mInvitedParticipants.cbegin(), mInvitedParticipants.cend(), [](const auto &info) {
 				    return (info->getRole() == Participant::Role::Listener);
 			    }) != mInvitedParticipants.cend();
@@ -595,8 +603,7 @@ int Conference::removeParticipant(const std::shared_ptr<Call> &call) {
 	return removeParticipant(p);
 }
 
-int Conference::removeParticipant(const std::shared_ptr<CallSession> &session,
-                                  BCTBX_UNUSED(const bool preserveSession)) {
+int Conference::removeParticipant(const std::shared_ptr<CallSession> &session, BCTBX_UNUSED(bool preserveSession)) {
 	const std::shared_ptr<Participant> p = findParticipant(session);
 	removeParticipantDevice(session);
 	if (!p) {
@@ -833,27 +840,47 @@ ConferenceLayout Conference::getLayout() const {
 void Conference::setLayout(const ConferenceLayout layout) {
 	auto session = static_pointer_cast<MediaSession>(getMainSession());
 	if (session && (getLayout() != layout)) {
-		lInfo() << "Changing layout of conference " << getConferenceAddress() << " from " << getLayout() << " to "
-		        << layout;
+		lInfo() << "Changing layout of " << *this << " from " << getLayout() << " to " << layout;
 		const_cast<CallSessionParams *>(session->getParams())->setConferenceVideoLayout(layout);
 		updateMainSession();
 	}
 }
 
-std::shared_ptr<Address> Conference::getConferenceAddress() const {
+std::shared_ptr<Address> Conference::getAssignedConferenceAddress() const {
 	return mConfParams->getConferenceAddress();
 }
 
+std::shared_ptr<Address> Conference::getAlternativeConferenceAddress() const {
+	return mConfParams->getAlternativeConferenceAddress();
+}
+
+std::shared_ptr<Address> Conference::getConferenceAddress() const {
+	const auto &alternativeConferenceAddress = getAlternativeConferenceAddress();
+	const auto &assignedConferenceAddress = getAssignedConferenceAddress();
+	return alternativeConferenceAddress ? alternativeConferenceAddress : assignedConferenceAddress;
+}
+
+void Conference::forceConferenceAddress(const std::shared_ptr<Address> &conferenceAddress) {
+	if (conferenceAddress && conferenceAddress->isValid()) {
+		mConfParams->setConferenceAddress(conferenceAddress);
+		mConferenceId.setPeerAddress(conferenceAddress, true);
+		if (getCore()->conferenceServerEnabled()) {
+			mConferenceId.setLocalAddress(conferenceAddress, true);
+		}
+	}
+}
 void Conference::setConferenceAddress(const std::shared_ptr<Address> &conferenceAddress) {
 	const auto state = getState();
 	if ((state == ConferenceInterface::State::Instantiated) || (state == ConferenceInterface::State::CreationPending)) {
 		if (!conferenceAddress || !conferenceAddress->isValid()) {
 			lError() << "Cannot set the conference address to " << *conferenceAddress;
 			shared_ptr<CallSession> session = getMe()->getSession();
-			LinphoneErrorInfo *ei = linphone_error_info_new();
-			linphone_error_info_set(ei, "SIP", LinphoneReasonUnknown, 500, "Server internal error", NULL);
-			session->decline(ei);
-			linphone_error_info_unref(ei);
+			if (session) {
+				LinphoneErrorInfo *ei = linphone_error_info_new();
+				linphone_error_info_set(ei, "SIP", LinphoneReasonUnknown, 500, "Server internal error", NULL);
+				session->decline(ei);
+				linphone_error_info_unref(ei);
+			}
 			setState(ConferenceInterface::State::CreationFailed);
 			return;
 		}
@@ -869,6 +896,20 @@ void Conference::setConferenceAddress(const std::shared_ptr<Address> &conference
 		lDebug() << "Cannot set the conference address of the Conference in state " << state << " to "
 		         << *conferenceAddress;
 		return;
+	}
+}
+
+void Conference::setAlternativeConferenceAddress(const std::shared_ptr<Address> &conferenceAddress) {
+	if (!conferenceAddress || !conferenceAddress->isValid()) {
+		lError() << "Cannot set the alternative conference address to an invalid or null address";
+		return;
+	}
+
+	mConfParams->setAlternativeConferenceAddress(conferenceAddress);
+	if (linphone_core_get_global_state(getCore()->getCCore()) == LinphoneGlobalStartup) {
+		lDebug() << "Alternative address of " << *this << " is " << *mConfParams->getAlternativeConferenceAddress();
+	} else {
+		lInfo() << "Alternative address of " << *this << " is " << *mConfParams->getAlternativeConferenceAddress();
 	}
 }
 
@@ -987,7 +1028,7 @@ void Conference::setSubject(const string &subject) {
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 Conference::notifyParticipantDeviceStateChanged(time_t creationTime,
-                                                const bool isFullState,
+                                                bool isFullState,
                                                 const std::shared_ptr<Participant> &participant,
                                                 const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1003,7 +1044,7 @@ Conference::notifyParticipantDeviceStateChanged(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 Conference::notifyParticipantDeviceScreenSharingChanged(time_t creationTime,
-                                                        const bool isFullState,
+                                                        bool isFullState,
                                                         const std::shared_ptr<Participant> &participant,
                                                         const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1258,8 +1299,22 @@ void Conference::notifyFullState() {
 		l->onFullStateReceived();
 	}
 }
+
+shared_ptr<ConferenceAlternativeAddressEvent> Conference::notifyAlternativeAddressChanged(
+    time_t creationTime, bool isFullState, const std::shared_ptr<Address> &address) {
+	shared_ptr<ConferenceAlternativeAddressEvent> event =
+	    make_shared<ConferenceAlternativeAddressEvent>(creationTime, mConferenceId, address);
+	event->setFullState(isFullState);
+	event->setNotifyId(mLastNotify);
+
+	for (const auto &l : mConfListeners) {
+		l->onAlternativeAddressChanged(event, address);
+	}
+	return event;
+}
+
 shared_ptr<ConferenceNotifiedEvent> Conference::notifyAllowedParticipantListChanged(time_t creationTime,
-                                                                                    const bool isFullState) {
+                                                                                    bool isFullState) {
 	shared_ptr<ConferenceNotifiedEvent> event = make_shared<ConferenceNotifiedEvent>(
 	    EventLog::Type::ConferenceAllowedParticipantListChanged, creationTime, mConferenceId);
 	event->setFullState(isFullState);
@@ -1272,7 +1327,7 @@ shared_ptr<ConferenceNotifiedEvent> Conference::notifyAllowedParticipantListChan
 }
 
 shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantAdded(
-    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant) {
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant) {
 	shared_ptr<ConferenceParticipantEvent> event = make_shared<ConferenceParticipantEvent>(
 	    EventLog::Type::ConferenceParticipantAdded, creationTime, mConferenceId, participant->getAddress());
 	event->setFullState(isFullState);
@@ -1285,7 +1340,7 @@ shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantAdded(
 }
 
 shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantRemoved(
-    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant) {
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant) {
 	shared_ptr<ConferenceParticipantEvent> event = make_shared<ConferenceParticipantEvent>(
 	    EventLog::Type::ConferenceParticipantRemoved, creationTime, mConferenceId, participant->getAddress());
 	event->setFullState(isFullState);
@@ -1297,11 +1352,8 @@ shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantRemoved(
 	return event;
 }
 
-shared_ptr<ConferenceParticipantEvent>
-Conference::notifyParticipantSetRole(time_t creationTime,
-                                     const bool isFullState,
-                                     const std::shared_ptr<Participant> &participant,
-                                     Participant::Role role) {
+shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantSetRole(
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant, Participant::Role role) {
 	EventLog::Type eventType = EventLog::Type::None;
 	switch (role) {
 		case Participant::Role::Speaker:
@@ -1326,7 +1378,7 @@ Conference::notifyParticipantSetRole(time_t creationTime,
 }
 
 shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantSetAdmin(
-    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant, bool isAdmin) {
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant, bool isAdmin) {
 	shared_ptr<ConferenceParticipantEvent> event = make_shared<ConferenceParticipantEvent>(
 	    isAdmin ? EventLog::Type::ConferenceParticipantSetAdmin : EventLog::Type::ConferenceParticipantUnsetAdmin,
 	    creationTime, mConferenceId, participant->getAddress());
@@ -1340,7 +1392,7 @@ shared_ptr<ConferenceParticipantEvent> Conference::notifyParticipantSetAdmin(
 }
 
 shared_ptr<ConferenceSubjectEvent>
-Conference::notifySubjectChanged(time_t creationTime, const bool isFullState, const std::string subject) {
+Conference::notifySubjectChanged(time_t creationTime, bool isFullState, const std::string subject) {
 	shared_ptr<ConferenceSubjectEvent> event =
 	    make_shared<ConferenceSubjectEvent>(creationTime, mConferenceId, subject);
 	event->setFullState(isFullState);
@@ -1353,7 +1405,7 @@ Conference::notifySubjectChanged(time_t creationTime, const bool isFullState, co
 }
 
 shared_ptr<ConferenceAvailableMediaEvent> Conference::notifyAvailableMediaChanged(
-    time_t creationTime, const bool isFullState, const std::map<ConferenceMediaCapabilities, bool> mediaCapabilities) {
+    time_t creationTime, bool isFullState, const std::map<ConferenceMediaCapabilities, bool> mediaCapabilities) {
 	shared_ptr<ConferenceAvailableMediaEvent> event =
 	    make_shared<ConferenceAvailableMediaEvent>(creationTime, mConferenceId, mediaCapabilities);
 	event->setFullState(isFullState);
@@ -1367,7 +1419,7 @@ shared_ptr<ConferenceAvailableMediaEvent> Conference::notifyAvailableMediaChange
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 Conference::notifyParticipantDeviceAdded(time_t creationTime,
-                                         const bool isFullState,
+                                         bool isFullState,
                                          const std::shared_ptr<Participant> &participant,
                                          const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1384,7 +1436,7 @@ Conference::notifyParticipantDeviceAdded(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 Conference::notifyParticipantDeviceRemoved(time_t creationTime,
-                                           const bool isFullState,
+                                           bool isFullState,
                                            const std::shared_ptr<Participant> &participant,
                                            const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1401,7 +1453,7 @@ Conference::notifyParticipantDeviceRemoved(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 Conference::notifyParticipantDeviceMediaCapabilityChanged(time_t creationTime,
-                                                          const bool isFullState,
+                                                          bool isFullState,
                                                           const std::shared_ptr<Participant> &participant,
                                                           const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1418,7 +1470,7 @@ Conference::notifyParticipantDeviceMediaCapabilityChanged(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent> Conference::notifyParticipantDeviceMediaAvailabilityChanged(
     time_t creationTime,
-    const bool isFullState,
+    bool isFullState,
     const std::shared_ptr<Participant> &participant,
     const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1435,7 +1487,7 @@ shared_ptr<ConferenceParticipantDeviceEvent> Conference::notifyParticipantDevice
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 Conference::notifyParticipantDeviceJoiningRequest(time_t creationTime,
-                                                  const bool isFullState,
+                                                  bool isFullState,
                                                   const std::shared_ptr<Participant> &participant,
                                                   const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	shared_ptr<ConferenceParticipantDeviceEvent> event = make_shared<ConferenceParticipantDeviceEvent>(
@@ -1451,7 +1503,7 @@ Conference::notifyParticipantDeviceJoiningRequest(time_t creationTime,
 }
 
 shared_ptr<ConferenceEphemeralMessageEvent>
-Conference::notifyEphemeralModeChanged(time_t creationTime, const bool isFullState, const EventLog::Type type) {
+Conference::notifyEphemeralModeChanged(time_t creationTime, bool isFullState, const EventLog::Type type) {
 	L_ASSERT((type == EventLog::Type::ConferenceEphemeralMessageManagedByAdmin) ||
 	         (type == EventLog::Type::ConferenceEphemeralMessageManagedByParticipants));
 	shared_ptr<ConferenceEphemeralMessageEvent> event =
@@ -1466,7 +1518,7 @@ Conference::notifyEphemeralModeChanged(time_t creationTime, const bool isFullSta
 }
 
 shared_ptr<ConferenceEphemeralMessageEvent>
-Conference::notifyEphemeralMessageEnabled(time_t creationTime, const bool isFullState, const bool enable) {
+Conference::notifyEphemeralMessageEnabled(time_t creationTime, bool isFullState, bool enable) {
 
 	shared_ptr<ConferenceEphemeralMessageEvent> event =
 	    make_shared<ConferenceEphemeralMessageEvent>((enable) ? EventLog::Type::ConferenceEphemeralMessageEnabled
@@ -1483,7 +1535,7 @@ Conference::notifyEphemeralMessageEnabled(time_t creationTime, const bool isFull
 }
 
 shared_ptr<ConferenceEphemeralMessageEvent> Conference::notifyEphemeralLifetimeChanged(time_t creationTime,
-                                                                                       const bool isFullState,
+                                                                                       bool isFullState,
                                                                                        const long lifetime,
                                                                                        const long notReadLifetime) {
 	shared_ptr<ConferenceEphemeralMessageEvent> event =

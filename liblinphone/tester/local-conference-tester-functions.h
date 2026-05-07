@@ -328,6 +328,18 @@ void group_chat_room_with_client_removed_and_reinvinted_base(bool encrypted,
 void group_chat_room_with_duplications_base(bool encrypted);
 void chat_rooms_with_deletion_spaced_out_base(bool encrypted);
 void legacy_and_new_chatrooms_mixed_up_base(bool encrypted);
+
+struct ChatRoomMigrationParams {
+	bool encrypted;
+};
+void legacy_chat_room_migration_base(ChatRoomMigrationParams const &params);
+
+struct ChatRoomMigrationClientOfflineParams {
+	bool encrypted;
+	bool server_restart;
+};
+void legacy_chat_room_migration_client_offline_base(ChatRoomMigrationClientOfflineParams const &params);
+
 void group_chat_room_with_client_removed_while_stopped_base(const bool_t use_remote_event_list_handler, bool encrypted);
 
 void sendEphemeralMessageInAdminMode(Focus &focus,

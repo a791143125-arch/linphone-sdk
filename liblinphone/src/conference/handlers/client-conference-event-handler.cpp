@@ -152,11 +152,54 @@ ClientConferenceEventHandler::conferenceInfoNotifyReceived(const string &xmlBody
 		std::shared_ptr<Address> entityAddress = Address::create(confInfo->getEntity());
 		auto prunedEntityAddress = entityAddress ? entityAddress->getUriWithoutGruu() : Address();
 		auto prunedConferenceAddress = conferenceAddress ? conferenceAddress->getUriWithoutGruu() : Address();
+		bool entityMatchesConferenceAddress =
+		    (prunedEntityAddress.toStringUriOnlyOrdered() == prunedConferenceAddress.toStringUriOnlyOrdered());
 
-		if (!conferenceAddress || (prunedEntityAddress != prunedConferenceAddress)) {
+		auto &confDescription = confInfo->getConferenceDescription();
+
+		std::shared_ptr<Address> alternativeConferenceAddress = conference->getAlternativeConferenceAddress();
+		bool alternativeConferenceAddressMatchesConferenceAddress = false;
+		bool notifyAlternativeAddressChanged = false;
+		if (confDescription.present()) {
+			const auto &serviceUris = confDescription.get().getServiceUris();
+			if (serviceUris.present()) {
+				for (auto &uri : serviceUris.get().getEntry()) {
+					auto purpose = uri.getPurpose();
+					if (purpose.present()) {
+						if (purpose.get() == Conference::kAlternativeUriPurpose) {
+							auto newAlternativeConferenceAddress = Address::create(uri.getUri());
+							// Notify alternative address changed if the alternative address is to be set or if it is
+							// not the same as the one previously set
+							notifyAlternativeAddressChanged =
+							    newAlternativeConferenceAddress && newAlternativeConferenceAddress->isValid() &&
+							    (!alternativeConferenceAddress ||
+							     (alternativeConferenceAddress && alternativeConferenceAddress->isValid() &&
+							      (alternativeConferenceAddress->toStringUriOnlyOrdered() !=
+							       newAlternativeConferenceAddress->getUriWithoutGruu().toStringUriOnlyOrdered())));
+							if (notifyAlternativeAddressChanged) {
+								alternativeConferenceAddress = newAlternativeConferenceAddress;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (alternativeConferenceAddress && alternativeConferenceAddress->isValid()) {
+			alternativeConferenceAddressMatchesConferenceAddress =
+			    (prunedConferenceAddress.toStringUriOnlyOrdered() ==
+			     alternativeConferenceAddress->getUriWithoutGruu().toStringUriOnlyOrdered());
+		}
+
+		// Return immediately if the conference address is unknown or the conference address doesn't match  neither the
+		// NOTIFY's entity address nor the alternative conference address
+		if (!conferenceAddress ||
+		    !(entityMatchesConferenceAddress || alternativeConferenceAddressMatchesConferenceAddress)) {
 			lError() << "Unable to process received NOTIFY for conference " << *conference
 			         << " because the entity address " << prunedEntityAddress
-			         << " doesn't match the conference address " << prunedConferenceAddress
+			         << " doesn't match neither the entity address " << prunedConferenceAddress
+			         << " nor the alternative conference address "
+			         << (alternativeConferenceAddress ? alternativeConferenceAddress->toString() : "sip:")
 			         << " or the conference address is not valid";
 			return ClientConferenceEventHandlerBase::NotifyParsingResult::Error;
 		}
@@ -172,8 +215,6 @@ ClientConferenceEventHandler::conferenceInfoNotifyReceived(const string &xmlBody
 		if (isFullState && fullStateRequested) {
 			fullStateRequested = false;
 		}
-
-		auto &confDescription = confInfo->getConferenceDescription();
 
 		// 1. Compute event time.
 		time_t creationTime = time(nullptr);
@@ -208,6 +249,14 @@ ClientConferenceEventHandler::conferenceInfoNotifyReceived(const string &xmlBody
 		}
 
 		// 3. Notify ephemeral settings, media, subject and keywords.
+		if (notifyAlternativeAddressChanged) {
+			if (!entityMatchesConferenceAddress) {
+				conference->forceConferenceAddress(entityAddress);
+			}
+			conference->setAlternativeConferenceAddress(alternativeConferenceAddress);
+			conference->notifyAlternativeAddressChanged(creationTime, isFullState, alternativeConferenceAddress);
+		}
+
 		if (confDescription.present()) {
 			auto &subject = confDescription.get().getSubject();
 			if (subject.present() && !subject.get().empty()) {

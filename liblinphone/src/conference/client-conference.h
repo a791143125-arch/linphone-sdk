@@ -114,6 +114,8 @@ public:
 	int getParticipantDeviceVolume(const std::shared_ptr<ParticipantDevice> &device) override;
 
 	void onStateChanged(ConferenceInterface::State state) override;
+	void onAlternativeAddressChanged(const std::shared_ptr<ConferenceAlternativeAddressEvent> &event,
+	                                 const std::shared_ptr<Address> &address) override;
 	void onParticipantAdded(const std::shared_ptr<ConferenceParticipantEvent> &event,
 	                        const std::shared_ptr<Participant> &participant) override;
 	void onParticipantRemoved(const std::shared_ptr<ConferenceParticipantEvent> &event,
@@ -223,6 +225,7 @@ private:
 	void createEventHandler(ConferenceListener *confListener = nullptr, bool addToListEventHandler = false) override;
 	void initializeHandlers(ConferenceListener *confListener, bool addToListEventHandler);
 
+	SalReferOp *createReferOp();
 	void handleRefer(SalReferOp *op,
 	                 const std::shared_ptr<LinphonePrivate::Address> &referAddr,
 	                 const std::string method) override;

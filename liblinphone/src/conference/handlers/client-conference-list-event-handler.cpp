@@ -93,8 +93,6 @@ ClientConferenceListEventHandler::subscribe(const std::shared_ptr<Event> &eventS
 			ConferenceId id(address, from, conferenceIdParams);
 			const auto &handler = findHandler(id);
 
-			auto peerAddress = address->getUriWithoutGruu();
-			peerAddress.removeUriParam(Conference::kConfIdParameter);
 			Address addr = id.getPeerAddress()->getUri();
 			const auto lastNotify = handler->getLastNotify();
 			addr.setUriParam("Last-Notify", Utils::toString(lastNotify));
@@ -151,7 +149,9 @@ std::optional<std::shared_ptr<EventSubscribe>> ClientConferenceListEventHandler:
 		if (from->weakEqual(*localAddress)) {
 			auto peerAddress = conferenceId.getPeerAddress()->getUriWithoutGruu();
 			bool hasConfIdParams = peerAddress.hasUriParam(Conference::kConfIdParameter);
-			peerAddress.removeUriParam(Conference::kConfIdParameter);
+			if (hasConfIdParams) {
+				peerAddress.removeUriParam(Conference::kConfIdParameter);
+			}
 			// If the event To address is the factory URI, then list all chatroom that do not have a conf-id
 			// parameter in their conference address. If the event To address is not the factory URI, then
 			// compare the ordered string because servers may add custom parameters which may cause a false
@@ -172,7 +172,7 @@ std::optional<std::shared_ptr<EventSubscribe>> ClientConferenceListEventHandler:
 					}
 					if (cr->hasBeenLeft()) continue;
 
-					Address addr = conferenceId.getPeerAddress()->getUri();
+					Address addr = cr->getConferenceAddress()->getUri();
 					const auto lastNotify = handler->getLastNotify();
 					addr.setUriParam("Last-Notify", Utils::toString(lastNotify));
 					handler->setInitialSubscriptionUnderWayFlag(!handler->alreadySubscribed());
@@ -599,17 +599,39 @@ bool ClientConferenceListEventHandler::handlesEvent(const std::shared_ptr<Event>
 
 std::shared_ptr<ClientConferenceEventHandler>
 ClientConferenceListEventHandler::findHandler(const ConferenceId &conferenceId) const {
-	for (const auto &handlers : {mHandlers, mLegacyChatRoomHandlers}) {
-		auto it = handlers.find(conferenceId);
+	for (auto handlers : {mHandlers, mLegacyChatRoomHandlers}) {
+		auto it = std::find_if(
+		    handlers.begin(), handlers.end(), [&peerAddress = conferenceId.getPeerAddress()](const auto &p) {
+			    try {
+				    auto peerAddressString = peerAddress->getUriWithoutGruu().asStringUriOnly();
+				    std::shared_ptr<ClientConferenceEventHandler> handler(p.second);
+				    auto conf = handler->getConference();
+				    auto alternativeAddress = conf->getAlternativeConferenceAddress();
+				    return (peerAddressString ==
+				            conf->getAssignedConferenceAddress()->getUriWithoutGruu().asStringUriOnly()) ||
+				           (alternativeAddress &&
+				            (peerAddressString == alternativeAddress->getUriWithoutGruu().asStringUriOnly()));
+			    } catch (const bad_weak_ptr &) {
+			    }
+			    return false;
+		    });
 		if (it != handlers.end()) {
-			try {
-				std::shared_ptr<ClientConferenceEventHandler> handler = (*it).second.lock();
-				return handler;
-			} catch (const bad_weak_ptr &) {
-			}
+			std::shared_ptr<ClientConferenceEventHandler> handler(it->second);
+			return handler;
 		}
 	}
 	return nullptr;
+	/*
+	    const auto it = handlers.find(conferenceId);
+	    if (it != handlers.end()) {
+	        try {
+	            const std::shared_ptr<ClientConferenceEventHandler> handler = (*it).second.lock();
+	            return handler;
+	        } catch (const bad_weak_ptr &) {
+	        }
+	    }
+	    return nullptr;
+	    */
 }
 
 void ClientConferenceListEventHandler::addHandler(std::shared_ptr<ClientConferenceEventHandler> handler) {
@@ -620,14 +642,14 @@ void ClientConferenceListEventHandler::addHandler(std::shared_ptr<ClientConferen
 
 	const ConferenceId &conferenceId = handler->getConferenceId();
 	if (!conferenceId.isValid()) {
-		lError() << "ClientConferenceListEventHandler [" << this << "]: Unable to add handler [" << this
+		lError() << "ClientConferenceListEventHandler [" << this << "]: Unable to add handler [" << handler
 		         << "] because its conference id is not valid";
 		return;
 	}
 
 	if (findHandler(conferenceId)) {
-		lWarning() << "Trying to insert an already present handler into the ClientConferenceListEventHandler [" << this
-		           << "]: " << conferenceId;
+		lWarning() << "Trying to insert an already present handler (" << handler
+		           << ") into the ClientConferenceListEventHandler [" << this << "]: " << conferenceId;
 		return;
 	}
 

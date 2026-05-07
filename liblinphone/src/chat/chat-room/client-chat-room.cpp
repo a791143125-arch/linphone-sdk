@@ -344,7 +344,7 @@ void ClientChatRoom::exhume() {
 
 void ClientChatRoom::onExhumedConference(const ConferenceId &oldConfId, const ConferenceId &newConfId) {
 	const std::shared_ptr<Address> &addr = newConfId.getPeerAddress();
-	auto chatRoom = getCore()->findChatRoom(oldConfId, false);
+	auto chatRoom = getCore()->searchChatRoom(nullptr, oldConfId.getLocalAddress(), oldConfId.getPeerAddress(), {});
 	auto conference = getConference();
 	getCurrentParams()->setConferenceAddress(addr);
 	auto focus = static_pointer_cast<ClientConference>(conference)->mFocus;

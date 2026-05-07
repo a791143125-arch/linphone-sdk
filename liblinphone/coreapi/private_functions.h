@@ -523,6 +523,7 @@ void linphone_chat_room_notify_session_state_changed(LinphoneChatRoom *cr,
 void _linphone_chat_room_notify_is_composing_received(LinphoneChatRoom *cr,
                                                       const LinphoneAddress *remoteAddr,
                                                       bool_t isComposing);
+void _linphone_chat_room_notify_alternative_address_changed(LinphoneChatRoom *cr, const LinphoneEventLog *event_log);
 void _linphone_chat_room_notify_message_received(LinphoneChatRoom *cr, LinphoneChatMessage *msg);
 void _linphone_chat_room_notify_messages_received(LinphoneChatRoom *cr, const bctbx_list_t *chat_messages);
 void _linphone_chat_room_notify_new_event(LinphoneChatRoom *cr, const LinphoneEventLog *event_log);

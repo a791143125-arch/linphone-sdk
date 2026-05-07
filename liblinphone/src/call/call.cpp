@@ -447,7 +447,7 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 	const auto op = session->getPrivate()->getOp();
 
 	bool remoteContactIsFocus = false;
-	std::shared_ptr<Conference> conference = nullptr;
+	std::shared_ptr<Conference> serverConference = nullptr;
 	if (op) {
 		if (op->getRemoteContactAddress()) {
 			Address remoteContactAddress;
@@ -457,13 +457,13 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 
 		if (!op->getTo().empty()) {
 			const auto to = Address::create(op->getTo());
-			conference = L_GET_CPP_PTR_FROM_C_OBJECT(lc)->findConference(
-			    ConferenceId(to, to, getCore()->createConferenceIdParams()), false);
+			serverConference = L_GET_CPP_PTR_FROM_C_OBJECT(lc)->searchConference(nullptr, to, to, {});
 		}
 	}
 
 	notifyStateChangeToHeadset(state);
 
+	auto conference = getConference();
 	switch (state) {
 		case CallSession::State::OutgoingInit:
 		case CallSession::State::IncomingReceived:
@@ -483,23 +483,22 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 			getPlatformHelpers(lc)->releaseCpuLock();
 			break;
 		case CallSession::State::Paused:
-			if (!getConference() && op && op->getRemoteContactAddress()) {
-				if (!op->getTo().empty() && conference) {
+			if (!conference && op && op->getRemoteContactAddress()) {
+				if (!op->getTo().empty() && serverConference) {
 					// This code is usually executed when the following scenario occurs:
 					// - ICE is enabled
 					// - during the ICE negotiations, the core receives a call, hence this one is paused
 					// - once ICE negotiation are concluded, the call is updated and the call goes back to the previous
 					// paused state
-					tryToAddToConference(conference, session);
+					tryToAddToConference(serverConference, session);
 				}
 			}
 			if (session->hasTransferPending()) scheduleTransfer();
 			break;
 		case CallSession::State::UpdatedByRemote: {
-			if (op && !getConference() && remoteContactIsFocus) {
+			if (op && !conference && remoteContactIsFocus) {
 				// Check if the request was sent by the focus (client conference)
-				createClientConference(session);
-				auto conference = getConference();
+				conference = createClientConference(session);
 				if (conference && conference->getState() == ConferenceInterface::State::CreationPending) {
 					conference->finalizeCreation();
 				}
@@ -512,11 +511,11 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 			break;
 		case CallSession::State::Connected:
 		case CallSession::State::StreamsRunning: {
-			if (op && !getConference()) {
-				if (!op->getTo().empty() && conference) {
+			if (op && !conference) {
+				if (!op->getTo().empty() && serverConference) {
 					const auto &resourceList = op->getContentInRemote(ContentType::ResourceLists);
 					if (!resourceList || resourceList.value().get().isEmpty()) {
-						tryToAddToConference(conference, session);
+						tryToAddToConference(serverConference, session);
 					}
 				} else if (op->getRemoteContactAddress()) {
 					const auto &confId = session->getPrivate()->getConferenceId();
@@ -526,13 +525,11 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 					} else if (!confId.empty()) {
 						auto localAddress = session->getContactAddress();
 						if (localAddress && localAddress->isValid()) {
-							ConferenceId serverConferenceId =
-							    ConferenceId(localAddress, localAddress, getCore()->createConferenceIdParams());
-							conference = getCore()->findConference(serverConferenceId, false);
-							if (conference) {
-								setConference(conference);
+							serverConference = getCore()->searchConference(nullptr, localAddress, localAddress, {});
+							if (serverConference) {
+								setConference(serverConference);
 								reenterLocalConference(session);
-								conference->addParticipantDevice(getSharedFromThis());
+								serverConference->addParticipantDevice(getSharedFromThis());
 							}
 						} else {
 							lError() << "Call " << this << " cannot be added to conference with ID " << confId
@@ -572,16 +569,13 @@ void Call::tryToAddToConference(shared_ptr<Conference> &conference, const shared
 	}
 }
 
-void Call::createClientConference(const shared_ptr<CallSession> &session) {
+std::shared_ptr<Conference> Call::createClientConference(const shared_ptr<CallSession> &session) {
 	// If the call is for a conference stored in the core, then add call to conference once ICE negotiations are
 	// terminated
 	const auto op = session->getPrivate()->getOp();
 	std::shared_ptr<Address> remoteContactAddress = Address::create();
 	remoteContactAddress->setImpl(op->getRemoteContactAddress());
-	ConferenceId conferenceId =
-	    ConferenceId(remoteContactAddress, getLocalAddress(), getCore()->createConferenceIdParams());
-
-	const auto &conference = getCore()->findConference(conferenceId, false);
+	const auto &conference = getCore()->searchConference(nullptr, getLocalAddress(), remoteContactAddress, {});
 
 	std::shared_ptr<ClientConference> clientConference = nullptr;
 
@@ -589,8 +583,7 @@ void Call::createClientConference(const shared_ptr<CallSession> &session) {
 		const auto &conferenceAddress = conference->getConferenceAddress();
 		const auto conferenceAddressStr = (conferenceAddress ? conferenceAddress->toString() : std::string("sip:"));
 		lInfo() << "Attaching call (local address " << *session->getLocalAddress() << " remote address "
-		        << *session->getRemoteAddress() << ") to conference " << conference << " (address "
-		        << conferenceAddressStr << ") ID " << conferenceId;
+		        << *session->getRemoteAddress() << ") to " << *conference;
 		clientConference = dynamic_pointer_cast<ClientConference>(conference);
 		if (clientConference) {
 			clientConference->attachCall(session);
@@ -625,6 +618,7 @@ void Call::createClientConference(const shared_ptr<CallSession> &session) {
 	if (clientConference && remoteContactAddress->hasUriParam(Conference::kConfIdParameter)) {
 		setConferenceId(remoteContactAddress->getUriParamValue(Conference::kConfIdParameter));
 	}
+	return clientConference;
 }
 
 void Call::onCallSessionTransferStateChanged(BCTBX_UNUSED(const shared_ptr<CallSession> &session),
