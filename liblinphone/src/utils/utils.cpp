@@ -608,7 +608,7 @@ std::shared_ptr<ConferenceInfo> Utils::createConferenceInfoFromOp(SalCallOp *op,
 	const auto resourceList = op->getContentInRemote(ContentType::ResourceLists);
 
 	const std::shared_ptr<Address> conferenceAddress = Address::create();
-	conferenceAddress->setImpl(remote ? op->getRemoteContactAddress() : op->getContactAddress());
+	conferenceAddress->setImpl(remote ? op->getRemoteAddress() : op->getLocalUri());
 	if (conferenceAddress && conferenceAddress->isValid()) {
 		info->setUri(conferenceAddress);
 	}

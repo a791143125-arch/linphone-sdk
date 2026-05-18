@@ -1488,6 +1488,21 @@ shared_ptr<ConferenceEphemeralMessageEvent> Conference::notifyEphemeralLifetimeC
 	return event;
 }
 
+std::shared_ptr<Address> Conference::buildConferenceAddress(const std::shared_ptr<Address> &resource,
+                                                            const std::shared_ptr<Address> &contact) {
+	auto conferenceAddress = resource->clone()->toSharedPtr();
+	// Flexisip 2.5 and below doesn't add the conf-id parameter to the From header of all INVITE sessions and the client
+	// was therefore obliged to rely on the contact header. However, the contact header's only purpose is to route a
+	// request to the server. This issues being fixed in flexisip 2.6 has nonetheless to be worked around to be
+	// compatible with older flexisip versions.
+	if (!conferenceAddress->hasUriParam(Conference::kConfIdParameter) &&
+	    contact->hasUriParam(Conference::kConfIdParameter)) {
+		conferenceAddress->setUriParam(Conference::kConfIdParameter,
+		                               contact->getUriParamValue(Conference::kConfIdParameter));
+	}
+	return conferenceAddress;
+}
+
 bool Conference::isTerminationState(ConferenceInterface::State state) {
 	switch (state) {
 		case ConferenceInterface::State::None:

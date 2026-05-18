@@ -84,6 +84,9 @@ public:
 	static bool isAnonymousParticipant(const std::shared_ptr<Call> &call);
 	static bool isAnonymousParticipant(const std::shared_ptr<Address> &address);
 
+	static std::shared_ptr<Address> buildConferenceAddress(const std::shared_ptr<Address> &resource,
+	                                                       const std::shared_ptr<Address> &contact);
+
 	virtual ~Conference() override;
 
 	virtual int inviteAddresses(const std::list<std::shared_ptr<Address>> &addresses,

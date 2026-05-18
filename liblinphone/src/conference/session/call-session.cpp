@@ -367,14 +367,6 @@ bool CallSessionPrivate::isInConference() const {
 	return mParams->getPrivate()->getInConference();
 }
 
-const std::string CallSessionPrivate::getConferenceId() const {
-	return mParams->getPrivate()->getConferenceId();
-}
-
-void CallSessionPrivate::setConferenceId(const std::string id) {
-	mParams->getPrivate()->setConferenceId(id);
-}
-
 // -----------------------------------------------------------------------------
 
 void CallSessionPrivate::abort(const string &errorMsg) {
@@ -688,6 +680,9 @@ void CallSessionPrivate::refreshed() {
 void CallSessionPrivate::updatedByRemote() {
 	L_Q();
 
+	// The client received a reINVTE, hence immediately update the op's remote address so that we can leverage it when
+	// the state changed callback is called
+	op->updateRemoteFromRequest();
 	setState(CallSession::State::UpdatedByRemote, "Call updated by remote");
 	if (deferUpdate || deferUpdateInternal) {
 		if (state == CallSession::State::UpdatedByRemote && !deferUpdateInternal) {
@@ -739,7 +734,7 @@ void CallSession::setOpPrivacy() {
 void CallSessionPrivate::accept(const CallSessionParams *csp) {
 	L_Q();
 	/* Try to be best-effort in giving real local or routable contact address */
-	setContactOp({});
+	setContactOp();
 	if (csp) setParams(new CallSessionParams(*csp));
 	if (mParams) {
 		op->enableCapabilityNegotiation(q->isCapabilityNegotiationEnabled());
@@ -812,7 +807,7 @@ LinphoneStatus CallSessionPrivate::checkForAcceptation() {
 void CallSessionPrivate::handleIncomingReceivedStateInIncomingNotification() {
 	L_Q();
 	/* Try to be best-effort in giving real local or routable contact address for 100Rel case */
-	setContactOp({});
+	setContactOp();
 	if (notifyRinging && state != CallSession::State::IncomingEarlyMedia)
 		op->notifyRinging(false, linphone_core_get_tag_100rel_support_level(q->getCore()->getCCore()));
 	acceptOrTerminateReplacedSessionInIncomingNotification();
@@ -1030,69 +1025,12 @@ void CallSessionPrivate::setBroken() {
 	}
 }
 
-void CallSessionPrivate::setContactOp(const std::optional<std::shared_ptr<Address>> destination) {
+void CallSessionPrivate::setContactOp() {
 	L_Q();
 	auto contactInfo = chooseContact();
 	// Do not try to set contact address if it is not valid
 	if (contactInfo.mAddress && contactInfo.mAddress->isValid()) {
 		q->fillParametersIntoContactAddress(*contactInfo.mAddress);
-		if (isInConference()) {
-			// Make the best effort to find the conference linked to the call session on the server side.
-			// Try with both the To or From headers and the guessed contact address
-			auto core = q->getCore();
-			const auto conferenceIdParams = core->createConferenceIdParams();
-			std::shared_ptr<Conference> conference = core->findConference(
-			    ConferenceId(contactInfo.mAddress, contactInfo.mAddress, conferenceIdParams), false);
-			// Find server conference based on From or To header as the tchat conference server may give an address to
-			// the conference that doesn't match the identity address or contact address of any of the accounts held by
-			// the core. For example, flexisip tchat servers based on SDK 5.3, will create chatroom with username
-			// chatroom-XXXXX which doesn't match any of the account held by the core so the To or From header have the
-			// chatroom address
-			std::shared_ptr<Address> guessedConferenceAddress;
-			if (direction == LinphoneCallIncoming) {
-				guessedConferenceAddress = destination ? destination.value() : log->getToAddress();
-			} else {
-				guessedConferenceAddress = log->getFromAddress();
-			}
-			std::shared_ptr<Conference> guessedConference = core->findConference(
-			    ConferenceId(guessedConferenceAddress, guessedConferenceAddress, conferenceIdParams), false);
-			std::shared_ptr<Address> conferenceAddress;
-			std::shared_ptr<Conference> conferenceFound;
-			if (conference) {
-				// The URI returned by getFixedAddress matches a conference
-				conferenceAddress = conference->getConferenceAddress()->clone()->toSharedPtr();
-				conferenceFound = conference;
-			} else if (guessedConference) {
-				// The conference is actually a chatroom in which its conference ID doesn't match the guessed account.
-				// For example, if the chatroom peer address is sip:chatroom-xyz@sip.example.org and the account is
-				// sip:focus@sip.example.org
-				conferenceAddress = guessedConference->getConferenceAddress()->clone()->toSharedPtr();
-				conferenceFound = guessedConference;
-				lInfo() << "The guessed contact address " << *contactInfo.mAddress
-				        << " doesn't match the actual chatroom conference address " << *conferenceAddress;
-			} else {
-				if (auto db = q->getCore()->getDatabase()) {
-					const auto &confInfo = db.value().get().getConferenceInfoFromURI(guessedConferenceAddress);
-					if (confInfo) {
-						// The conference may have already been terminated when setting the contact address.
-						// This happens when an admin cancel a conference by sending an INVITE with an empty resource
-						// list Add parameters stored in the conference information URI to the contact address
-						conferenceAddress = confInfo->getUri()->clone()->toSharedPtr();
-					}
-				}
-			}
-			if (conferenceAddress && conferenceAddress->isValid()) {
-				if (contactInfo.mAddress && contactInfo.mAddress->isValid()) {
-					// Copy all parameters of the guessed contact address into the conference address. Here, it is
-					// interesting to pass the GRUU parameter on
-					lInfo() << "Copying all parameters of the guessed contact address " << *contactInfo.mAddress
-					        << " to found conference address " << *conferenceAddress;
-					conferenceAddress->merge(*contactInfo.mAddress);
-				}
-				contactInfo.mAddress = conferenceAddress;
-			}
-		}
-
 		lInfo() << "Setting contact address for " << *q << " to " << *contactInfo.mAddress;
 		op->setContactAddress(contactInfo.mAddress->getImpl(), contactInfo.mMustBePreserved);
 	} else {
@@ -1210,7 +1148,7 @@ CallSessionPrivate::ContactInfo CallSessionPrivate::chooseContact() const {
 		if (addr &&
 		    (account->getOp() || (account->getDependency() != nullptr) || q->getCore()->conferenceServerEnabled())) {
 			/* If using a account, use the contact address as guessed with the REGISTERs */
-			lInfo() << "Contact " << *addr << " has been fixed using account " << *account;
+			lInfo() << "Contact " << *addr << " has been fixed using " << *account;
 			result = addr->clone()->toSharedPtr();
 			contactInfo.mMustBePreserved = true;
 		}
@@ -1838,17 +1776,17 @@ int CallSession::startInvite(const std::shared_ptr<Address> &destination,
 		d->op->addLocalBody(*content);
 	}
 
-	/* Try to be best-effort in giving real local or routable contact address */
-	std::shared_ptr<Address> destinationAddress;
-	if (destination) destinationAddress = destination;
-	else destinationAddress = d->log->getToAddress();
-
-	d->setContactOp(destinationAddress);
+	d->setContactOp();
 
 	// If a custom Content has been set in the call mParams, create a multipart body for the INVITE
 	for (auto &c : d->mParams->getCustomContents()) {
 		d->op->addLocalBody(*c);
 	}
+
+	/* Try to be best-effort in giving real local or routable contact address */
+	std::shared_ptr<Address> destinationAddress;
+	if (destination) destinationAddress = destination;
+	else destinationAddress = d->log->getToAddress();
 
 	int result = d->op->call(d->log->getFromAddress()->getImpl(), destinationAddress->getImpl(), subject);
 	if (result < 0) {

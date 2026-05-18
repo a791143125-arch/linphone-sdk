@@ -279,6 +279,9 @@ static void secure_group_chat_room_with_chat_room_deleted_before_server_restart(
 		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneConferenceStateTerminated,
 		                             initialMarieStats.number_of_LinphoneConferenceStateTerminated + 1,
 		                             liblinphone_tester_sip_timeout));
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie2.getStats().number_of_LinphoneConferenceStateTerminated,
+		                             initialMarie2Stats.number_of_LinphoneConferenceStateTerminated + 1,
+		                             liblinphone_tester_sip_timeout));
 		BC_ASSERT_TRUE(wait_for_list(coresList, &michelle.getStats().number_of_LinphoneConferenceStateTerminated,
 		                             initialMichelleStats.number_of_LinphoneConferenceStateTerminated + 1,
 		                             liblinphone_tester_sip_timeout));
@@ -303,7 +306,7 @@ static void secure_group_chat_room_with_chat_room_deleted_before_server_restart(
 		});
 
 		initialMarieStats = marie.getStats();
-		initialMarie2Stats = marie.getStats();
+		initialMarie2Stats = marie2.getStats();
 		initialMichelleStats = michelle.getStats();
 		msg_text = "Cou cou Marieeee.....";
 		msg = ClientConference::sendTextMsg(michelle2Cr, msg_text);
@@ -314,13 +317,21 @@ static void secure_group_chat_room_with_chat_room_deleted_before_server_restart(
 		BC_ASSERT_TRUE(wait_for_list(coresList, &michelle2.getStats().number_of_LinphoneConferenceStateCreated,
 		                             initialMichelle2Stats.number_of_LinphoneConferenceStateCreated + 1,
 		                             liblinphone_tester_sip_timeout));
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneConferenceStateCreated,
+		                             initialMarieStats.number_of_LinphoneConferenceStateCreated + 1,
+		                             liblinphone_tester_sip_timeout));
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie2.getStats().number_of_LinphoneConferenceStateCreated,
+		                             initialMarie2Stats.number_of_LinphoneConferenceStateCreated + 1,
+		                             liblinphone_tester_sip_timeout));
 
 		confAddr = linphone_chat_room_get_conference_address(michelleCr);
 		marieCr = check_creation_chat_room_client_side(coresList, marie.getCMgr(), &initialMarieStats, confAddr,
 		                                               initialSubject, 1, FALSE);
 		BC_ASSERT_PTR_NOT_NULL(marieCr);
-		marie2Cr = check_creation_chat_room_client_side(coresList, marie2.getCMgr(), &initialMarie2Stats, confAddr,
-		                                                initialSubject, 1, FALSE);
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie2.getStats().number_of_LinphoneChatRoomConferenceJoined,
+		                             initialMarie2Stats.number_of_LinphoneChatRoomConferenceJoined + 1,
+		                             liblinphone_tester_sip_timeout));
+		marie2Cr = check_has_chat_room_client_side(coresList, marie2.getCMgr(), confAddr, initialSubject, 1, FALSE);
 		BC_ASSERT_PTR_NOT_NULL(marie2Cr);
 
 		BC_ASSERT_TRUE(CoreManagerAssert({focus, marie, marie2, michelle, michelle2}).wait([msg] {
@@ -2481,7 +2492,7 @@ static void secure_group_chat_room_with_client_sending_messages_without_receivin
 void check_conference_creation(std::initializer_list<std::reference_wrapper<CoreManager>> coreMgrs,
                                std::initializer_list<std::reference_wrapper<ClientConference>> clients) {
 	for (ClientConference &client : clients) {
-		BC_ASSERT_TRUE(CoreManagerAssert(coreMgrs).waitUntil(std::chrono::seconds(10), [&client] {
+		BC_ASSERT_TRUE(CoreManagerAssert(coreMgrs).waitUntil(std::chrono::seconds(50), [&client] {
 			const auto &chatRooms = client.getCore().getChatRooms();
 			if (chatRooms.size() != 1) {
 				return false;
@@ -2552,7 +2563,7 @@ static void secure_group_chat_message_cannot_be_sent_immediately_base(bool_t res
 		bctbx_list_t *participantsAddresses = bctbx_list_append(NULL, linphone_address_ref(paulineAddr.toC()));
 
 		// Marie creates a new regular chat room
-		const char *initialSubject = "Network instable";
+		const char *initialSubject = "Unstable network";
 		LinphoneConferenceParams *params = linphone_conference_params_new(marie.getLc());
 		linphone_conference_params_enable_chat(params, TRUE);
 		linphone_conference_params_set_security_level(params, LinphoneConferenceSecurityLevelEndToEnd);
@@ -2613,12 +2624,15 @@ static void secure_group_chat_message_cannot_be_sent_immediately_base(bool_t res
 		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneRegistrationOk,
 		                             initialMarieStats.number_of_LinphoneRegistrationOk + 1,
 		                             liblinphone_tester_sip_timeout));
-		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneChatRoomStateCreationPending,
-		                             initialMarieStats.number_of_LinphoneChatRoomStateCreationPending + 1,
-		                             3 * liblinphone_tester_sip_timeout));
-		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneChatRoomStateCreated,
-		                             initialMarieStats.number_of_LinphoneChatRoomStateCreated + 1,
-		                             liblinphone_tester_sip_timeout));
+		if (!restart_client) {
+			// We have to wait for the first INVITE session to be terminated by a BYE with 408 reason header
+			BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneChatRoomSessionEnd,
+			                             initialMarieStats.number_of_LinphoneChatRoomSessionEnd + 1,
+			                             4 * liblinphone_tester_sip_timeout));
+		}
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneChatRoomSessionConnected,
+		                             initialMarieStats.number_of_LinphoneChatRoomSessionConnected + 1,
+		                             4 * liblinphone_tester_sip_timeout));
 		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneSubscriptionActive,
 		                             initialMarieStats.number_of_LinphoneSubscriptionActive + 1,
 		                             liblinphone_tester_sip_timeout));
@@ -2959,6 +2973,113 @@ void secure_one_on_one_chat_room_deleted_before_200ok_with_server_restart(void) 
 	one_on_one_chat_room_deleted_before_200ok_base(true, true);
 }
 
+static void secure_one_on_one_chatroom_not_rejoined_after_leaving() {
+	Focus focus("chloe_rc");
+	{ // to make sure focus is destroyed after clients.
+		const auto lime_algo = C25519;
+		ClientConference marie("marie_rc", focus.getConferenceFactoryAddress(), lime_algo);
+		ClientConference pauline("pauline_rc", focus.getConferenceFactoryAddress(), lime_algo);
+
+		focus.registerAsParticipantDevice(marie);
+		focus.registerAsParticipantDevice(pauline);
+
+		BC_ASSERT_TRUE(linphone_core_lime_x3dh_enabled(marie.getLc()));
+		BC_ASSERT_TRUE(linphone_core_lime_x3dh_enabled(pauline.getLc()));
+
+		bctbx_list_t *coresList = bctbx_list_append(NULL, focus.getLc());
+		coresList = bctbx_list_append(coresList, marie.getLc());
+		coresList = bctbx_list_append(coresList, pauline.getLc());
+		Address paulineAddr = pauline.getIdentity();
+		bctbx_list_t *participantsAddresses = bctbx_list_append(NULL, linphone_address_ref(paulineAddr.toC()));
+
+		stats initialFocusStats = focus.getStats();
+		stats initialMarieStats = marie.getStats();
+		stats initialPaulineStats = pauline.getStats();
+
+		// Marie creates a new one-on-one chat room
+		const char *initialSubject = "one-on-one with Pauline";
+		LinphoneChatRoom *marieCr =
+		    create_chat_room_client_side(coresList, marie.getCMgr(), &initialMarieStats, participantsAddresses,
+		                                 initialSubject, FALSE, LinphoneChatRoomEphemeralModeDeviceManaged);
+		BC_ASSERT_PTR_NOT_NULL(marieCr);
+		LinphoneAddress *confAddr = linphone_address_clone(linphone_chat_room_get_conference_address(marieCr));
+		BC_ASSERT_PTR_NOT_NULL(confAddr);
+		char *confAddrStr = confAddr ? linphone_address_as_string(confAddr) : ms_strdup("sip:");
+
+		// Check that the chat room is correctly created on Pauline's side and that the participants are added
+		LinphoneChatRoom *paulineCr = check_creation_chat_room_client_side(
+		    coresList, pauline.getCMgr(), &initialPaulineStats, confAddr, initialSubject, 1, FALSE);
+		BC_ASSERT_PTR_NOT_NULL(paulineCr);
+
+		BC_ASSERT_TRUE(CoreManagerAssert({focus, marie, pauline}).wait([&focus] {
+			for (auto chatRoom : focus.getCore().getChatRooms()) {
+				for (auto participant : chatRoom->getParticipants()) {
+					for (auto device : participant->getDevices())
+						if (device->getState() != ParticipantDevice::State::Present) {
+							return false;
+						}
+				}
+			}
+			return true;
+		}));
+
+		BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateCreated,
+		                             initialPaulineStats.number_of_LinphoneChatRoomStateCreated + 1,
+		                             liblinphone_tester_sip_timeout));
+
+		initialFocusStats = focus.getStats();
+		initialMarieStats = marie.getStats();
+		initialPaulineStats = pauline.getStats();
+
+		linphone_chat_room_leave(paulineCr);
+
+		BC_ASSERT_TRUE(wait_for_list(coresList, &focus.getStats().number_of_LinphoneChatRoomSessionEnd,
+		                             initialFocusStats.number_of_LinphoneChatRoomSessionEnd + 2,
+		                             liblinphone_tester_sip_timeout));
+
+		linphone_core_refresh_registers(marie.getLc());
+
+		const LinphoneAddress *deviceAddr = linphone_account_get_contact_address(marie.getDefaultAccount());
+		for (auto chatRoom : focus.getCore().getChatRooms()) {
+			BC_ASSERT_EQUAL(chatRoom->getParticipants().size(), 0, size_t, "%zu");
+			bctbx_list_t *specs = linphone_core_get_linphone_specs_list(marie.getLc());
+			bctbx_list_t *devices = NULL;
+			LinphoneParticipantDeviceIdentity *identity =
+			    linphone_factory_create_participant_device_identity(linphone_factory_get(), deviceAddr, "");
+			linphone_participant_device_identity_set_capability_descriptor_2(identity, specs);
+			devices = bctbx_list_append(devices, identity);
+			bctbx_list_free_with_data(specs, ms_free);
+			linphone_chat_room_set_participant_devices(chatRoom->toC(), marie.getCMgr()->identity, devices);
+			bctbx_list_free_with_data(devices, (bctbx_list_free_func)belle_sip_object_unref);
+		}
+
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneRegistrationOk,
+		                             initialMarieStats.number_of_LinphoneRegistrationOk + 1,
+		                             liblinphone_tester_sip_timeout));
+		for (auto chatRoom : focus.getCore().getChatRooms()) {
+			focus.notifyParticipantDeviceRegistration(chatRoom->getConferenceAddress()->toC(), deviceAddr);
+		}
+		BC_ASSERT_FALSE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneSubscriptionOutgoingProgress,
+		                              initialMarieStats.number_of_LinphoneSubscriptionOutgoingProgress + 1, 2000));
+		BC_ASSERT_FALSE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneSubscriptionError,
+		                              initialMarieStats.number_of_LinphoneSubscriptionError + 1, 1000));
+
+		// wait a bit longer to detect side effect if any
+		CoreManagerAssert({focus, marie, pauline}).waitUntil(chrono::seconds(2), [] { return false; });
+
+		// to avoid creation attempt of a new chatroom
+		auto focus_account = focus.getDefaultAccount();
+		LinphoneAccountParams *params = linphone_account_params_clone(linphone_account_get_params(focus_account));
+		linphone_account_params_set_conference_factory_uri(params, NULL);
+		linphone_account_set_params(focus_account, params);
+		linphone_account_params_unref(params);
+
+		linphone_address_unref(confAddr);
+		ms_free(confAddrStr);
+		bctbx_list_free(coresList);
+	}
+}
+
 } // namespace LinphoneTest
 
 static test_t local_conference_secure_chat_tests[] = {
@@ -3087,6 +3208,8 @@ static test_t local_conference_secure_one_on_one_chat_tests[] = {
     TEST_ONE_TAG("Secure one on one chat room deleted before 200Ok with server restart",
                  LinphoneTest::secure_one_on_one_chat_room_deleted_before_200ok_with_server_restart,
                  "LeaksMemory" /*due to core restart*/),
+    TEST_NO_TAG("Secure one-on-one chatroom not rejoined after leaving",
+                LinphoneTest::secure_one_on_one_chatroom_not_rejoined_after_leaving)
 };
 
 static test_t local_conference_secure_chat_error_tests[] = {

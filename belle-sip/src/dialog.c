@@ -156,7 +156,7 @@ static int belle_sip_dialog_init_as_uas(belle_sip_dialog_t *obj, belle_sip_reque
 	}
 
 	/*remote party already set */
-	obj->local_party = (belle_sip_header_address_t *)belle_sip_object_ref(to);
+	belle_sip_dialog_set_local_party(obj, (belle_sip_header_address_t *)to);
 
 	return 0;
 }
@@ -193,7 +193,7 @@ static int belle_sip_dialog_init_as_uac(belle_sip_dialog_t *obj, belle_sip_reque
 	obj->local_cseq = belle_sip_header_cseq_get_seq_number(cseq);
 	/*call id is already set */
 	/*local_tag is already set*/
-	obj->remote_party = (belle_sip_header_address_t *)belle_sip_object_ref(to);
+	belle_sip_dialog_set_remote_party(obj, (belle_sip_header_address_t *)to);
 	/*local party is already set*/
 	if (strcmp(belle_sip_request_get_method(req), "INVITE") == 0) {
 		set_last_out_invite(obj, req);
@@ -890,14 +890,14 @@ belle_sip_dialog_t *belle_sip_dialog_new(belle_sip_transaction_t *t) {
 	if (BELLE_SIP_OBJECT_IS_INSTANCE_OF(t, belle_sip_server_transaction_t)) {
 		obj->remote_tag = belle_sip_strdup(from_tag);
 		obj->local_tag = belle_sip_strdup(BELLE_SIP_SERVER_TRANSACTION(t)->to_tag);
-		obj->remote_party = (belle_sip_header_address_t *)belle_sip_object_ref(from);
+		belle_sip_dialog_set_remote_party(obj, (belle_sip_header_address_t *)from);
 		obj->is_server = TRUE;
 		belle_sip_dialog_init_as_uas(obj, belle_sip_transaction_get_request(t));
 	} else {
 		const belle_sip_list_t *predefined_routes = NULL;
 		obj->local_tag = belle_sip_strdup(from_tag);
 		obj->remote_tag = to_tag ? belle_sip_strdup(to_tag) : NULL; /*might be null at dialog creation*/
-		obj->local_party = (belle_sip_header_address_t *)belle_sip_object_ref(from);
+		belle_sip_dialog_set_local_party(obj, (belle_sip_header_address_t *)from);
 		obj->is_server = FALSE;
 		for (predefined_routes = belle_sip_message_get_headers((belle_sip_message_t *)t->request, BELLE_SIP_ROUTE);
 		     predefined_routes != NULL; predefined_routes = predefined_routes->next) {
@@ -1146,8 +1146,18 @@ const belle_sip_header_call_id_t *belle_sip_dialog_get_call_id(const belle_sip_d
 	return dialog->call_id;
 }
 
+void belle_sip_dialog_set_local_party(belle_sip_dialog_t *dialog, belle_sip_header_address_t *party) {
+	if (dialog->local_party) belle_sip_object_unref(dialog->local_party);
+	dialog->local_party = (belle_sip_header_address_t *)belle_sip_object_ref(party);
+}
+
 const belle_sip_header_address_t *belle_sip_dialog_get_local_party(const belle_sip_dialog_t *dialog) {
 	return dialog->local_party;
+}
+
+void belle_sip_dialog_set_remote_party(belle_sip_dialog_t *dialog, belle_sip_header_address_t *party) {
+	if (dialog->remote_party) belle_sip_object_unref(dialog->remote_party);
+	dialog->remote_party = (belle_sip_header_address_t *)belle_sip_object_ref(party);
 }
 
 const belle_sip_header_address_t *belle_sip_dialog_get_remote_party(const belle_sip_dialog_t *dialog) {

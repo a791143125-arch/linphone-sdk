@@ -60,6 +60,8 @@ EventSubscribe::EventSubscribe(const shared_ptr<Core> &core,
                                const string &event)
     : EventSubscribe(core, LinphoneSubscriptionIncoming, event, -1) {
 	linphone_configure_op(core->getCCore(), mOp, resource->toC(), nullptr, TRUE);
+	// The SUBSCRIBE event is out fo dialog hence we set it as Incoming because it is assumed that an implicit
+	// subscription came in.
 	setState(LinphoneSubscriptionIncomingReceived);
 	mOp->setEvent(event);
 	setIsOutOfDialogOp(true);

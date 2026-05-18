@@ -159,11 +159,7 @@ LinphoneMediaEncryption MediaSessionPrivate::getNegotiatedMediaEncryption() cons
 
 bool MediaSessionPrivate::tryEnterConference() {
 	L_Q();
-	q->updateContactAddressInOp();
-	const auto updatedContactAddress = q->getContactAddress();
-	ConferenceId serverConferenceId =
-	    ConferenceId(updatedContactAddress, updatedContactAddress, q->getCore()->createConferenceIdParams());
-	shared_ptr<Conference> conference = q->getCore()->findConference(serverConferenceId, false);
+	const auto &conference = q->getCore()->findConference(q->getSharedFromThis(), false);
 	// If the call conference ID is not an empty string but no conference is linked to the call means that it was added
 	// to the conference after the INVITE session was started but before its completition
 	if (conference) {
@@ -403,9 +399,7 @@ void MediaSessionPrivate::accepted() {
 
 				if (getOp() && getOp()->getContactAddress()) {
 					const auto contactAddress = q->getContactAddress();
-					const auto &confId = getConferenceId();
-					if (!confId.empty() && isInConference() &&
-					    !contactAddress->hasParam(Conference::kIsFocusParameter)) {
+					if (isInConference() && !contactAddress->hasParam(Conference::kIsFocusParameter)) {
 						// If the call was added to a conference after the last INVITE session was started, the reINVITE
 						// to enter conference must be sent only if capability negotiation reINVITE was not sent
 						if (!capabilityNegotiationReInviteSent) {
@@ -3403,12 +3397,14 @@ void MediaSessionPrivate::performMutualAuthentication() {
 	// Is call direction really relevant ? might be linked to offerer/answerer rather than call direction ?
 	const std::shared_ptr<SalMediaDescription> &md =
 	    localIsOfferer ? op->getLocalMediaDescription() : op->getRemoteMediaDescription();
-	const auto audioStreamIndex = md->findIdxBestStream(SalAudio);
-	Stream *stream = audioStreamIndex != -1 ? getStreamsGroup().getStream(audioStreamIndex) : nullptr;
-	MS2AudioStream *ms2a = dynamic_cast<MS2AudioStream *>(stream);
-	if (encryptionEngine && ms2a && ms2a->getZrtpContext()) {
-		encryptionEngine->mutualAuthentication(ms2a->getZrtpContext(), op->getLocalMediaDescription(),
-		                                       op->getRemoteMediaDescription(), q->getDirection());
+	if (md) {
+		const auto audioStreamIndex = md->findIdxBestStream(SalAudio);
+		Stream *stream = audioStreamIndex != -1 ? getStreamsGroup().getStream(audioStreamIndex) : nullptr;
+		MS2AudioStream *ms2a = dynamic_cast<MS2AudioStream *>(stream);
+		if (encryptionEngine && ms2a && ms2a->getZrtpContext()) {
+			encryptionEngine->mutualAuthentication(ms2a->getZrtpContext(), op->getLocalMediaDescription(),
+			                                       op->getRemoteMediaDescription(), q->getDirection());
+		}
 	}
 }
 
@@ -3773,7 +3769,7 @@ void MediaSessionPrivate::handleIncomingReceivedStateInIncomingNotification() {
 	L_Q();
 	auto logContext = getLogContextualizer();
 	/* Try to be best-effort in giving real local or routable contact address for 100Rel case */
-	setContactOp({});
+	setContactOp();
 	if (notifyRinging) {
 		bool proposeEarlyMedia = !!linphone_config_get_int(linphone_core_get_config(q->getCore()->getCCore()), "sip",
 		                                                   "incoming_calls_early_media", false);
@@ -4246,13 +4242,12 @@ LinphoneStatus MediaSessionPrivate::startAccept() {
 	// It occurs if the remote participant calls the core hosting the conference and the call is added to the conference
 	// when it is in state IncomingReceived
 	// Do not do anything if the contact address is not yet known
-	const auto &confId = getConferenceId();
-	if (getOp() && getOp()->getContactAddress() && !confId.empty() && isInConference()) {
+	if (getOp() && getOp()->getContactAddress() && isInConference()) {
 		q->updateContactAddressInOp();
 	}
 
 	/* Give a chance a set card prefered sampling frequency */
-	if (localDesc->streams[0].getMaxRate() > 0) {
+	if (localDesc && (localDesc->streams[0].getMaxRate() > 0)) {
 		lInfo() << "Configuring prefered card sampling rate to [" << localDesc->streams[0].getMaxRate() << "]";
 		if (q->getCore()->getCCore()->sound_conf.play_sndcard)
 			ms_snd_card_set_preferred_sample_rate(q->getCore()->getCCore()->sound_conf.play_sndcard,
@@ -4627,7 +4622,7 @@ LinphoneStatus MediaSession::acceptEarlyMedia(const MediaSessionParams *msp) {
 		return -1;
 	}
 	/* Try to be best-effort in giving real local or routable contact address for 100Rel case */
-	d->setContactOp({});
+	d->setContactOp();
 	/* If parameters are passed, update the media description */
 	if (msp) {
 		d->setParams(new MediaSessionParams(*msp));

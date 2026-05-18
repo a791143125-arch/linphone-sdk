@@ -64,8 +64,6 @@ public:
 	}
 	bool reportEvents() const;
 	bool isInConference() const;
-	const std::string getConferenceId() const;
-	void setConferenceId(const std::string id);
 	void setParams(CallSessionParams *csp);
 	void setReferPending(bool value) {
 		referPending = value;
@@ -113,7 +111,7 @@ public:
 	setDestAccount(const std::shared_ptr<Account> &account); // Set destProxy and update the proxy of currentParams
 
 	void setBroken();
-	void setContactOp(const std::optional<std::shared_ptr<Address>> destination);
+	void setContactOp();
 
 	virtual void reinviteToRecoverFromConnectionLoss();
 	virtual void repairByNewInvite(bool withReplaces);

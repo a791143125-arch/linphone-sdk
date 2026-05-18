@@ -82,46 +82,55 @@ bool ConferenceId::operator<(const ConferenceId &other) const {
 }
 
 std::shared_ptr<Address> ConferenceId::processAddress(const Address &addr) const {
+	std::shared_ptr<Address> address;
 	if (addr.isValid()) {
 		if (mParams.extractUriEnabled()) {
 			if (mParams.getKeepGruu()) {
-				return Address::create(addr.getUri());
+				address = Address::create(addr.getUri());
 			} else {
-				return Address::create(addr.getUriWithoutGruu());
+				address = Address::create(addr.getUriWithoutGruu());
 			}
 		} else {
-			auto processedAddress = Address::create(addr);
+			address = Address::create(addr);
 			if (!mParams.getKeepGruu()) {
-				processedAddress->removeUriParam("gr");
+				address->removeUriParam("gr");
 			}
-			return processedAddress;
 		}
+		address->removeUriParam(Address::kTransportParameter);
 	}
-	return Address::create();
+	return address;
 }
 
-bool ConferenceId::canUpdateAddress(const std::shared_ptr<const Address> &addr, bool useLocal) const {
+bool ConferenceId::canUpdateAddress(const std::shared_ptr<const Address> &addr, bool isLocal) const {
 	// Local and peer addresses cannot be modified if the hash or weak hash have already been computed
 	const auto newUri = (addr) ? addr->getUri() : Address();
-	const auto currentMember = useLocal ? mLocalAddress : mPeerAddress;
+	const auto currentMember = isLocal ? mLocalAddress : mPeerAddress;
 	return (!currentMember || (currentMember->toStringUriOnlyOrdered() == newUri.toStringUriOnlyOrdered()) ||
 	        ((mHash == 0) && (mWeakHash == 0)));
 }
 
-void ConferenceId::setPeerAddress(const std::shared_ptr<const Address> &addr, bool forceUpdate) {
-	if (!addr) return;
-	if (!forceUpdate && !canUpdateAddress(addr, false)) {
-		lError() << *this << ": Cannot modify peer address if either its hash or its weak hash is defined";
+bool ConferenceId::checkAddress(const std::shared_ptr<const Address> &addr, bool forceUpdate, bool isLocal) const {
+	if (!addr || !addr->isValid()) {
+		return false;
+	}
+	if (!forceUpdate && !canUpdateAddress(addr, isLocal)) {
+		lInfo() << *this << ": Cannot modify " << ((isLocal) ? "local" : "peer")
+		        << " address if either its hash or its weak hash is defined";
 		abort();
+	}
+	return true;
+}
+
+void ConferenceId::setPeerAddress(const std::shared_ptr<const Address> &addr, bool forceUpdate) {
+	if (!checkAddress(addr, forceUpdate, false)) {
+		return;
 	}
 	mPeerAddress = processAddress(*addr);
 }
 
 void ConferenceId::setLocalAddress(const std::shared_ptr<const Address> &addr, bool forceUpdate) {
-	if (!addr) return;
-	if (!forceUpdate && !canUpdateAddress(addr, true)) {
-		lInfo() << *this << ": Cannot modify local address if either its hash or its weak hash is defined";
-		abort();
+	if (!checkAddress(addr, forceUpdate, true)) {
+		return;
 	}
 	mLocalAddress = processAddress(*addr);
 }
