@@ -629,13 +629,18 @@ static void conference_joined_in_early_media() {
 		/*wait for one second longer so that last RTP packets can arrive*/
 		CoreManagerAssert({focus, marie, pauline}).waitUntil(chrono::seconds(1), [] { return false; });
 
+		marie_stat = marie.getStats();
 		ms_message("%s's network becomes instable. The network suddenly drops and comes back up immediately",
 		           linphone_core_get_identity(marie.getLc()));
 		linphone_core_set_network_reachable(marie.getLc(), FALSE);
 		linphone_core_set_network_reachable(marie.getLc(), TRUE);
 
+		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneCallOutgoingProgress,
+		                             marie_stat.number_of_LinphoneCallOutgoingProgress + 1,
+		                             liblinphone_tester_sip_timeout));
+
 		BC_ASSERT_TRUE(wait_for_list(coresList, &marie.getStats().number_of_LinphoneCallOutgoingEarlyMedia,
-		                             marie_stat.number_of_LinphoneCallOutgoingEarlyMedia + 2,
+		                             marie_stat.number_of_LinphoneCallOutgoingEarlyMedia + 1,
 		                             liblinphone_tester_sip_timeout));
 
 		// Pauline accepts the call

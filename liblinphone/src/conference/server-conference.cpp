@@ -2024,22 +2024,23 @@ bool ServerConference::addParticipant(const std::shared_ptr<Call> call) {
 		// Set the conference address as the local address as a way to provide the client with the conference address
 		const std::shared_ptr<Address> &conferenceAddress = getConferenceAddress();
 		auto op = call->getOp();
-		if (op && conferenceAddress) {
-			op->setLocalUri(conferenceAddress->getImpl());
-		}
 
 		// Add participant to the conference participant list
 		switch (state) {
+			case CallSession::State::Pausing:
+			case CallSession::State::Paused:
+			case CallSession::State::Resuming:
+			case CallSession::State::StreamsRunning:
+				if (op && conferenceAddress) {
+					op->setLocalUri(conferenceAddress->getImpl());
+				}
+				BCTBX_NO_BREAK;
 			case CallSession::State::OutgoingInit:
 			case CallSession::State::OutgoingProgress:
 			case CallSession::State::OutgoingRinging:
 			case CallSession::State::OutgoingEarlyMedia:
 			case CallSession::State::IncomingReceived:
-			case CallSession::State::IncomingEarlyMedia:
-			case CallSession::State::Pausing:
-			case CallSession::State::Paused:
-			case CallSession::State::Resuming:
-			case CallSession::State::StreamsRunning: {
+			case CallSession::State::IncomingEarlyMedia: {
 				if (call->toC() == linphone_core_get_current_call(getCore()->getCCore()))
 					L_GET_PRIVATE_FROM_C_OBJECT(getCore()->getCCore())->setCurrentCall(nullptr);
 				mMixerSession->joinStreamsGroup(session->getStreamsGroup());
@@ -3021,8 +3022,6 @@ int ServerConference::getParticipantDeviceVolume(const std::shared_ptr<Participa
 
 int ServerConference::terminate(const LinphoneReason reason) {
 	if (supportsMedia()) {
-		const auto &conferenceAddress = getConferenceAddress();
-		const auto conferenceAddressStr = (conferenceAddress ? conferenceAddress->toString() : std::string("sip:"));
 		lInfo() << "Terminate " << *this;
 		// Take a ref because the conference may be immediately go to deleted state if terminate is called when there
 		// are 0 participants
@@ -3065,6 +3064,7 @@ int ServerConference::terminate(const LinphoneReason reason) {
 		try {
 			// The server deletes the conference info once the conference is terminated.
 			// It avoids having a growing database on the server side
+			const std::shared_ptr<Address> &conferenceAddress = getConferenceAddress();
 			if (conferenceAddress && (isConferenceExpired() ||
 			                          (linphone_core_get_global_state(getCore()->getCCore()) == LinphoneGlobalOn))) {
 				getCore()->getPrivate()->deleteConferenceInfo(conferenceAddress);
@@ -3206,10 +3206,11 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
                                                  CallSession::State state,
                                                  BCTBX_UNUSED(const std::string &message)) {
 	const auto &chatRoom = getChatRoom();
+	const auto &conferenceAddress = getConferenceAddress();
+	auto op = session->getPrivate()->getOp();
 	if (supportsMedia()) {
 		std::shared_ptr<Address> remoteAddress = session->getRemoteAddress();
 		const auto &remoteContactAddress = session->getRemoteContactAddress();
-		auto op = session->getPrivate()->getOp();
 		auto cppCall = getCore()->getCallBySession(session);
 		const auto &device = findParticipantDevice(session);
 		const auto &deviceState = device ? device->getState() : ParticipantDevice::State::ScheduledForJoining;
@@ -3294,6 +3295,9 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
 			case CallSession::State::Connected:
 				if (getState() == ConferenceInterface::State::Created) {
 					enter();
+				}
+				if (op && conferenceAddress) {
+					op->setLocalUri(conferenceAddress->getImpl());
 				}
 				break;
 			case CallSession::State::IncomingEarlyMedia:
@@ -3422,7 +3426,6 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
 				    ((deviceState == ParticipantDevice::State::Present) ||
 				     (deviceState == ParticipantDevice::State::Joining))) {
 					enableScreenSharing(session, true);
-					const auto op = session->getPrivate()->getOp();
 					// The remote participant requested to change subject
 					if (sal_custom_header_find(op->getRecvCustomHeaders(), "Subject")) {
 						const auto &subject = op->getSubject();
@@ -3476,6 +3479,9 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
 		const auto &deviceState = device->getState();
 		switch (state) {
 			case CallSession::State::Connected:
+				if (op && conferenceAddress) {
+					op->setLocalUri(conferenceAddress->getImpl());
+				}
 				if (deviceState == ParticipantDevice::State::Leaving) {
 					byeDevice(device);
 				} else {
