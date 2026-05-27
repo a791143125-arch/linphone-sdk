@@ -207,7 +207,7 @@ bool Conference::isAnonymousParticipant(const std::shared_ptr<Address> &address)
 
 bool Conference::isAnonymousParticipant(const std::shared_ptr<Call> &call) {
 	const std::shared_ptr<Address> &address =
-	    call->isInConference() ? call->getRemoteAddress() : call->getLocalAddress();
+	    call->getCore()->conferenceServerEnabled() ? call->getRemoteAddress() : call->getLocalAddress();
 	return isAnonymousParticipant(address);
 }
 

@@ -5672,7 +5672,7 @@ end:
 	linphone_core_manager_delete_chat_room(pauline, paulineCr, coresList);
 
 	wait_for_list(coresList, 0, 1, 2000);
-	// Checks that the history size via a call to linphone_core_get_call_history_size() is 0 is not reliable due to the
+	// Checking that the history size via a call to linphone_core_get_call_history_size() is 0 is not reliable due to the
 	// call log server. In fact the number of call logs is not actually known as previous tests may make calls
 	// The same applies to linphone_core_get_call_logs().
 	BC_ASSERT_EQUAL(marie->stat.number_of_LinphoneCallCreated, 0, int, "%i");
@@ -5684,6 +5684,7 @@ end:
 	linphone_core_manager_destroy(marie);
 	linphone_core_manager_destroy(pauline);
 }
+
 static void group_chat_room_unique_one_on_one_chat_room_recreated_from_message(void) {
 	if (liblinphone_tester_is_lime_PQ_available()) {
 		group_chat_room_unique_one_on_one_chat_room_recreated_from_message_curve(C25519K512);

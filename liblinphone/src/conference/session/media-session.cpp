@@ -175,6 +175,54 @@ bool MediaSessionPrivate::tryEnterConference() {
 			lInfo() << "Media session (local address " << *q->getLocalAddress() << " remote address "
 			        << *q->getRemoteAddress() << ") was added to " << *conference
 			        << " while the call was establishing. Sending update to notify remote participant.";
+			const auto &confParams = conference->getCurrentParams();
+			newParams->getPrivate()->setInConference(true);
+			newParams->getPrivate()->setStartTime(confParams->getStartTime());
+			newParams->getPrivate()->setEndTime(confParams->getEndTime());
+			if (confParams->videoEnabled()) {
+				if (confParams->localParticipantEnabled()) {
+					newParams->enableVideo(true);
+				} else {
+					if (getRemoteParams()) {
+						newParams->enableVideo(getRemoteParams()->videoEnabled());
+					}
+				}
+			} else {
+				newParams->enableVideo(false);
+			}
+
+			LinphoneMediaDirection audioDirection = LinphoneMediaDirectionInactive;
+			LinphoneMediaDirection videoDirection = LinphoneMediaDirectionInactive;
+			const auto &device = conference->findParticipantDevice(q->getSharedFromThis());
+			if (device) {
+				const auto &participant = device->getParticipant();
+				const auto &role = participant->getRole();
+				switch (role) {
+					case Participant::Role::Speaker:
+						audioDirection = LinphoneMediaDirectionSendRecv;
+						videoDirection = LinphoneMediaDirectionSendRecv;
+						break;
+					case Participant::Role::Listener:
+						audioDirection = LinphoneMediaDirectionSendOnly;
+						videoDirection = LinphoneMediaDirectionSendOnly;
+						break;
+					case Participant::Role::Unknown:
+						audioDirection = LinphoneMediaDirectionInactive;
+						videoDirection = LinphoneMediaDirectionInactive;
+						break;
+				}
+			}
+
+			newParams->setAudioDirection(audioDirection);
+			newParams->setVideoDirection(videoDirection);
+
+			if (!confParams->isHidden()) {
+				if (confParams->chatEnabled()) {
+					newParams->addCustomContactParameter(Conference::kTextParameter, std::string());
+				}
+				newParams->addCustomContactParameter(Conference::kIsFocusParameter, std::string());
+			}
+
 			q->update(newParams, CallSession::UpdateMethod::Default, q->isCapabilityNegotiationEnabled());
 			delete newParams;
 		}
@@ -4877,7 +4925,7 @@ LinphoneStatus MediaSession::pause() {
 }
 
 LinphoneStatus MediaSession::delayResume() {
-	lInfo() << "Delaying call resume";
+	lInfo() << "Delaying resume of session [" << this << "]";
 	addPendingAction([this] { return this->resume(); });
 	return -1;
 }
@@ -6227,9 +6275,12 @@ int MediaSession::getMainVideoStreamIdx(const std::shared_ptr<SalMediaDescriptio
 			const auto &confLayout = computeConferenceLayout(refMd);
 			const auto isConferenceLayoutActiveSpeaker = (confLayout == ConferenceLayout::ActiveSpeaker);
 			const auto isConferenceLayoutGrid = (confLayout == ConferenceLayout::Grid);
-			const auto &participantDevice = (isInLocalConference)
-			                                    ? conference->findParticipantDevice(getSharedFromThis())
-			                                    : conference->getMe()->findDevice(getSharedFromThis());
+			std::shared_ptr<ParticipantDevice> participantDevice;
+			if (isInLocalConference) {
+				participantDevice = conference->findParticipantDevice(getSharedFromThis());
+			} else if (auto me = conference->getMe()) {
+				participantDevice = me->findDevice(getSharedFromThis());
+			}
 
 			// Try to find a stream with the screen sharing content attribute as it will be for sure the main video
 			// stream. Indeed, screen sharing can be enabled regardless of the conference layout, it is needed to always

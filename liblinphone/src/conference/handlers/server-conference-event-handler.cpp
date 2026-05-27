@@ -1165,8 +1165,9 @@ LinphoneStatus ServerConferenceEventHandler::subscribeReceived(const shared_ptr<
 	}
 
 	const auto deviceState = device->getState();
-	if ((deviceState != ParticipantDevice::State::Present) && (deviceState != ParticipantDevice::State::Joining)) {
-		lError() << "Device [" << *contactAddr << "] sending SUBSCRIBE " << *ev << " to " << *conf
+	if ((deviceState != ParticipantDevice::State::Alerting) && (deviceState != ParticipantDevice::State::Present) &&
+	    (deviceState != ParticipantDevice::State::Joining)) {
+		lError() << *device << " sending SUBSCRIBE " << *ev << " to " << *conf
 		         << " cannot be sent NOTIFY messages because it is not in state "
 		         << Utils::toString(ParticipantDevice::State::Joining) << " or "
 		         << Utils::toString(ParticipantDevice::State::Present)

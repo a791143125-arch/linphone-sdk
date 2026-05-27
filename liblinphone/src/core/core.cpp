@@ -2503,7 +2503,7 @@ void Core::deleteConference(const shared_ptr<const Conference> &conference) {
 
 /*
  * This function searches a conference that matches the arguments provided. It is not mandatory for the application to
- * provide every argument, nonetheless the execution time depends on which of the are given. If both the peer and local
+ * provide every argument, nonetheless the execution time depends on which of them are given. If both the peer and local
  * addresses are provided, then the search can be carried out directly on the conference map mConferenceById as its key
  * is a ConferenceId object. This is the fastest way to look for a conference and compare against a participant list
  * and/or parameters should they be given. If either the peer or the local address is given, then the search will take

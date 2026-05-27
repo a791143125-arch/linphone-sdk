@@ -3289,10 +3289,13 @@ static void group_chat_room_reinvited_after_removed_base(bool_t offline_when_rem
 		linphone_core_manager_start(laure, TRUE);
 		coresList = bctbx_list_concat(coresList, tmpCoresList);
 		coresManagerList = bctbx_list_append(coresManagerList, laure);
+		BC_ASSERT_TRUE(wait_for_list(coresList, &laure->stat.number_of_LinphoneChatRoomStateCreated, 1,
+		                             liblinphone_tester_sip_timeout));
+	} else {
+		BC_ASSERT_TRUE(wait_for_list(coresList, &laure->stat.number_of_LinphoneChatRoomStateCreated,
+		                             initialLaureStats.number_of_LinphoneChatRoomStateCreated + 1,
+		                             liblinphone_tester_sip_timeout));
 	}
-	BC_ASSERT_TRUE(wait_for_list(coresList, &laure->stat.number_of_LinphoneChatRoomStateCreated,
-	                             initialLaureStats.number_of_LinphoneChatRoomStateCreated + 1,
-	                             liblinphone_tester_sip_timeout));
 	BC_ASSERT_EQUAL(linphone_chat_room_get_nb_participants(marieCr), 2, int, "%d");
 	BC_ASSERT_EQUAL(linphone_chat_room_get_nb_participants(paulineCr), 2, int, "%d");
 	char *laureDeviceIdentity = linphone_core_get_device_identity(laure->lc);
