@@ -139,7 +139,7 @@ void MS2VideoMixer::createLocalMember(bool isThumbnail) {
 		io.output.type = MSResourceDefault;
 		io.input.itc = mLocalParticipantStream->itcsink;
 
-		media_stream_set_max_network_bitrate(&vs->ms, 80000);
+		media_stream_set_max_network_bitrate(&vs->ms, 160000);
 		if (vdef) {
 			MSVideoSize vsize = {160, 120};
 			video_stream_set_sent_video_size(vs, vsize);

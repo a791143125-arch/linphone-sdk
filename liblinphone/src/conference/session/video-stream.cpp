@@ -717,7 +717,7 @@ void MS2VideoStream::render(const OfferAnswerContext &ctx, CallSession::State ta
 					io.input.type = MSResourceItc;
 					io.input.itc = itcFilter;
 				}
-				media_stream_set_max_network_bitrate(&mStream->ms, 80000);
+				media_stream_set_max_network_bitrate(&mStream->ms, 160000);
 
 				MSVideoSize vsize = {160, 120};
 				video_stream_set_content(mStream, MSVideoContentThumbnail);
