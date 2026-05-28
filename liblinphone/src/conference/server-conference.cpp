@@ -648,9 +648,13 @@ MediaSessionParams *ServerConference::createDefaultMediaParams(const std::shared
 		msp = call->createCallParams();
 	} else {
 		msp = new MediaSessionParams();
+		msp->initDefault(getCore(), LinphoneCallIncoming);
+		const auto &account = getAccount();
+		if (account) {
+			msp->setAccount(account);
+		}
 	}
 	auto hasMedia = supportsMedia();
-	msp->initDefault(getCore(), LinphoneCallIncoming);
 	msp->enableAudio(mConfParams->audioEnabled());
 	msp->enableVideo(mConfParams->videoEnabled());
 	msp->getPrivate()->setInConference(true);
@@ -658,36 +662,29 @@ MediaSessionParams *ServerConference::createDefaultMediaParams(const std::shared
 	msp->getPrivate()->setEndTime(mConfParams->getEndTime());
 	msp->getPrivate()->disableRinging(hasMedia);
 	msp->getPrivate()->enableToneIndications(hasMedia);
-	const auto &account = getAccount();
-	if (account) {
-		msp->setAccount(account);
-	}
-	if (hasMedia) {
-		if (!mConfParams->isHidden()) {
-			if (mConfParams->chatEnabled()) {
-				msp->addCustomContactParameter(Conference::kTextParameter, std::string());
-			}
-			msp->addCustomContactParameter(Conference::kIsFocusParameter, std::string());
-			const auto &conferenceAddress = getConferenceAddress();
-			if (conferenceAddress) {
-				const string &confId = conferenceAddress->getUriParamValue(Conference::kConfIdParameter);
-				if (!confId.empty()) {
-					msp->addCustomContactUriParameter(Conference::kConfIdParameter, confId);
-					msp->getPrivate()->setConferenceId(confId);
-				}
+
+	if (!mConfParams->isHidden()) {
+		msp->addCustomContactParameter(Conference::kIsFocusParameter, std::string());
+		const auto &conferenceAddress = getConferenceAddress();
+		if (conferenceAddress) {
+			const string &confId = conferenceAddress->getUriParamValue(Conference::kConfIdParameter);
+			if (!confId.empty()) {
+				msp->addCustomContactUriParameter(Conference::kConfIdParameter, confId);
+				msp->getPrivate()->setConferenceId(confId);
 			}
 		}
-	}
-	if (mConfParams->chatEnabled()) {
-		if (!getCurrentParams()->isGroup()) msp->addCustomHeader(ChatRoom::kOneOnOneChatRoomHeader, "true");
-		if (getCurrentParams()->getChatParams()->isEncrypted())
-			msp->addCustomHeader(ChatRoom::kEndToEndEncryptedHeader, "true");
-		if (getCurrentParams()->getChatParams()->ephemeralAllowed()) {
-			msp->addCustomHeader(ChatRoom::kEphemerableHeader, "true");
-			msp->addCustomHeader(ChatRoom::kEphemeralLifeTimeHeader,
-			                     to_string(getCurrentParams()->getChatParams()->getEphemeralLifetime()));
-			msp->addCustomHeader(ChatRoom::kEphemeralNotReadLifeTimeHeader,
-			                     to_string(getCurrentParams()->getChatParams()->getEphemeralNotReadLifetime()));
+		if (mConfParams->chatEnabled()) {
+			msp->addCustomContactParameter(Conference::kTextParameter, std::string());
+			if (!getCurrentParams()->isGroup()) msp->addCustomHeader(ChatRoom::kOneOnOneChatRoomHeader, "true");
+			if (getCurrentParams()->getChatParams()->isEncrypted())
+				msp->addCustomHeader(ChatRoom::kEndToEndEncryptedHeader, "true");
+			if (getCurrentParams()->getChatParams()->ephemeralAllowed()) {
+				msp->addCustomHeader(ChatRoom::kEphemerableHeader, "true");
+				msp->addCustomHeader(ChatRoom::kEphemeralLifeTimeHeader,
+				                     to_string(getCurrentParams()->getChatParams()->getEphemeralLifetime()));
+				msp->addCustomHeader(ChatRoom::kEphemeralNotReadLifeTimeHeader,
+				                     to_string(getCurrentParams()->getChatParams()->getEphemeralNotReadLifetime()));
+			}
 		}
 	}
 
@@ -1475,14 +1472,12 @@ int ServerConference::inviteAddresses(const std::list<std::shared_ptr<Address>> 
 				new_params->getPrivate()->disableRinging(!supportsMedia());
 				new_params->getPrivate()->enableToneIndications(supportsMedia());
 
-				if (supportsMedia()) {
-					if (!mConfParams->isHidden()) {
-						new_params->addCustomContactParameter(Conference::kIsFocusParameter, std::string());
-						const string &confId = conferenceAddress->getUriParamValue(Conference::kConfIdParameter);
-						new_params->getPrivate()->setConferenceId(confId);
-						if (!confId.empty()) {
-							new_params->addCustomContactUriParameter(Conference::kConfIdParameter, confId);
-						}
+				if (!mConfParams->isHidden()) {
+					new_params->addCustomContactParameter(Conference::kIsFocusParameter, std::string());
+					const string &confId = conferenceAddress->getUriParamValue(Conference::kConfIdParameter);
+					new_params->getPrivate()->setConferenceId(confId);
+					if (!confId.empty()) {
+						new_params->addCustomContactUriParameter(Conference::kConfIdParameter, confId);
 					}
 				}
 			} else {
@@ -1710,9 +1705,6 @@ bool ServerConference::finalizeParticipantAddition(std::shared_ptr<Call> call) {
 			    !contactAddress->hasParam(Conference::kIsFocusParameter)) {
 				getCore()->doLater([this, call, device] {
 					lInfo() << *this << ": Finalizing addition of device " << *device->getAddress();
-					const std::shared_ptr<Address> &conferenceAddress = getConferenceAddress();
-					const string &confId = conferenceAddress->getUriParamValue(Conference::kConfIdParameter);
-
 					MediaSessionParams *msp = createDefaultMediaParams(call);
 					if (getCurrentParams()->videoEnabled()) {
 						msp->enableVideo(call->getRemoteParams()->videoEnabled());
