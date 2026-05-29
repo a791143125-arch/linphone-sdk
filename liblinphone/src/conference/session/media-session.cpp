@@ -4924,12 +4924,6 @@ LinphoneStatus MediaSession::pause() {
 	return result;
 }
 
-LinphoneStatus MediaSession::delayResume() {
-	lInfo() << "Delaying resume of session [" << this << "]";
-	addPendingAction([this] { return this->resume(); });
-	return -1;
-}
-
 LinphoneStatus MediaSession::resume() {
 	L_D();
 	if (d->state == CallSession::State::Pausing) {
