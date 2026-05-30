@@ -363,7 +363,6 @@ private:
 
 	LinphoneMediaDirection computeNewVideoDirection(LinphoneMediaDirection acceptVideoDirection);
 
-	bool tryEnterConference();
 	void fillRtpParameters(SalStreamDescription &stream) const;
 	void fillVideoRptParameters(SalStreamDescription &newStream) const;
 	bool incompatibleSecurity(const std::shared_ptr<SalMediaDescription> &finalMd,

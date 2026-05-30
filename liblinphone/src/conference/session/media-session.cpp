@@ -156,81 +156,6 @@ LinphoneMediaEncryption MediaSessionPrivate::getNegotiatedMediaEncryption() cons
 }
 
 // -----------------------------------------------------------------------------
-
-bool MediaSessionPrivate::tryEnterConference() {
-	L_Q();
-	const auto &conference = q->getCore()->findConference(q->getSharedFromThis(), false);
-	// If the call conference ID is not an empty string but no conference is linked to the call means that it was added
-	// to the conference after the INVITE session was started but before its completition
-	if (conference) {
-		if (state == CallSession::State::Paused) {
-			// Resume call as it was added to conference
-			lInfo() << "Media session (local address " << *q->getLocalAddress() << " remote address "
-			        << *q->getRemoteAddress() << ") was added to " << *conference
-			        << " while the call was being paused. Resuming the session.";
-			q->resume();
-		} else {
-			// Send update to notify that the call enters conference
-			MediaSessionParams *newParams = q->getMediaParams()->clone();
-			lInfo() << "Media session (local address " << *q->getLocalAddress() << " remote address "
-			        << *q->getRemoteAddress() << ") was added to " << *conference
-			        << " while the call was establishing. Sending update to notify remote participant.";
-			const auto &confParams = conference->getCurrentParams();
-			newParams->getPrivate()->setInConference(true);
-			newParams->getPrivate()->setStartTime(confParams->getStartTime());
-			newParams->getPrivate()->setEndTime(confParams->getEndTime());
-			if (confParams->videoEnabled()) {
-				if (confParams->localParticipantEnabled()) {
-					newParams->enableVideo(true);
-				} else {
-					if (getRemoteParams()) {
-						newParams->enableVideo(getRemoteParams()->videoEnabled());
-					}
-				}
-			} else {
-				newParams->enableVideo(false);
-			}
-
-			LinphoneMediaDirection audioDirection = LinphoneMediaDirectionInactive;
-			LinphoneMediaDirection videoDirection = LinphoneMediaDirectionInactive;
-			const auto &device = conference->findParticipantDevice(q->getSharedFromThis());
-			if (device) {
-				const auto &participant = device->getParticipant();
-				const auto &role = participant->getRole();
-				switch (role) {
-					case Participant::Role::Speaker:
-						audioDirection = LinphoneMediaDirectionSendRecv;
-						videoDirection = LinphoneMediaDirectionSendRecv;
-						break;
-					case Participant::Role::Listener:
-						audioDirection = LinphoneMediaDirectionSendOnly;
-						videoDirection = LinphoneMediaDirectionSendOnly;
-						break;
-					case Participant::Role::Unknown:
-						audioDirection = LinphoneMediaDirectionInactive;
-						videoDirection = LinphoneMediaDirectionInactive;
-						break;
-				}
-			}
-
-			newParams->setAudioDirection(audioDirection);
-			newParams->setVideoDirection(videoDirection);
-
-			if (!confParams->isHidden()) {
-				if (confParams->chatEnabled()) {
-					newParams->addCustomContactParameter(Conference::kTextParameter, std::string());
-				}
-				newParams->addCustomContactParameter(Conference::kIsFocusParameter, std::string());
-			}
-
-			q->update(newParams, CallSession::UpdateMethod::Default, q->isCapabilityNegotiationEnabled());
-			delete newParams;
-		}
-		return true;
-	}
-	return false;
-}
-
 bool MediaSessionPrivate::rejectMediaSession(const std::shared_ptr<SalMediaDescription> &localMd,
                                              const std::shared_ptr<SalMediaDescription> &remoteMd,
                                              const std::shared_ptr<SalMediaDescription> &finalMd) const {
@@ -402,7 +327,7 @@ void MediaSessionPrivate::accepted() {
 				fixCallParams(rmd, false);
 
 				setState(nextState, nextStateMsg);
-				bool capabilityNegotiationReInviteSent = false;
+				//				bool capabilityNegotiationReInviteSent = false;
 				const bool capabilityNegotiationReInviteEnabled =
 				    getParams()->getPrivate()->capabilityNegotiationReInviteEnabled();
 				// If capability negotiation is enabled, a second invite must be sent if the selected configuration is
@@ -433,7 +358,7 @@ void MediaSessionPrivate::accepted() {
 							MediaSessionParams newParams(*getParams());
 							newParams.getPrivate()->setInternalCallUpdate(true);
 							q->update(&newParams, CallSession::UpdateMethod::Default, true);
-							capabilityNegotiationReInviteSent = true;
+							//							capabilityNegotiationReInviteSent = true;
 						} else {
 							lInfo()
 							    << "Using actual configuration after capability negotiation procedure, hence no need "
@@ -442,29 +367,6 @@ void MediaSessionPrivate::accepted() {
 					} else {
 						lInfo() << "Capability negotiation and ICE are both enabled hence wait for the end of ICE "
 						           "checklist completion to send a reINVITE";
-					}
-				}
-
-				if (getOp() && getOp()->getContactAddress()) {
-					const auto contactAddress = q->getContactAddress();
-					if (isInConference() && !contactAddress->hasParam(Conference::kIsFocusParameter)) {
-						// If the call was added to a conference after the last INVITE session was started, the reINVITE
-						// to enter conference must be sent only if capability negotiation reINVITE was not sent
-						if (!capabilityNegotiationReInviteSent) {
-							// Add to conference if it was added after last INVITE message sequence started
-							// It occurs if the local participant calls the remote participant and the call is added to
-							// the conference when it is in state OutgoingInit, OutgoingProgress or OutgoingRinging
-							q->getCore()->doLater([this]() {
-								/* This has to be done outside of the accepted callback, because after the callback the
-								 * SIP ACK is going to be sent. Despite it is not forbidden by RFC3261, it is preferable
-								 * for the sake of clarity that the ACK for the current transaction is sent before the
-								 * new INVITE that will be sent by tryEnterConference(). Some implementations (eg
-								 * FreeSwitch) reply "500 Overlapped request" otherwise ( which is in fact a
-								 * misunderstanding of RFC3261).
-								 */
-								tryEnterConference();
-							});
-						}
 					}
 				}
 				bundleModeAccepted = q->getCurrentParams()->rtpBundleEnabled();

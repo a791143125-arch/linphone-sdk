@@ -283,7 +283,8 @@ private:
 
 	bool hasAdminLeft() const;
 
-	MediaSessionParams *getDefaultMediaParams(const std::shared_ptr<Call> call = nullptr);
+	MediaSessionParams *getDefaultMediaParams(const std::shared_ptr<Call> &call = nullptr,
+	                                          const std::shared_ptr<ParticipantDevice> &device = nullptr);
 	void setMediaDirectionInCallParams(MediaSessionParams *params,
 	                                   const std::shared_ptr<ParticipantDevice> &device) const;
 
