@@ -290,6 +290,27 @@ void Sal::processRequestEventCb(void *userCtx, const belle_sip_request_event_t *
 		    belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(request), belle_sip_header_call_id_t)));
 	}
 
+    if (op->mCallInfo.empty()) {
+        auto callInfoHeader = belle_sip_message_get_header(BELLE_SIP_MESSAGE(request), "Call-Info");
+        if (callInfoHeader) {
+            op->mCallInfo = std::string(belle_sip_header_get_unparsed_value(callInfoHeader));
+        }
+    }
+
+    if (op->mAssertedIdentity.empty()) {
+        auto paiHeader = belle_sip_message_get_header(BELLE_SIP_MESSAGE(request), "P-Asserted-Identity");
+        if (paiHeader) {
+            op->mAssertedIdentity = std::string(belle_sip_header_get_unparsed_value(paiHeader));
+        }
+    }
+
+	if ( op->mRemotePartyId.empty() ) {
+		auto remotePartyHeader = belle_sip_message_get_header(BELLE_SIP_MESSAGE(request), "Remote-Party-ID");
+		if ( remotePartyHeader ) {
+			op->mRemotePartyId = std::string(belle_sip_header_get_unparsed_value(remotePartyHeader));
+		}
+	}
+
 	// It is worth noting that proxies can (and will) remove this header field
 	op->setPrivacyFromMessage(BELLE_SIP_MESSAGE(request));
 

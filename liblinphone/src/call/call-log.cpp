@@ -128,6 +128,30 @@ void CallLog::setCallId(const string &callId) {
 	mCallId = callId;
 }
 
+const string &CallLog::getCallInfo() const {
+	return mCallInfo;
+}
+
+void CallLog::setCallInfo(const string &callInfo) {
+	mCallInfo = callInfo;
+}
+
+const string &CallLog::getAssertedIdentity() const {
+    return mAssertedIdentity;
+}
+
+void CallLog::setAssertedIdentity(const string& indentity) {
+    mAssertedIdentity = indentity;
+}
+
+const string &CallLog::getRemotePartyID() const {
+	return mRemotePartyId;
+}
+
+void CallLog::setRemotePartyId(const string& id) {
+	mRemotePartyId = id;
+}
+
 const string &CallLog::getRefKey() const {
 	return mRefKey;
 }

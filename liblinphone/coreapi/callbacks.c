@@ -493,6 +493,10 @@ static void call_received(SalCallOp *h) {
 		if (conference) {
 			call->getActiveSession()->addListener(conference);
 		}
+		if ( params && params->getAccount() && params->getAccount()->getAccountParams() ) {
+			auto address = params->getAccount()->getAccountParams()->getIdentityAddress();
+			h->setResponsePAI(address->asStringUriOnly());
+		}
 		call->startIncomingNotification();
 	}
 }

@@ -64,6 +64,15 @@ public:
 	const std::string &getCallId() const;
 	void setCallId(const std::string &callId);
 
+    const std::string &getCallInfo() const;
+    void setCallInfo(const std::string& callInfo);
+
+    const std::string &getAssertedIdentity() const;
+    void setAssertedIdentity(const std::string& identity);
+
+	void setRemotePartyId(const std::string& id) ;
+	const std::string &getRemotePartyID() const;
+
 	const std::string &getRefKey() const;
 	void setRefKey(const std::string &refKey);
 
@@ -120,6 +129,9 @@ private:
 	std::string mStartDate; /**<Human readable string containing the start date*/
 	std::string mRefKey;
 	std::string mCallId; /**unique id of a call*/
+    std::string mCallInfo;
+    std::string mAssertedIdentity;
+	std::string mRemotePartyId;
 
 	int mDuration = 0; /**<Duration of the call starting in connected state in seconds*/
 	float mQuality = -1.0;
