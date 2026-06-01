@@ -3282,56 +3282,21 @@ void ServerConference::onCallSessionStateChanged(const std::shared_ptr<CallSessi
 				} else {
 					bool acceptSession = (allowedParticipant || (mConfParams->getParticipantListType() ==
 					                                             ConferenceParams::ParticipantListType::Open));
-					LinphoneCallParams *params =
-					    linphone_core_create_call_params(getCore()->getCCore(), cppCall ? cppCall->toC() : nullptr);
-					linphone_call_params_enable_audio(params, acceptSession);
-					linphone_call_params_enable_video(params, acceptSession &&
-					                                              cppCall->getRemoteParams()->videoEnabled() &&
-					                                              getCurrentParams()->videoEnabled());
-					linphone_call_params_set_start_time(params, getCurrentParams()->getStartTime());
-					linphone_call_params_set_end_time(params, getCurrentParams()->getEndTime());
-					linphone_call_params_set_in_conference(params, TRUE);
-
-					if (!mConfParams->isHidden()) {
-						if (mConfParams->chatEnabled()) {
-							L_GET_CPP_PTR_FROM_C_OBJECT(params)->addCustomContactParameter(Conference::kTextParameter,
-							                                                               std::string());
-						}
-						L_GET_CPP_PTR_FROM_C_OBJECT(params)->addCustomContactParameter(Conference::kIsFocusParameter,
-						                                                               std::string());
-					}
+					auto params = getDefaultMediaParams(cppCall, nullptr);
 					if (deviceJoining) {
-						LinphoneMediaDirection audioDirection = LinphoneMediaDirectionInactive;
-						LinphoneMediaDirection videoDirection = LinphoneMediaDirectionInactive;
 						const auto &device = findParticipantDevice(session);
-						if (device) {
-							const auto &participant = device->getParticipant();
-							const auto &role = participant->getRole();
-							switch (role) {
-								case Participant::Role::Speaker:
-									audioDirection = LinphoneMediaDirectionSendRecv;
-									videoDirection = LinphoneMediaDirectionSendRecv;
-									break;
-								case Participant::Role::Listener:
-									audioDirection = LinphoneMediaDirectionSendOnly;
-									videoDirection = LinphoneMediaDirectionSendOnly;
-									break;
-								case Participant::Role::Unknown:
-									audioDirection = LinphoneMediaDirectionInactive;
-									videoDirection = LinphoneMediaDirectionInactive;
-									break;
-							}
-						}
-
-						linphone_call_params_set_audio_direction(params, audioDirection);
-						linphone_call_params_set_video_direction(params, videoDirection);
+						setMediaDirectionInCallParams(params, device);
+					} else {
+						// Clietn updates conference informations on the server
+						params->setAudioDirection(LinphoneMediaDirectionSendRecv);
+						params->setVideoDirection(LinphoneMediaDirectionSendRecv);
 					}
 					if (acceptSession) {
-						ms->accept(L_GET_CPP_PTR_FROM_C_OBJECT(params));
+						ms->accept(params);
 					} else {
-						ms->acceptEarlyMedia(L_GET_CPP_PTR_FROM_C_OBJECT(params));
+						ms->acceptEarlyMedia(params);
 					}
-					linphone_call_params_unref(params);
+					delete params;
 				}
 				if (isCancelled) {
 					setState(ConferenceInterface::State::TerminationPending);

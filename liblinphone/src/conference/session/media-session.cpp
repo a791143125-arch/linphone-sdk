@@ -327,7 +327,6 @@ void MediaSessionPrivate::accepted() {
 				fixCallParams(rmd, false);
 
 				setState(nextState, nextStateMsg);
-				//				bool capabilityNegotiationReInviteSent = false;
 				const bool capabilityNegotiationReInviteEnabled =
 				    getParams()->getPrivate()->capabilityNegotiationReInviteEnabled();
 				// If capability negotiation is enabled, a second invite must be sent if the selected configuration is
@@ -358,7 +357,6 @@ void MediaSessionPrivate::accepted() {
 							MediaSessionParams newParams(*getParams());
 							newParams.getPrivate()->setInternalCallUpdate(true);
 							q->update(&newParams, CallSession::UpdateMethod::Default, true);
-							//							capabilityNegotiationReInviteSent = true;
 						} else {
 							lInfo()
 							    << "Using actual configuration after capability negotiation procedure, hence no need "
@@ -4187,13 +4185,6 @@ LinphoneStatus MediaSessionPrivate::startAccept() {
 			});
 			return -1;
 		}
-	}
-
-	// It occurs if the remote participant calls the core hosting the conference and the call is added to the conference
-	// when it is in state IncomingReceived
-	// Do not do anything if the contact address is not yet known
-	if (getOp() && getOp()->getContactAddress() && isInConference()) {
-		q->updateContactAddressInOp();
 	}
 
 	/* Give a chance a set card prefered sampling frequency */

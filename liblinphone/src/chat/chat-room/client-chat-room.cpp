@@ -346,10 +346,10 @@ void ClientChatRoom::onExhumedConference(const ConferenceId &oldConfId, const Co
 }
 
 // Will be called on A when A is sending a message into a chat room with B previously terminated by B
-void ClientChatRoom::onLocallyExhumedConference(const std::shared_ptr<Address> &remoteAddress) {
+void ClientChatRoom::onLocallyExhumedConference(const std::shared_ptr<Address> &conferenceAddress) {
 	ConferenceId oldConfId = getConferenceId();
 	ConferenceId newConfId =
-	    ConferenceId(remoteAddress, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
+	    ConferenceId(conferenceAddress, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
 
 	lInfo() << *this << ": old conference ID [" << oldConfId << "] has been locally exhumed into [" << newConfId << "]";
 
@@ -370,9 +370,9 @@ void ClientChatRoom::onRemotelyExhumedConference(SalCallOp *op) {
 	ConferenceId oldConfId = getConferenceId();
 	auto remoteAddress = Address::create(op->getRemoteAddress());
 	auto remoteContact = Address::create(op->getRemoteContact());
-	auto peerAddress = Conference::buildConferenceAddress(remoteAddress, remoteContact);
+	auto conferenceAddress = Conference::buildConferenceAddress(remoteAddress, remoteContact);
 	ConferenceId newConfId =
-	    ConferenceId(peerAddress, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
+	    ConferenceId(conferenceAddress, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
 
 	if (getState() != Conference::State::Terminated) {
 		lWarning() << *conference << " is being exhumed but wasn't terminated first!";

@@ -1495,7 +1495,7 @@ std::shared_ptr<Address> Conference::buildConferenceAddress(const std::shared_pt
 	// was therefore obliged to rely on the contact header. However, the contact header's only purpose is to route a
 	// request to the server. This issues being fixed in flexisip 2.6 has nonetheless to be worked around to be
 	// compatible with older flexisip versions.
-	if (!conferenceAddress->hasUriParam(Conference::kConfIdParameter) &&
+	if (!conferenceAddress->hasUriParam(Conference::kConfIdParameter) && contact &&
 	    contact->hasUriParam(Conference::kConfIdParameter)) {
 		conferenceAddress->setUriParam(Conference::kConfIdParameter,
 		                               contact->getUriParamValue(Conference::kConfIdParameter));

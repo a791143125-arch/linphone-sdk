@@ -534,9 +534,8 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 								conference->addParticipantDevice(getSharedFromThis());
 							}
 						} else {
-							lError() << "Call " << this
-							         << " cannot be added to a conference because the contact address has not been "
-							            "retrieved";
+							lError() << *this
+							         << " cannot be added to a conference because the contact address is not known";
 						}
 					}
 				}
@@ -612,7 +611,7 @@ void Call::createClientConference(const shared_ptr<CallSession> &session) {
 		if (confParams->audioEnabled() || confParams->videoEnabled() || confParams->chatEnabled()) {
 			clientConference = dynamic_pointer_cast<ClientConference>(
 			    (new ClientConference(getCore(), nullptr, confParams))->toSharedPtr());
-			clientConference->initWithFocus(remoteContactAddress, session, op);
+			clientConference->initWithFocus(remoteAddress, session, op);
 		} else {
 			lError() << "Unable to attach call (local address " << *session->getLocalAddress() << " remote address "
 			         << *session->getRemoteAddress()
