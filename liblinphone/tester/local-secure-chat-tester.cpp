@@ -1351,6 +1351,12 @@ static void secure_group_chat_room_sends_request_after_being_removed_from_server
 				}));
 				linphone_chat_message_unref(msg);
 				msg = NULL;
+
+				BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateTerminated,
+				                             initialPaulineStats.number_of_LinphoneChatRoomStateTerminated + 1,
+				                             liblinphone_tester_sip_timeout));
+				BC_ASSERT_TRUE(linphone_chat_room_is_read_only(paulineCr));
+
 			} else {
 				char *confAddressString = linphone_address_as_string(confAddr);
 				ms_message("%s is waiting for the subscription to chatroom %s to expire",
@@ -1361,11 +1367,6 @@ static void secure_group_chat_room_sends_request_after_being_removed_from_server
 				                             initialPaulineStats.number_of_LinphoneSubscriptionError + 1,
 				                             liblinphone_tester_sip_timeout));
 			}
-
-			BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateTerminated,
-			                             initialPaulineStats.number_of_LinphoneChatRoomStateTerminated + 1,
-			                             liblinphone_tester_sip_timeout));
-			BC_ASSERT_TRUE(linphone_chat_room_is_read_only(paulineCr));
 			msg = ClientConference::sendTextMsg(marieCr, "Can you receive my messages?");
 
 			BC_ASSERT_FALSE(CoreManagerAssert({focus, marie, pauline, berthe}).wait([paulineCr] {
@@ -1586,9 +1587,6 @@ static void secure_one_on_one_chat_room_recreates_chat_room_after_error(bool_t r
 				ms_message("%s is waiting for the subscription to chatroom %s to expire",
 				           linphone_core_get_identity(pauline.getLc()), confAddressString);
 				ms_free(confAddressString);
-				BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateTerminated,
-				                             initialPaulineStats.number_of_LinphoneChatRoomStateTerminated + 1,
-				                             liblinphone_tester_sip_timeout));
 
 				BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneSubscriptionError,
 				                             initialPaulineStats.number_of_LinphoneSubscriptionError + 1,
@@ -1601,7 +1599,7 @@ static void secure_one_on_one_chat_room_recreates_chat_room_after_error(bool_t r
 				participants = NULL;
 
 				BC_ASSERT_TRUE(CoreManagerAssert({focus, marie, pauline}).wait([&paulineCr] {
-					return linphone_chat_room_get_state(paulineCr) == LinphoneChatRoomStateTerminated;
+					return linphone_chat_room_get_state(paulineCr) == LinphoneChatRoomStateCreated;
 				}));
 			}
 
@@ -1612,28 +1610,20 @@ static void secure_one_on_one_chat_room_recreates_chat_room_after_error(bool_t r
 			                             initialPaulineStats.number_of_NotifyFullStateReceived + 1,
 			                             liblinphone_tester_sip_timeout));
 
-			if (recreated_on_message) {
-				BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateTerminated,
-				                             initialPaulineStats.number_of_LinphoneChatRoomStateTerminated + 1,
-				                             liblinphone_tester_sip_timeout));
+			// Pauline sends a message now. The server should reply with a 403 Forbidden as she is no longer a
+			// participant of the chatroom. Nonetheless, she'll be able to overcome that sending an INVITE and
+			// therefore rejoin the chatroom.
+			BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneMessageNotDelivered,
+			                             initialPaulineStats.number_of_LinphoneMessageNotDelivered + 1,
+			                             liblinphone_tester_sip_timeout));
 
-				// Pauline sends a message now. The server should reply with a 403 Forbidden as she is no longer a
-				// participant of the chatroom. Nonetheless, she'll be able to overcome that sending an INVITE and
-				// therefore rejoin the chatroom.
-				BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneMessageNotDelivered,
-				                             initialPaulineStats.number_of_LinphoneMessageNotDelivered + 1,
-				                             liblinphone_tester_sip_timeout));
+			BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateTerminated,
+			                             initialPaulineStats.number_of_LinphoneChatRoomStateTerminated + 1,
+			                             liblinphone_tester_sip_timeout));
 
-				BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneMessageQueued,
-				                             initialPaulineStats.number_of_LinphoneMessageQueued + 1,
-				                             liblinphone_tester_sip_timeout));
-			} else {
-				BC_ASSERT_FALSE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneMessageNotDelivered,
-				                              initialPaulineStats.number_of_LinphoneMessageNotDelivered + 1, 2000));
-
-				BC_ASSERT_FALSE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneChatRoomStateTerminated,
-				                              initialPaulineStats.number_of_LinphoneChatRoomStateTerminated + 1, 1000));
-			}
+			BC_ASSERT_TRUE(wait_for_list(coresList, &pauline.getStats().number_of_LinphoneMessageQueued,
+			                             initialPaulineStats.number_of_LinphoneMessageQueued + 1,
+			                             liblinphone_tester_sip_timeout));
 
 			participants = bctbx_list_append(participants, marie.getCMgr()->identity);
 			paulineCr = linphone_core_search_chat_room_2(pauline.getLc(), conference_params,
@@ -3153,10 +3143,10 @@ static test_t local_conference_secure_chat_tests[] = {
                   "LimeX3DH",
                   "LeaksMemory"), /* because of network up and down */
     TEST_ONE_TAG("Secure group chat with client removed and then reinvited",
-                LinphoneTest::secure_group_chat_room_with_client_removed_and_reinvinted,
+                 LinphoneTest::secure_group_chat_room_with_client_removed_and_reinvinted,
                  "LimeX3DH"),
     TEST_ONE_TAG("Secure group chat with client removed and then reinvited after database corruption",
-                LinphoneTest::secure_group_chat_room_with_client_removed_and_reinvinted_after_database_corruption,
+                 LinphoneTest::secure_group_chat_room_with_client_removed_and_reinvinted_after_database_corruption,
                  "LimeX3DH"),
     TEST_TWO_TAGS(
         "Secure group chat with client removed and then reinvited after database corruption and core restart",
@@ -3209,8 +3199,7 @@ static test_t local_conference_secure_one_on_one_chat_tests[] = {
                  LinphoneTest::secure_one_on_one_chat_room_deleted_before_200ok_with_server_restart,
                  "LeaksMemory" /*due to core restart*/),
     TEST_NO_TAG("Secure one-on-one chatroom not rejoined after leaving",
-                LinphoneTest::secure_one_on_one_chatroom_not_rejoined_after_leaving)
-};
+                LinphoneTest::secure_one_on_one_chatroom_not_rejoined_after_leaving)};
 
 static test_t local_conference_secure_chat_error_tests[] = {
     TEST_ONE_TAG("Secure group chat with INVITE session error (organizer)",
@@ -3255,7 +3244,7 @@ test_suite_t local_conference_test_suite_secure_chat_error = {
 };
 
 test_suite_t local_conference_test_suite_secure_one_on_one_chat = {
-    "Local conference tester (Secure one-on-one Chat)",
+    "Local conference tester (Secure One-On-One Chat)",
     NULL,
     NULL,
     liblinphone_tester_before_each,

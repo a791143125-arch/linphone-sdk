@@ -458,16 +458,21 @@ void ClientChatRoom::sendChatMessage(const shared_ptr<ChatMessage> &chatMessage)
 					            "retrieve the list of participants";
 					chatMessage->getPrivate()->setParticipantState(
 					    getMe()->getAddress(), ChatMessage::State::NotDelivered, ::ms_time(nullptr));
-				} else if (coreRunning && (!eventHandler || (eventSubscribeState == LinphoneSubscriptionError))) {
+				} else if (coreRunning && (!eventHandler || (getCurrentParams()->isGroup() &&
+				                                             (eventSubscribeState == LinphoneSubscriptionError)))) {
+					// A subscription error in a one-on-one chatroom can be easily caught up. Let the core send the
+					// message and wait for the server response. If the client receives a 403 response, then it will
+					// create a new one-on-one chatroom and send the message again.
 					lError() << *this << ": Unable to send chat message [" << chatMessage
 					         << "] because the subscription to retrieve the list of participant devices errored out "
 					            "(current state is "
 					         << linphone_subscription_state_to_string(eventSubscribeState)
 					         << ") or the event handler has not been instantiated (event handler [" << eventHandler
-					         << "]";
+					         << "])";
 					chatMessage->getPrivate()->setParticipantState(
 					    getMe()->getAddress(), ChatMessage::State::NotDelivered, ::ms_time(nullptr));
-				} else if (eventSubscribeState != LinphoneSubscriptionActive) {
+				} else if ((eventSubscribeState == LinphoneSubscriptionNone) ||
+				           (eventSubscribeState == LinphoneSubscriptionOutgoingProgress)) {
 					lInfo() << *this << ": Delaying sending of message [" << chatMessage
 					        << "] in an encrypted chat room because subscription is not active yet";
 					queueMessage = true;
