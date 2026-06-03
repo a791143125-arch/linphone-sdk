@@ -206,7 +206,8 @@ private:
 	std::shared_ptr<CallSession> getMainSession() const override;
 	std::shared_ptr<ConferenceInfo> createOrGetConferenceInfo() const override;
 	std::shared_ptr<ConferenceInfo> createConferenceInfo() const override;
-	MediaSessionParams *createDefaultMediaParams(const std::shared_ptr<Call> &call = nullptr) override;
+	MediaSessionParams createDefaultMediaParams(const std::shared_ptr<Call> &call = nullptr) override;
+	void modifyCallParamsForConference(MediaSessionParams &params) const;
 	void updateAndSaveConferenceInformations();
 	bool focusIsReady() const;
 	bool transferToFocus(std::shared_ptr<Call> call);

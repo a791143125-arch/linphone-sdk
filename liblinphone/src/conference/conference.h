@@ -418,7 +418,8 @@ protected:
 	ConferenceInterface::State mState = ConferenceInterface::State::None;
 	std::map<uint32_t, bool> mPendingParticipantsMutes;
 
-	virtual MediaSessionParams *createDefaultMediaParams(const std::shared_ptr<Call> &call = nullptr) = 0;
+	virtual MediaSessionParams createDefaultMediaParams(const std::shared_ptr<Call> &call = nullptr) = 0;
+	void modifyCallParamsForConference(MediaSessionParams &params) const;
 
 	virtual std::shared_ptr<ConferenceInfo> createConferenceInfo() const = 0;
 	virtual std::shared_ptr<ConferenceInfo> createConferenceInfoWithCustomParticipantList(
