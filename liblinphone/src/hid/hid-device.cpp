@@ -202,6 +202,7 @@ void HidDevice::dumpDescriptor() const {
 
 void HidDevice::answerCall(const bool hasPausedCalls) {
 	addToState(mOutputData.mOffHook);
+	addToState(mOutputData.mOnLine);
 	removeFromState(mOutputData.mMute);
 	removeFromState(mOutputData.mRinger);
 	if (hasPausedCalls) {
@@ -216,6 +217,7 @@ void HidDevice::answerCall(const bool hasPausedCalls) {
 void HidDevice::endCall() {
 	removeFromState(mOutputData.mRinger);
 	removeFromState(mOutputData.mOffHook);
+	removeFromState(mOutputData.mOnLine);
 	lInfo() << "HidDevice \"" << mProductName << "\" endCall: new state = " << stateStr();
 	write(mState);
 }
@@ -318,12 +320,13 @@ void HidDevice::initializeFromReportDescriptor() {
 					if (report->getUsagePage() == static_cast<uint32_t>(HidReportDescriptor::UsagePage::Telephony)) {
 						size_t localOffset = 0;
 						for (const auto usage : report->getUsages()) {
+							const uint32_t mask = 1 << (inputOffset + localOffset);
 							if (usage == static_cast<uint32_t>(HidReportDescriptor::TelephonyUsage::HookSwitch)) {
-								mInputData.mHookSwitch = 1 << (inputOffset + localOffset);
+								mInputData.mHookSwitch = mask;
 							} else if (usage == static_cast<uint32_t>(HidReportDescriptor::TelephonyUsage::Flash)) {
-								mInputData.mHookFlash = 1 << (inputOffset + localOffset);
+								mInputData.mHookFlash = mask;
 							} else if (usage == static_cast<uint32_t>(HidReportDescriptor::TelephonyUsage::PhoneMute)) {
-								mInputData.mPhoneMute = 1 << (inputOffset + localOffset);
+								mInputData.mPhoneMute = mask;
 							}
 							localOffset++;
 						}
@@ -351,14 +354,17 @@ void HidDevice::initializeFromReportDescriptor() {
 					if (report->getUsagePage() == static_cast<uint32_t>(HidReportDescriptor::UsagePage::LEDs)) {
 						size_t localOffset = 0;
 						for (const auto usage : report->getUsages()) {
+							const uint32_t mask = 1 << (outputOffset + localOffset);
 							if (usage == static_cast<uint32_t>(HidReportDescriptor::LedsUsage::Mute)) {
-								mOutputData.mMute = 1 << (outputOffset + localOffset);
+								mOutputData.mMute = mask;
 							} else if (usage == static_cast<uint32_t>(HidReportDescriptor::LedsUsage::OffHook)) {
-								mOutputData.mOffHook = 1 << (outputOffset + localOffset);
+								mOutputData.mOffHook = mask;
 							} else if (usage == static_cast<uint32_t>(HidReportDescriptor::LedsUsage::Ring)) {
-								mOutputData.mRinger = 1 << (outputOffset + localOffset);
+								mOutputData.mRinger = mask;
 							} else if (usage == static_cast<uint32_t>(HidReportDescriptor::LedsUsage::Hold)) {
-								mOutputData.mHold = 1 << (outputOffset + localOffset);
+								mOutputData.mHold = mask;
+							} else if (usage == static_cast<uint32_t>(HidReportDescriptor::LedsUsage::OnLine)) {
+								mOutputData.mOnLine = mask;
 							}
 							localOffset++;
 						}
@@ -434,6 +440,9 @@ std::string HidDevice::stateStr() const {
 	}
 	if (stateHas(mOutputData.mHold)) {
 		os << "Held ";
+	}
+	if (stateHas(mOutputData.mOnLine)) {
+		os << "OnLine ";
 	}
 	os << "]";
 	return os.str();
