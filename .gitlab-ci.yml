@@ -9,6 +9,8 @@ variables:
   CCACHE_SIZE: 3G
   FF_USE_FASTZIP: 1
   LIBLINPHONE_TESTER_DNS: "fs-test-10.linphone.org"
+  TARGET_BRANCH_SLUG: "master"
+  GITLAB_CACHE_INDEX: 6
 
   #Lime X3DH activated by default, if there is a problem, see the default
   #build options in CMakeBuilder
@@ -31,7 +33,10 @@ variables:
 workflow:
   rules:
     - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH =~ /^release/ && $CI_PIPELINE_SOURCE == "push"
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != "master" && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^release/ && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
       when: never
     #Launch merge request pipeline is there is a merge request open
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TITLE !~ /^Draft:.*/
