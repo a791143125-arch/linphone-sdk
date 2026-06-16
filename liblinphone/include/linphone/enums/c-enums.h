@@ -60,10 +60,10 @@ typedef enum _LinphoneAlertTypes {
 	 */
 	LinphoneAlertQoSHighRemoteLossRate,
 	/** Packet Burst phenomenon
-	 *  @note Use the key "burst_occured_interval" in the section "alerts::network" to set or get the interval at which
+	 *  @note Use the key "burst_occurred_interval" in the section "alerts::network" to set or get the interval at which
 	 * the problem is checked in a #LinphoneConfig.
 	 */
-	LinphoneAlertQoSBurstOccured,
+	LinphoneAlertQoSBurstOccurred,
 	/** Loss rate is significant but retransmissions fail to arrive on time.
 	 * Information provided: nack-performance (float) the fraction of lost packets recovered thanks to nack-triggered
 	 * retransmissions.
@@ -104,7 +104,7 @@ typedef enum _LinphoneAlertTypes {
 
 /**
  * All signal types that a device can use.
- * @ingroup group_signalInformation
+ * @ingroup group_misc
  */
 typedef enum _LinphoneSignalType {
 	LinphoneSignalTypeWifi = 0,
@@ -113,7 +113,7 @@ typedef enum _LinphoneSignalType {
 } LinphoneSignalType;
 /**
  * All signal units that a device can use.
- * @ingroup group_signalInformation
+ * @ingroup group_misc
  */
 typedef enum _LinphoneSignalStrengthUnit {
 	LinphoneSignalStrengthUnitRssi = 0,
@@ -154,7 +154,7 @@ typedef enum _LinphoneSecurityLevel {
 /**
  * List of all supported #LinphoneAccountManagerServicesRequest requests,
  * allowing to know which one triggered either a callback from the #LinphoneAccountManagerServicesRequestCbs.
- * @ingroup group_account_creator
+ * @ingroup group_deprecated
  */
 typedef enum _LinphoneAccountManagerServicesRequestType {
 	LinphoneAccountManagerServicesRequestTypeSendAccountCreationTokenByPush =
