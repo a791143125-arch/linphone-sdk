@@ -41,7 +41,7 @@ endif()
 
 set(simple_executables bench ring mtudiscover tones msaudiocmp)
 if(ENABLE_VIDEO)
-	list(APPEND simple_executables videodisplay player recorder)
+	list(APPEND simple_executables videodisplay player recorder backgroundfilterdisplay)
 	if(X11_FOUND)
 		list(APPEND simple_executables test_x11window)
 	endif()

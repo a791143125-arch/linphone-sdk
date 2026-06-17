@@ -468,6 +468,11 @@ if(ENABLE_VIDEO)
 			videofilters/av1/obu/obu-unpacker.cpp
 		)
 	endif()
+	if(Onnxruntime_FOUND)
+		list(APPEND VOIP_SOURCE_FILES_CXX
+			videofilters/background_replacement.cpp
+		)
+	endif()
 endif()
 if(BCMatroska2_FOUND)
 	list(APPEND VOIP_SOURCE_FILES_C
