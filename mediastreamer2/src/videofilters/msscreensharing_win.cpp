@@ -240,7 +240,7 @@ bool MsScreenSharing_win::ScreenProcessor::initDisplay() {
 		desc.SampleDesc.Count = 1;
 		desc.SampleDesc.Quality = 0;
 		desc.MipLevels = 1;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 		desc.Usage = D3D11_USAGE_STAGING;
 		ID3D11Texture2D *destImage;
 		hr = mDevice->CreateTexture2D(&desc, NULL, &destImage);
@@ -322,7 +322,7 @@ bool MsScreenSharing_win::ScreenProcessor::prepareImage() {
 	ID3D11Texture2D *acquiredDesktopImage; // last Frame
 	DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
 	int waitFrame = std::chrono::duration_cast<std::chrono::milliseconds>(mParent->mLastIdleTime).count() + mWaitFrame;
-	if(waitFrame>0) mWaitFrame = waitFrame;
+	if (waitFrame > 0) mWaitFrame = waitFrame;
 	else mWaitFrame = 0;
 	if (mScreenDuplications[mParent->mLastFormat.mScreenIndex].mFrameAcquired) {
 		mScreenDuplications[mParent->mLastFormat.mScreenIndex].mDuplication->ReleaseFrame();
@@ -334,7 +334,7 @@ bool MsScreenSharing_win::ScreenProcessor::prepareImage() {
 		static std::pair<std::chrono::time_point<std::chrono::system_clock>, long> acquireFrameLastError = {
 		    std::chrono::system_clock::now() - std::chrono::seconds(10), 0};
 		if (checkTimeFrameReached(acquireFrameLastError.first, acquireFrameLastError.second, hr)) {
-			ms_warning("[MsScreenSharing_win] Cannot acquire frame after a timeout of %d ms [%x]", mWaitFrame, hr);
+			ms_warning("[MsScreenSharing_win] Cannot acquire frame after a timeout of %d ms [0x%X]", mWaitFrame, hr);
 		}
 		return false;
 	} else mScreenDuplications[mParent->mLastFormat.mScreenIndex].mFrameAcquired = true;
@@ -346,7 +346,7 @@ bool MsScreenSharing_win::ScreenProcessor::prepareImage() {
 		static std::pair<std::chrono::time_point<std::chrono::system_clock>, long> queryFrameLastError = {
 		    std::chrono::system_clock::now() - std::chrono::seconds(10), 0};
 		if (checkTimeFrameReached(queryFrameLastError.first, queryFrameLastError.second, hr)) {
-			ms_warning("[MsScreenSharing_win] Cannot query interface for ID3D11Texture2D [%x]", hr);
+			ms_warning("[MsScreenSharing_win] Cannot query interface for ID3D11Texture2D [0x%X]", hr);
 		}
 		return false;
 	}
@@ -354,7 +354,7 @@ bool MsScreenSharing_win::ScreenProcessor::prepareImage() {
 		static std::pair<std::chrono::time_point<std::chrono::system_clock>, long> frameLastError = {
 		    std::chrono::system_clock::now() - std::chrono::seconds(10), 0};
 		if (checkTimeFrameReached(frameLastError.first, frameLastError.second, hr)) {
-			ms_warning("[MsScreenSharing_win] Acquired desktop image is NULL [%x]", hr);
+			ms_warning("[MsScreenSharing_win] Acquired desktop image is NULL [0x%X]", hr);
 		}
 		return false;
 	}
@@ -370,7 +370,7 @@ bool MsScreenSharing_win::ScreenProcessor::prepareImage() {
 		static std::pair<std::chrono::time_point<std::chrono::system_clock>, long> querySurfaceLastError = {
 		    std::chrono::system_clock::now() - std::chrono::seconds(10), 0};
 		if (checkTimeFrameReached(querySurfaceLastError.first, querySurfaceLastError.second, hr)) {
-			ms_warning("[MsScreenSharing_win] Cannot acquire IDXGISurface1 [%x]", hr);
+			ms_warning("[MsScreenSharing_win] Cannot acquire IDXGISurface1 [0x%X]", hr);
 		}
 		return false;
 	}
@@ -522,12 +522,8 @@ void MsScreenSharing_win::ScreenProcessor::finalizeImage() {
 	// Copy image into CPU access texture
 	D3D11_MAPPED_SUBRESOURCE resource;
 	UINT subresource = D3D11CalcSubresource(0, 0, 0);
-	mImmediateContext->Map(mScreenDuplications[mParent->mLastFormat.mScreenIndex].mDestImage, subresource,
-	                       D3D11_MAP_READ_WRITE, 0, &resource);
-	static UINT rowPitch = 0;
-	if (rowPitch != resource.RowPitch) {
-		rowPitch = resource.RowPitch;
-	}
+	auto hr = mImmediateContext->Map(mScreenDuplications[mParent->mLastFormat.mScreenIndex].mDestImage, subresource,
+	                                 D3D11_MAP_READ, 0, &resource);
 	const UINT imageSize =
 	    resource.RowPitch * mScreenDuplications[mParent->mLastFormat.mScreenIndex].mImageDescription.ModeDesc.Height;
 	bool haveData = false;
@@ -538,8 +534,9 @@ void MsScreenSharing_win::ScreenProcessor::finalizeImage() {
 	if (!haveData) {
 		static std::pair<std::chrono::time_point<std::chrono::system_clock>, long> haveDataLastError = {
 		    std::chrono::system_clock::now() - std::chrono::seconds(10), 0};
-		if (checkTimeFrameReached(haveDataLastError.first, haveDataLastError.second, 0)) {
-			ms_warning("[MsScreenSharing_win] No data in bitmap buffer");
+		if (checkTimeFrameReached(haveDataLastError.first, haveDataLastError.second, hr)) {
+			ms_warning("[MsScreenSharing_win] No data in bitmap buffer [0x%X]. Last rowPitch=%ud", hr,
+			           resource.RowPitch);
 		}
 		mImmediateContext->Unmap(mScreenDuplications[mParent->mLastFormat.mScreenIndex].mDestImage, subresource);
 		return;
