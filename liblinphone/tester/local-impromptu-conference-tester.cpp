@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "conference/participant-info.h"
 #include "liblinphone_tester.h"
 #include "linphone/api/c-participant-info.h"
 #include "local-conference-tester-functions.h"
@@ -714,6 +715,9 @@ static void create_conference_dial_out_with_video_activation_and_layout_change(v
 		// wait a bit longer to detect side effect if any
 		CoreManagerAssert({focus, marie, pauline}).waitUntil(chrono::seconds(5), [] { return false; });
 
+		auto allCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+		auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(memberList);
+
 		for (auto mgr : conferenceMgrs) {
 			LinphoneAddress *uri = linphone_address_new(linphone_core_get_identity(mgr->lc));
 			LinphoneConference *pconference = linphone_core_search_conference_2(mgr->lc, confAddr);
@@ -781,7 +785,8 @@ static void create_conference_dial_out_with_video_activation_and_layout_change(v
 						no_streams_audio = compute_no_audio_streams(participant_call, pconference);
 						// Even if video is not enabled, the server will offer it and clients reject the video
 						// stream if they do not want to send or receive it.
-						no_streams_video = compute_no_video_streams(TRUE, participant_call, pconference);
+						no_streams_video = compute_no_video_streams(allCalls, participantInfos,
+						                                            Call::getSharedFromThis(participant_call));
 						_linphone_call_check_max_nb_streams(participant_call, no_max_streams_audio,
 						                                    no_max_streams_video, no_streams_text);
 						_linphone_call_check_nb_active_streams(participant_call, no_streams_audio, no_streams_video,
