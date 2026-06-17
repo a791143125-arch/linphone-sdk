@@ -193,7 +193,7 @@ extern MSWebCamDesc ms_v4m_cam_desc;
 #endif
 
 extern MSWebCamDesc static_image_desc;
-
+extern MSFilterDesc ms_BackgroundReplacer_desc;
 extern MSWebCamDesc ms_mire_webcam_desc;
 #ifdef __ANDROID__
 extern MSWebCamDesc ms_android_video_capture_desc;
@@ -283,6 +283,7 @@ void ms_factory_init_voip(MSFactory *obj) {
 		ms_factory_register_filter(obj, ms_voip_filter_descs[i]);
 	}
 
+	ms_factory_register_filter(obj, &ms_BackgroundReplacer_desc);
 	cm = ms_snd_card_manager_new();
 	ms_message("Registering all soundcard handlers");
 	cm->factory = obj;
