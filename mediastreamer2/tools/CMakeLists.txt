@@ -112,4 +112,7 @@ if (ENABLE_VIDEO AND NOT IOS)
 	install(TARGETS mediastreamer2-recorder
 		RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 	)
+	install(TARGETS mediastreamer2-backgroundfilterdisplay
+		RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	)
 endif()
