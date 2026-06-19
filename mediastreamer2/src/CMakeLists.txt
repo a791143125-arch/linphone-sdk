@@ -471,7 +471,7 @@ if(ENABLE_VIDEO)
 	endif()
 	if(Onnxruntime_FOUND)
 		list(APPEND VOIP_SOURCE_FILES_CXX
-			videofilters/background_replacement.cpp
+			videofilters/background_replacer.cpp
 		)
 	endif()
 endif()
@@ -818,8 +818,13 @@ if(FFMpeg_FOUND AND NOT WIN32)
 endif()
 
 if(ENABLE_VIDEO)
+	install(FILES videofilters/model.onnx
+    	DESTINATION ${CMAKE_INSTALL_DATADIR}/images
+    	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+	)
+
   	install(FILES voip/nowebcamCIF.jpg
-		  DESTINATION ${CMAKE_INSTALL_DATADIR}/images
-		  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/images
+		PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 	)
 endif()

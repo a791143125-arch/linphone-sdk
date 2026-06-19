@@ -48,9 +48,9 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 
 	MSFilter *bgreplacer = ms_factory_create_filter(factory, MS_BACKGROUND_REPLACER_ID);
 
-    ms_filter_link(capture,    0, pixconv,    0);
-    ms_filter_link(pixconv,    0, bgreplacer, 0);
-    ms_filter_link(bgreplacer, 0, display,    0);
+	ms_filter_link(capture, 0, pixconv, 0);
+	ms_filter_link(pixconv, 0, bgreplacer, 0);
+	ms_filter_link(bgreplacer, 0, display, 0);
 
 	ticker = ms_ticker_new();
 	ms_ticker_attach(ticker, capture);
@@ -63,9 +63,9 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	ms_ticker_detach(ticker, capture);
 	ms_filter_unlink(capture, 0, pixconv, 0);
 	ms_filter_unlink(pixconv, 0, bgreplacer, 0);
-    ms_filter_unlink(bgreplacer, 0, display, 0);
+	ms_filter_unlink(bgreplacer, 0, display, 0);
 	ms_ticker_destroy(ticker);
-    ms_filter_destroy(bgreplacer);
+	ms_filter_destroy(bgreplacer);
 	ms_filter_destroy(pixconv);
 	ms_filter_destroy(capture);
 	ms_filter_destroy(display);
