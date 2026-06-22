@@ -31,11 +31,13 @@ static void belle_sip_tls_channel_deinit_bctbx_ssl(belle_sip_tls_channel_t *obj)
 struct belle_sip_signing_key {
 	belle_sip_object_t objet;
 	bctbx_signing_key_t *key;
+	bctbx_ext_signing_key_ref_t *extKeyRef;
 };
 /*************************************/
 /***     Internal functions        ***/
 static void belle_sip_signing_key_destroy(belle_sip_signing_key_t *signing_key) {
 	bctbx_signing_key_free(signing_key->key);
+	bctbx_ext_signing_key_ref_free(signing_key->extKeyRef);
 }
 
 static void belle_sip_signing_key_clone(belle_sip_signing_key_t *signing_key, const belle_sip_signing_key_t *orig) {
@@ -61,9 +63,16 @@ char *belle_sip_signing_key_get_pem(belle_sip_signing_key_t *key) {
 }
 
 belle_sip_signing_key_t *belle_sip_signing_key_new(void) {
-
 	belle_sip_signing_key_t *key = belle_sip_object_new(belle_sip_signing_key_t);
 	key->key = bctbx_signing_key_new();
+	key->extKeyRef = NULL;
+	return key;
+}
+
+belle_sip_signing_key_t *belle_sip_signing_new_key_ref(const bctbx_ext_signing_key_ref_t *ref) {
+	belle_sip_signing_key_t *key = belle_sip_object_new(belle_sip_signing_key_t);
+	key->key = NULL;
+	key->extKeyRef = bctbx_ext_signing_key_ref_clone(ref);
 	return key;
 }
 
@@ -782,6 +791,25 @@ static int belle_sip_ssl_verify(void *data, bctbx_x509_certificate_t *cert, int 
 
 	return ret;
 }
+static int belle_sip_tls_callback_external_signing(void *user_data,
+                                                   const void *key_ref,
+                                                   bctbx_key_sign_type_t sign_algo,
+                                                   bctbx_md_type_t hash_algo,
+                                                   const uint8_t *hash,
+                                                   size_t hash_size,
+                                                   size_t signature_buffer_size,
+                                                   uint8_t *signature,
+                                                   size_t *signature_size) {
+	belle_tls_crypto_config_t *crypto_config = (belle_tls_crypto_config_t *)user_data;
+
+	if (crypto_config->ext_sign_cb) {
+		return crypto_config->ext_sign_cb(crypto_config->ext_sign_cb_data, key_ref, sign_algo, hash_algo, hash,
+		                                  hash_size, signature_buffer_size, signature, signature_size);
+	} else {
+		belle_sip_error("belle_sip_tls_callback_external_signing: no upper callback");
+		return -1;
+	}
+}
 
 static int belle_sip_tls_channel_load_root_ca(belle_sip_tls_channel_t *obj, const char *path) {
 	struct stat statbuf;
@@ -867,13 +895,42 @@ static int belle_sip_tls_channel_init_bctbx_ssl(belle_sip_tls_channel_t *obj) {
 
 			bctbx_x509_certificate_get_info_string(tmp, sizeof(tmp) - 1, "", obj->client_cert_chain->cert);
 			belle_sip_message("Channel [%p]  found client  certificate:\n%s", obj, tmp);
+			if (obj->client_cert_key->key) {
 
-			int ret =
-			    bctbx_ssl_config_set_own_cert(obj->sslcfg, obj->client_cert_chain->cert, obj->client_cert_key->key);
-			if (ret < 0) {
-				belle_sip_error(
-				    "Unable to set own certificate in config for SSL context at TLS channel creation ret [-0x%x]",
-				    -ret);
+				int ret =
+				    bctbx_ssl_config_set_own_cert(obj->sslcfg, obj->client_cert_chain->cert, obj->client_cert_key->key);
+				if (ret < 0) {
+					belle_sip_error(
+					    "Unable to set own certificate in config for SSL context at TLS channel creation ret [-0x%x]",
+					    -ret);
+					belle_sip_object_unref(obj);
+					return -1;
+				}
+			} else if (obj->client_cert_key->extKeyRef) {
+				belle_sip_message("Use external key ref %s",
+				                  bctbx_ext_signing_key_ref_getString(obj->client_cert_key->extKeyRef));
+				int ret =
+				    bctbx_ssl_config_set_callback_external_signing(obj->sslcfg, belle_sip_tls_callback_external_signing,
+				                                                   crypto_config, obj->client_cert_key->extKeyRef);
+				if (ret < 0) {
+					belle_sip_error("Unable to set external signing callback in config for SSL context at TLS channel "
+					                "creation ret [-0x%x]",
+					                -ret);
+					belle_sip_object_unref(obj);
+					return -1;
+				}
+				// Set the certificate without key as we already set the key ref in the ssl_conf - we must do that when
+				// the key ref is already there
+				ret = bctbx_ssl_config_set_own_cert(obj->sslcfg, obj->client_cert_chain->cert, NULL);
+				if (ret < 0) {
+					belle_sip_error(
+					    "Unable to set own certificate in config for SSL context at TLS channel creation ret [-0x%x]",
+					    -ret);
+					belle_sip_object_unref(obj);
+					return -1;
+				}
+			} else {
+				belle_sip_error("Unable to set fetch a valid key or key ref for the certificate");
 				belle_sip_object_unref(obj);
 				return -1;
 			}
