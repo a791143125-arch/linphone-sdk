@@ -78,8 +78,6 @@ public:
 			MSPicture pic;
 			ms_yuv_buf_init_from_mblk(&pic, m);
 
-			
-
 			// YUV -> RGBA
 			std::vector<uint8_t> argb(pic.w * pic.h * 4);
 			libyuv::I420ToARGB(pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1], pic.planes[2],
@@ -218,7 +216,7 @@ private:
 
 		std::cout << "lancement inference worker\n";
 		while (mRunning) {
-			
+
 			std::vector<uint8_t> img;
 			int w, h;
 
@@ -232,7 +230,7 @@ private:
 				h = mImgH;
 				mHasNewImg = false;
 			}
-			
+
 			auto tmp_infwork = std::chrono::high_resolution_clock::now();
 			// preprocess redimension de l'image à la bonne taille
 			std::vector<float> input = preprocesser(img, w, h);

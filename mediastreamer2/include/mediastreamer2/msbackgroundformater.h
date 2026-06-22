@@ -1,7 +1,7 @@
 #ifndef msbackgroundformater_h
 #define msbackgroundformater_h
-#include "mediastreamer2/msfilter.h"
 #include "mediastreamer2/allfilters.h"
+#include "mediastreamer2/msfilter.h"
 
 typedef enum {
 	MSBackgroundSame,

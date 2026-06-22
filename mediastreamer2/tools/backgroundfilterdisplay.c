@@ -1,11 +1,11 @@
 #include "bctoolbox/defs.h"
 #include "mediastreamer2/allfilters.h"
+#include "mediastreamer2/msbackgroundformater.h"
 #include "mediastreamer2/mseventqueue.h"
 #include "mediastreamer2/msfactory.h"
 #include "mediastreamer2/msticker.h"
 #include "mediastreamer2/msvideo.h"
 #include "mediastreamer2/mswebcam.h"
-#include "mediastreamer2/msbackgroundformater.h"
 #include <signal.h>
 
 static int active = 1;
@@ -22,7 +22,6 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	float fps = 30;
 	MSVideoSize vsize = MS_VIDEO_SIZE_VGA;
 	MSPixFmt fmt = MS_PIX_FMT_UNKNOWN;
-
 
 	signal(SIGINT, stop_handler);
 
@@ -60,7 +59,6 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	ms_filter_call_method(bgimage, MS_FILTER_SET_VIDEO_SIZE, &vsize);
 	ms_filter_call_method(bgimage, MS_STATIC_IMAGE_SET_IMAGE, path);
 	ms_free(path);
-
 
 	int type = MSBackgroundImage;
 	ms_filter_call_method(bgformater, MS_BACKGROUND_FORMATER_SET_TYPE, &type);
