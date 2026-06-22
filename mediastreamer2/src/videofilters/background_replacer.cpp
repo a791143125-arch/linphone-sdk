@@ -58,7 +58,7 @@ public:
 
 	void process(MSFilter *f) {
 		mblk_t *m;
-
+		auto tmp_trait = std::chrono::high_resolution_clock::now();
 		// Lit si il y a une deuxième entrée pour le fond
 		// et l'assigne à mBgFrame
 		if (f->inputs[1]) {
@@ -78,7 +78,7 @@ public:
 			MSPicture pic;
 			ms_yuv_buf_init_from_mblk(&pic, m);
 
-			auto tmp_trait = std::chrono::high_resolution_clock::now();
+			
 
 			// YUV -> RGBA
 			std::vector<uint8_t> argb(pic.w * pic.h * 4);
@@ -107,9 +107,9 @@ public:
 				}
 			}
 
-			// Opération de reconstruction de l'image
+			// Opération de reconstruction de l'image en une seule boucle par bloc de 2*2
 			if (!mask.empty()) {
-				
+
 				for (int y = 0; y < pic.h / 2; ++y) {
 					int y0 = y * 2, y1 = y0 + 1;
 					uint8_t *Yrow1 = pic.planes[0] + y0 * pic.strides[0];
@@ -133,8 +133,10 @@ public:
 							int bx0 = x0 * mBgPic.w / pic.w, bx1 = x1 * mBgPic.w / pic.w;
 							uint8_t *BY0 = mBgPic.planes[0] + by0 * mBgPic.strides[0];
 							uint8_t *BY1 = mBgPic.planes[0] + by1 * mBgPic.strides[0];
-							Yb00 = BY0[bx0]; Yb01 = BY0[bx1];
-							Yb10 = BY1[bx0]; Yb11 = BY1[bx1];
+							Yb00 = BY0[bx0];
+							Yb01 = BY0[bx1];
+							Yb10 = BY1[bx0];
+							Yb11 = BY1[bx1];
 						}
 						Yrow1[x0] = (uint8_t)((1.0f - a00) * Yrow1[x0] + a00 * Yb00);
 						Yrow1[x1] = (uint8_t)((1.0f - a01) * Yrow1[x1] + a01 * Yb01);
@@ -216,7 +218,7 @@ private:
 
 		std::cout << "lancement inference worker\n";
 		while (mRunning) {
-			auto tmp_infwork = std::chrono::high_resolution_clock::now();
+			
 			std::vector<uint8_t> img;
 			int w, h;
 
@@ -230,7 +232,8 @@ private:
 				h = mImgH;
 				mHasNewImg = false;
 			}
-
+			
+			auto tmp_infwork = std::chrono::high_resolution_clock::now();
 			// preprocess redimension de l'image à la bonne taille
 			std::vector<float> input = preprocesser(img, w, h);
 			std::array<int64_t, 4> inShape = {1, 3, modelH_, modelW_};
