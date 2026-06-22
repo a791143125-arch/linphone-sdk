@@ -57,7 +57,6 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	ms_filter_link(bgformater, 0, bgreplacer, 1);
 	ms_filter_link(bgreplacer, 0, display, 0);
 
-
 	ticker = ms_ticker_new();
 	ms_ticker_attach(ticker, capture);
 

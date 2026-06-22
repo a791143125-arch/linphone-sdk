@@ -1,5 +1,5 @@
-//Filtre prenant une image Yuv420 en entrée et une background (optionnel) aussi en Yuv420 
-//Et sort l'image avec l'arrière plan remplacé par le background
+// Filtre prenant une image Yuv420 en entrée et une background (optionnel) aussi en Yuv420
+// Et sort l'image avec l'arrière plan remplacé par le background
 #include "array"
 #include "cstring"
 #include "mediastreamer2/msfilter.h"
@@ -21,14 +21,13 @@
 #include <chrono>
 namespace mediastreamer {
 
-//Classe principal du filtre
-//Contient le process et toute les fonctions nécessaires pour fonctionner
+// Classe principal du filtre
+// Contient le process et toute les fonctions nécessaires pour fonctionner
 class BackgroundReplacer {
 public:
-
 	BackgroundReplacer(MSFilter *f) {
 
-		//SETUP du model à faire une seule fois
+		// SETUP du model à faire une seule fois
 		char *path = ms_strdup_printf("%s/model.onnx", ms_factory_get_image_resources_dir(f->factory));
 		mOpts.SetInterOpNumThreads(1);
 		mOpts.SetIntraOpNumThreads(1);
@@ -43,36 +42,38 @@ public:
 		mWorker = std::thread(&BackgroundReplacer::inference_computer, this);
 	}
 
-    //Destruction du filtre en détruisant aussi le thread
+	// Destruction du filtre en détruisant aussi le thread
 	~BackgroundReplacer() {
 		{
 			std::lock_guard<std::mutex> lk(mMutex);
 			mRunning = false;
 		}
 		mCv.notify_one();
-		if (mWorker.joinable()) mWorker.join(); 
-        if (mBgFrame) { freemsg(mBgFrame); mBgFrame = nullptr; }
-
+		if (mWorker.joinable()) mWorker.join();
+		if (mBgFrame) {
+			freemsg(mBgFrame);
+			mBgFrame = nullptr;
+		}
 	}
 
 	void process(MSFilter *f) {
 		mblk_t *m;
 
-        //Lit si il y a une deuxième entrée pour le fond 
-        //et l'assigne à mBgFrame
-        if(f->inputs[1]){
-            mblk_t *bg;
-            while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
-                if (mBgFrame) freemsg(mBgFrame);
-                mBgFrame = bg;
-            }
-            if (mBgFrame) {
-                ms_yuv_buf_init_from_mblk(&mBgPic, mBgFrame);
-                mHasBg = true;
-            }
-        }
+		// Lit si il y a une deuxième entrée pour le fond
+		// et l'assigne à mBgFrame
+		if (f->inputs[1]) {
+			mblk_t *bg;
+			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
+				if (mBgFrame) freemsg(mBgFrame);
+				mBgFrame = bg;
+			}
+			if (mBgFrame) {
+				ms_yuv_buf_init_from_mblk(&mBgPic, mBgFrame);
+				mHasBg = true;
+			}
+		}
 
-        //Lit l'entrée de laquelle il faut séparer la personne
+		// Lit l'entrée de laquelle il faut séparer la personne
 		while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
 			MSPicture pic;
 			ms_yuv_buf_init_from_mblk(&pic, m);
@@ -106,43 +107,44 @@ public:
 				}
 			}
 
-            //Opération de reconstruction de l'image
+			// Opération de reconstruction de l'image
 			if (!mask.empty()) {
-                //d'abord sur Y
-                for (int y = 0; y < pic.h; ++y) {
-                    int my = y * mh / pic.h;
-                    uint8_t *Yrow = pic.planes[0] + y * pic.strides[0];
-                    for (int x = 0; x < pic.w; ++x) {
-                        float a = mask[my * mw + (x * mw / pic.w)];
-                        uint8_t Ybg = 0;
-                        if (mHasBg) {
-                            int by = y * mBgPic.h / pic.h;
-                            int bx = x * mBgPic.w / pic.w;
-                            Ybg = mBgPic.planes[0][by * mBgPic.strides[0] + bx];
-                        }
-                        Yrow[x] = (uint8_t)((1.0f - a) * Yrow[x] + a * Ybg);
-                    }
-                }
-                //Puis sur U et V
-                for (int y = 0; y < pic.h / 2; ++y) {
-                    uint8_t *Urow = pic.planes[1] + y * pic.strides[1];
-                    uint8_t *Vrow = pic.planes[2] + y * pic.strides[2];
-                    int my = (y * 2) * mh / pic.h;
-                    for (int x = 0; x < pic.w / 2; ++x) {
-                        float a = mask[my * mw + ((x * 2) * mw / pic.w)];
-                        uint8_t Ubg = 128, Vbg = 128;
-                        if (mHasBg) {
-                            int by = y * mBgPic.h / pic.h;
-                            int bx = x * mBgPic.w / pic.w;
-                            Ubg = mBgPic.planes[1][by * mBgPic.strides[1] + bx];
-                            Vbg = mBgPic.planes[2][by * mBgPic.strides[2] + bx];
-                        }
-                        Urow[x] = (uint8_t)((1.0f - a) * Urow[x] + a * Ubg);
-                        Vrow[x] = (uint8_t)((1.0f - a) * Vrow[x] + a * Vbg);
-                    }
-                }
-            }
-
+				
+				for (int y = 0; y < pic.h / 2; ++y) {
+					int y0 = y * 2, y1 = y0 + 1;
+					uint8_t *Yrow1 = pic.planes[0] + y0 * pic.strides[0];
+					uint8_t *Yrow2 = pic.planes[0] + y1 * pic.strides[0];
+					uint8_t *Urow = pic.planes[1] + y * pic.strides[1];
+					uint8_t *Vrow = pic.planes[2] + y * pic.strides[2];
+					int my0 = y0 * mh / pic.h, my1 = y1 * mh / pic.h;
+					for (int x = 0; x < pic.w / 2; ++x) {
+						int x0 = x * 2, x1 = x0 + 1;
+						int mx0 = x0 * mw / pic.w, mx1 = x1 * mw / pic.w;
+						float a00 = mask[my0 * mw + mx0], a01 = mask[my0 * mw + mx1];
+						float a10 = mask[my1 * mw + mx0], a11 = mask[my1 * mw + mx1];
+						float a = a00;
+						uint8_t Ubg = 128, Vbg = 128, Yb00 = 0, Yb01 = 0, Yb10 = 0, Yb11 = 0;
+						if (mHasBg) {
+							int by = y * mBgPic.h / pic.h;
+							int bx = x * mBgPic.w / pic.w;
+							Ubg = mBgPic.planes[1][by * mBgPic.strides[1] + bx];
+							Vbg = mBgPic.planes[2][by * mBgPic.strides[2] + bx];
+							int by0 = y0 * mBgPic.h / pic.h, by1 = y1 * mBgPic.h / pic.h;
+							int bx0 = x0 * mBgPic.w / pic.w, bx1 = x1 * mBgPic.w / pic.w;
+							uint8_t *BY0 = mBgPic.planes[0] + by0 * mBgPic.strides[0];
+							uint8_t *BY1 = mBgPic.planes[0] + by1 * mBgPic.strides[0];
+							Yb00 = BY0[bx0]; Yb01 = BY0[bx1];
+							Yb10 = BY1[bx0]; Yb11 = BY1[bx1];
+						}
+						Yrow1[x0] = (uint8_t)((1.0f - a00) * Yrow1[x0] + a00 * Yb00);
+						Yrow1[x1] = (uint8_t)((1.0f - a01) * Yrow1[x1] + a01 * Yb01);
+						Yrow2[x0] = (uint8_t)((1.0f - a10) * Yrow2[x0] + a10 * Yb10);
+						Yrow2[x1] = (uint8_t)((1.0f - a11) * Yrow2[x1] + a11 * Yb11);
+						Urow[x] = (uint8_t)((1.0f - a) * Urow[x] + a * Ubg);
+						Vrow[x] = (uint8_t)((1.0f - a) * Vrow[x] + a * Vbg);
+					}
+				}
+			}
 
 			auto tmp_trait2 = std::chrono::high_resolution_clock::now();
 			std::cout << "temps du traitement : "
@@ -154,9 +156,8 @@ public:
 	}
 
 private:
-
-    //fonction destiné à redimensionner l'image donnée pour correspondre
-    //à la dimension et au format (RGBA) du filtre
+	// fonction destiné à redimensionner l'image donnée pour correspondre
+	// à la dimension et au format (RGBA) du filtre
 	std::vector<float> preprocesser(const std::vector<uint8_t> &rgba, int srcW, int srcH) const {
 		std::vector<uint8_t> redim = redimRGBA(rgba, srcW, srcH, modelW_, modelH_);
 		std::vector<float> tenseur(1 * 3 * modelH_ * modelW_);
@@ -210,7 +211,7 @@ private:
 		return out;
 	}
 
-    //Fonction sur laquelle le thread du calcul de l'inférence va tourner
+	// Fonction sur laquelle le thread du calcul de l'inférence va tourner
 	void inference_computer() {
 
 		std::cout << "lancement inference worker\n";
@@ -219,12 +220,12 @@ private:
 			std::vector<uint8_t> img;
 			int w, h;
 
-            //Lit la dernière image disponible (lock pour éviter accès concurrent)
+			// Lit la dernière image disponible (lock pour éviter accès concurrent)
 			{
 				std::unique_lock<std::mutex> lk(mMutex);
 				mCv.wait(lk, [this] { return mHasNewImg || !mRunning; });
 				if (!mRunning) break;
-				img = std::move(mLastImg); 
+				img = std::move(mLastImg);
 				w = mImgW;
 				h = mImgH;
 				mHasNewImg = false;
@@ -233,11 +234,11 @@ private:
 			// preprocess redimension de l'image à la bonne taille
 			std::vector<float> input = preprocesser(img, w, h);
 			std::array<int64_t, 4> inShape = {1, 3, modelH_, modelW_};
-			
-            //Setup le model pour acceuillir notre image
-            Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+
+			// Setup le model pour acceuillir notre image
+			Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 			Ort::Value inT =
-			Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
+			    Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
 
 			// inférence
 			const char *insN[] = {mInName.c_str()};
@@ -255,7 +256,7 @@ private:
 			for (int i = 0; i < plane; ++i)
 				mask[i] = o[HUMAN_CH * plane + i];
 
-            //Exponential Smoothing du mask via les mask précédents stockée dans lastImgBufffer 
+			// Exponential Smoothing du mask via les mask précédents stockée dans lastImgBufffer
 			if (lastImgBuffer.size() != mask.size()) lastImgBuffer = mask;
 			else
 				for (size_t i = 0; i < mask.size(); ++i)
@@ -271,16 +272,13 @@ private:
 				maskH_ = h;
 				mHasResult = true;
 			}
-            
+
 			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
 			std::cout << "Nouveau mask calculé en "
 			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
 			          << "ms\n";
-            
-
 		}
 	}
-
 
 	// variables pour le thread
 	std::thread mWorker;
@@ -288,16 +286,16 @@ private:
 	std::condition_variable mCv;
 	std::atomic<bool> mRunning{true};
 
-    //variables globales
+	// variables globales
 	std::vector<uint8_t> mLastImg;
 	int mImgW = 0, mImgH = 0;
 	bool mHasNewImg = false;
 	std::vector<float> mLastResult;
 	std::vector<float> lastImgBuffer;
 	bool mHasResult = false;
-    mblk_t  *mBgFrame = nullptr;
-    MSPicture mBgPic{};
-    bool      mHasBg  = false;
+	mblk_t *mBgFrame = nullptr;
+	MSPicture mBgPic{};
+	bool mHasBg = false;
 
 	// etats ONNX Runtime
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};

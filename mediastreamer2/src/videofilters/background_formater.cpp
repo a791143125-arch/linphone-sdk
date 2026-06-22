@@ -1,34 +1,42 @@
 #include "mediastreamer2/msfilter.h"
 #include "mediastreamer2/msvideo.h"
 
+namespace mediastreamer {
 
-namespace mediastreamer{
-
-
-class BackgroundFormater{
+class BackgroundFormater {
 public:
+	BackgroundFormater() {
+	}
 
-    BackgroundFormater(){
+	~BackgroundFormater() {
+	}
 
-    }
+	void process(MSFilter *f) {
+		mblk_t *m;
 
-    ~BackgroundFormater(){
+		while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
+			MSPicture src;
+			ms_yuv_buf_init_from_mblk(&src, m);
+            
+			MSPicture dst;
+			mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
 
-    }
+			for (int y = 0; y < src.h; ++y)
+				memcpy(dst.planes[0] + y * dst.strides[0],
+				       src.planes[0] + y * src.strides[0], src.w);
 
-    void process(MSFilter *f){
-        mblk_t *m;
+			// chroma neutre -> niveaux de gris
+			memset(dst.planes[1], 128, dst.strides[1] * (src.h / 2));
+			memset(dst.planes[2], 128, dst.strides[2] * (src.h / 2));
 
-        while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
-			MSPicture pic;
-			ms_yuv_buf_init_from_mblk(&pic, m);
-            ms_queue_put(f->outputs[0], m);
-        }
-    }
+			freemsg(m);
+			ms_queue_put(f->outputs[0], out);
+		}
+	}
 
 private:
 };
-}
+} // namespace mediastreamer
 
 using namespace mediastreamer;
 
