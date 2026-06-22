@@ -1,3 +1,5 @@
+//Filtre prenant une image Yuv420 en entrée et une background (optionnel) aussi en Yuv420 
+//Et sort l'image avec l'arrière plan remplacé par le background
 #include "array"
 #include "cstring"
 #include "mediastreamer2/msfilter.h"
@@ -121,7 +123,7 @@ public:
                         Yrow[x] = (uint8_t)((1.0f - a) * Yrow[x] + a * Ybg);
                     }
                 }
-                Puis sur U et V
+                //Puis sur U et V
                 for (int y = 0; y < pic.h / 2; ++y) {
                     uint8_t *Urow = pic.planes[1] + y * pic.strides[1];
                     uint8_t *Vrow = pic.planes[2] + y * pic.strides[2];
@@ -130,8 +132,8 @@ public:
                         float a = mask[my * mw + ((x * 2) * mw / pic.w)];
                         uint8_t Ubg = 128, Vbg = 128;
                         if (mHasBg) {
-                            int by = y * mBgPic.h / (pic.h / 2);
-                            int bx = x * mBgPic.w / (pic.w / 2);
+                            int by = y * mBgPic.h / pic.h;
+                            int bx = x * mBgPic.w / pic.w;
                             Ubg = mBgPic.planes[1][by * mBgPic.strides[1] + bx];
                             Vbg = mBgPic.planes[2][by * mBgPic.strides[2] + bx];
                         }
@@ -297,7 +299,7 @@ private:
     MSPicture mBgPic{};
     bool      mHasBg  = false;
 
-	// états ONNX
+	// etats ONNX Runtime
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};
 	Ort::SessionOptions mOpts;
 	Ort::Session mSession{nullptr};

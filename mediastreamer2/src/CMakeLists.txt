@@ -139,6 +139,7 @@ set(VOIP_SOURCE_FILES_CXX
 	videofilters/smff/smff.h
 	videofilters/packet-router.cpp
 	videofilters/background_replacer.cpp
+	videofilters/background_formater.cpp
 	voip/audiostreamvolumes.cpp
 	voip/turn_tcp.cpp
 	voip/video-conference.cpp

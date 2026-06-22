@@ -194,6 +194,7 @@ extern MSWebCamDesc ms_v4m_cam_desc;
 
 extern MSWebCamDesc static_image_desc;
 extern MSFilterDesc ms_BackgroundReplacer_desc;
+extern MSFilterDesc ms_BackgroundFormater_desc;
 extern MSWebCamDesc ms_mire_webcam_desc;
 #ifdef __ANDROID__
 extern MSWebCamDesc ms_android_video_capture_desc;
