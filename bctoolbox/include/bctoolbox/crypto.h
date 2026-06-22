@@ -152,6 +152,9 @@ bctoolbox will fail to compile if these values are not in sync with the decaf on
 #define BCTBX_CERTIFICATE_VERIFY_BADCRL_BAD_KEY                                                                        \
 	0x200000 /**< The CRL is signed with an unacceptable key (eg bad curve, RSA too short). */
 
+// SE driver location is within 1 to 255, just try to avoid collisions with other products using the same mbdetls stack
+#define BCTBX_SE_SIGNING_LOCATION ((psa_key_location_t)51)
+
 /* Hash functions type */
 typedef enum bctbx_md_type {
 	BCTBX_MD_UNDEFINED,
@@ -161,6 +164,14 @@ typedef enum bctbx_md_type {
 	BCTBX_MD_SHA384,
 	BCTBX_MD_SHA512
 } bctbx_md_type_t;
+
+/* Key signature type */
+typedef enum bctbx_key_sign_type {
+	BCTBX_KEYSIGN_UNDEFINED,
+	BCTBX_KEYSIGN_RSA_PKCS1_V15,
+	BCTBX_KEYSIGN_RSA_PSS,
+	BCTBX_KEYSIGN_ECDSA
+} bctbx_key_sign_type_t;
 
 /* Dtls srtp protection profile */
 typedef enum bctbx_srtp_profile {
@@ -173,9 +184,32 @@ typedef enum bctbx_srtp_profile {
 
 typedef enum bctbx_type_implementation { BCTBX_MBEDTLS2, BCTBX_MBEDTLS, BCTBX_OPENSSL } bctbx_type_implementation_t;
 
+/*****************************************************************************/
+/***** External Signing key reference                                    *****/
+/*****************************************************************************/
+/** @brief An opaque structure used to store an external signing key reference
+ * Current implementation allows Android signing keys reference from keystore
+ * and string reference for testing purpose
+ * Instanciate pointers only and allocate them using the bctbx_ext_signing_key_ref_new() function
+ */
 #ifdef __cplusplus
-extern "C" {
+#include <optional>
+#include <string>
+struct bctbx_ext_signing_key_ref_t {
+#if defined(__ANDROID__)
+	std::optional<std::string> value; // on Android platform the key reference is a string
+#else                                 // we're not building for a platform on which external key ref is supported
+	std::optional<std::string> value; // used for testing purpose
 #endif
+	bctbx_ext_signing_key_ref_t();
+	bctbx_ext_signing_key_ref_t(const void *ref);
+	bctbx_ext_signing_key_ref_t(const bctbx_ext_signing_key_ref_t &other) = default; // TODO: CFRetain on iOS
+	~bctbx_ext_signing_key_ref_t() = default;                                        // TODO: CFRelease on iOS
+};
+extern "C" {
+#else  // __cplusplus
+typedef struct bctbx_ext_signing_key_ref_t bctbx_ext_signing_key_ref_t;
+#endif // __cplusplus
 
 /*****************************************************************************/
 /****** Utils                                                           ******/
@@ -315,6 +349,40 @@ BCTBX_PUBLIC int32_t bctbx_signing_key_parse(bctbx_signing_key_t *key,
  * @return 0 on success
  */
 BCTBX_PUBLIC int32_t bctbx_signing_key_parse_file(bctbx_signing_key_t *key, const char *path, const char *password);
+
+/*****************************************************************************/
+/***** External Signing key reference                                    *****/
+/*****************************************************************************/
+/**
+ * @brief Create and initialise an external signing key reference context
+ * @param [in]		ref	the reference to set, internally casted according to the current platform
+ * @return a pointer to the ext signing key reference context
+ */
+BCTBX_PUBLIC bctbx_ext_signing_key_ref_t *bctbx_ext_signing_key_ref_new(const void *ref);
+
+/**
+ * @brief Create and initialise an external signing key reference context
+ * @param [in]		ref	the reference to clone
+ * @return a pointer to the cloned ext signing key reference context
+ */
+BCTBX_PUBLIC bctbx_ext_signing_key_ref_t *bctbx_ext_signing_key_ref_clone(const bctbx_ext_signing_key_ref_t *other);
+
+/**
+ * @brief is the reference empty
+ *
+ * @param[in]	extKeyRef	The ext signing key ref context to check
+ * @return TRUE when the ref is empty
+ */
+BCTBX_PUBLIC bool_t bctbx_ext_signing_key_ref_empty(const bctbx_ext_signing_key_ref_t *ref);
+
+/**
+ * @brief Clear the ext signing key ref context and free internal buffer
+ *
+ * @param[in]	extKeyRef	The ext signing key ref context to clear
+ */
+BCTBX_PUBLIC void bctbx_ext_signing_key_ref_free(bctbx_ext_signing_key_ref_t *extKeyRef);
+// TODO Remove me, just for debug on desktop
+BCTBX_PUBLIC const char *bctbx_ext_signing_key_ref_getString(const bctbx_ext_signing_key_ref_t *extKeyRef);
 
 /*****************************************************************************/
 /***** X509 Certificate                                                  *****/
@@ -592,6 +660,31 @@ BCTBX_PUBLIC int32_t bctbx_ssl_config_set_own_cert(bctbx_ssl_config_t *ssl_confi
                                                    bctbx_signing_key_t *key);
 BCTBX_PUBLIC int32_t bctbx_ssl_config_set_ciphersuites(bctbx_ssl_config_t *ssl_config,
                                                        const bctbx_list_t *ciphersuites);
+
+typedef int (*bctbx_ssl_config_ext_sign_callback_t)(void *user_data,
+                                                    const void *key_ref,
+                                                    bctbx_key_sign_type_t sign_algo,
+                                                    bctbx_md_type_t hash_algo,
+                                                    const uint8_t *hash,
+                                                    size_t hash_size,
+                                                    size_t signature_buffer_size,
+                                                    uint8_t *signature,
+                                                    size_t *signature_size);
+
+/**
+ * @brief set callbacks and an external key ref in the ssl_config to be passed during handshake to external crypto
+ * processor
+ *
+ * @param[in/out]	ssl_config	The configuration to store the ext key ref in
+ * @param[in]		cb		The callback to be called for ext signing
+ * @param[in]		cb_data		pointer passed back to the callback
+ * @param[in]		ext_key_ref	The reference to be stored, the value is cloned in the ssl config
+ *
+ * */
+BCTBX_PUBLIC int32_t bctbx_ssl_config_set_callback_external_signing(bctbx_ssl_config_t *ssl_config,
+                                                                    bctbx_ssl_config_ext_sign_callback_t cb,
+                                                                    void *cb_data,
+                                                                    const bctbx_ext_signing_key_ref_t *ext_key_ref);
 
 /**
  * @brief Configure the groups used by the tls connection

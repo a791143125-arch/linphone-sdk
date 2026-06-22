@@ -26,6 +26,7 @@
 
 #include <mbedtls/base64.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/debug.h> //TODO: Needed only to enable mbedtls debug
 #include <mbedtls/entropy.h>
 #include <mbedtls/error.h>
 #include <mbedtls/gcm.h>
@@ -43,6 +44,7 @@
 #include "bctoolbox/crypto.h"
 #include "bctoolbox/defs.h"
 #include "bctoolbox/logging.h"
+#include "mbedtls.h"
 
 /*** Cleaning ***/
 /**
@@ -146,6 +148,7 @@ bctbx_signing_key_t *bctbx_signing_key_new(void) {
 }
 
 void bctbx_signing_key_free(bctbx_signing_key_t *key) {
+	if (!key) return;
 	mbedtls_pk_free(&(key->ctx));
 	mbedtls_ctr_drbg_free(&(key->ctr_drbg));
 	mbedtls_entropy_free(&(key->entropy));
@@ -1126,25 +1129,18 @@ bctbx_dtls_srtp_profile_t bctbx_ssl_get_dtls_srtp_protection_profile(BCTBX_UNUSE
 
 /** DTLS SRTP functions **/
 /** config **/
-struct bctbx_ssl_config_struct {
-	mbedtls_ssl_config *ssl_config;         /**< actual config structure */
-	uint8_t ssl_config_externally_provided; /**< a flag, on when the ssl_config was provided by callers and not created
-	                                           threw the new function */
-	int (*callback_cli_cert_function)(void *,
-	                                  bctbx_ssl_context_t *,
-	                                  const bctbx_list_t *); /**< pointer to the callback called to update client
-	              certificate during handshake callback params are user_data, ssl_context, list of server certificate
-	              subject alt name and CN (null terminated strings) */
-	void *callback_cli_cert_data;                            /**< data passed to the client cert callback */
-#ifdef HAVE_DTLS_SRTP
-	mbedtls_ssl_srtp_profile
-	    dtls_srtp_mbedtls_profiles[MBEDTLS_TLS_SRTP_MAX_PROFILE_LIST_LENGTH +
-	                               1]; /**< list of supported DTLS-SRTP profiles, mbedtls won't hold the reference, so
-	                                      we must do it for the lifetime of the config structure. (size is +1 to add the
-	                                      list termination) */
-#endif                                 /* HAVE_DTLS_SRTP */
-	int *ciphersuites;                 /**< ciphersuites as mbedtls id's */
-};
+static void mbedtls_debug_bridge(BCTBX_UNUSED(void *ctx), int level, const char *file, int line, const char *str) {
+	// Format and dump directly to standard error or console stream
+	char indent[16] = "               ";
+	indent[3 * level] = '\0';
+	bctbx_message("%s[mbedTLS-%d] %s:%04d: %s", indent, level, file, line, str);
+}
+
+static void activate_logging_diagnostics(mbedtls_ssl_config *ssl_conf) {
+	// Verbosity levels range from 1 (Errors Only) up to 4 (Extremely Verbose Hex Dumps)
+	mbedtls_debug_set_threshold(1);
+	mbedtls_ssl_conf_dbg(ssl_conf, mbedtls_debug_bridge, nullptr);
+}
 
 bctbx_ssl_config_t *bctbx_ssl_config_new(void) {
 	bctbx_ssl_config_t *ssl_config = bctbx_malloc0(sizeof(bctbx_ssl_config_t));
@@ -1152,6 +1148,7 @@ bctbx_ssl_config_t *bctbx_ssl_config_new(void) {
 	ssl_config->ssl_config = bctbx_malloc0(sizeof(mbedtls_ssl_config));
 	ssl_config->ssl_config_externally_provided = 0;
 	mbedtls_ssl_config_init(ssl_config->ssl_config);
+	activate_logging_diagnostics(ssl_config->ssl_config);
 
 	mbedtls_ssl_conf_session_tickets(ssl_config->ssl_config, MBEDTLS_SSL_SESSION_TICKETS_DISABLED);
 	mbedtls_ssl_conf_renegotiation(ssl_config->ssl_config, MBEDTLS_SSL_RENEGOTIATION_DISABLED);
@@ -1159,6 +1156,11 @@ bctbx_ssl_config_t *bctbx_ssl_config_new(void) {
 	ssl_config->callback_cli_cert_function = NULL;
 	ssl_config->callback_cli_cert_data = NULL;
 	ssl_config->ciphersuites = NULL;
+	ssl_config->ext_key_ref = NULL;
+	ssl_config->ext_key_psa_id = MBEDTLS_SVC_KEY_ID_INIT;
+	ssl_config->callback_ext_signing_function = NULL;
+	ssl_config->callback_ext_signing_data = NULL;
+	mbedtls_pk_init(&(ssl_config->ext_key));
 
 #ifdef HAVE_DTLS_SRTP
 	ssl_config->dtls_srtp_mbedtls_profiles[0] = MBEDTLS_TLS_SRTP_UNSET;
@@ -1166,6 +1168,26 @@ bctbx_ssl_config_t *bctbx_ssl_config_new(void) {
 	return ssl_config;
 }
 
+int32_t bctbx_ssl_config_set_callback_external_signing(bctbx_ssl_config_t *ssl_config,
+                                                       bctbx_ssl_config_ext_sign_callback_t cb,
+                                                       void *cb_data,
+                                                       const bctbx_ext_signing_key_ref_t *ext_key_ref) {
+	if (ssl_config == NULL) {
+		return BCTBX_ERROR_INVALID_SSL_CONFIG;
+	}
+
+	if (bctbx_ext_signing_key_ref_empty(ext_key_ref)) {
+		bctbx_error("Trying to set an external key reference but it is empty");
+		return BCTBX_ERROR_INVALID_SSL_CONFIG;
+	}
+	/* copy the key ref into the ssl_config so the caller do not need to hold it */
+	bctbx_ext_signing_key_ref_free(ssl_config->ext_key_ref);
+	ssl_config->ext_key_ref = bctbx_ext_signing_key_ref_clone(ext_key_ref);
+	ssl_config->callback_ext_signing_function = cb;
+	ssl_config->callback_ext_signing_data = cb_data;
+
+	return 0;
+}
 bctbx_type_implementation_t bctbx_ssl_get_implementation_type(void) {
 	return BCTBX_MBEDTLS;
 }
@@ -1204,6 +1226,9 @@ void bctbx_ssl_config_free(bctbx_ssl_config_t *ssl_config) {
 	if (ssl_config->ciphersuites) {
 		bctbx_free(ssl_config->ciphersuites);
 	}
+
+	bctbx_ext_signing_key_ref_free(ssl_config->ext_key_ref);
+	mbedtls_pk_free(&(ssl_config->ext_key));
 
 	bctbx_free(ssl_config);
 }
@@ -1412,7 +1437,73 @@ int32_t bctbx_ssl_config_set_own_cert(bctbx_ssl_config_t *ssl_config,
 	if (ssl_config == NULL) {
 		return BCTBX_ERROR_INVALID_SSL_CONFIG;
 	}
-	return mbedtls_ssl_conf_own_cert(ssl_config->ssl_config, (mbedtls_x509_crt *)cert, (mbedtls_pk_context *)key);
+	if (key) {
+		return mbedtls_ssl_conf_own_cert(ssl_config->ssl_config, (mbedtls_x509_crt *)cert, (mbedtls_pk_context *)key);
+	} else { // There is no key, check we have a key ref in conf
+		if (!bctbx_ext_signing_key_ref_empty(ssl_config->ext_key_ref)) {
+			// Get PSA attributes from the certificate's public key (use VERIFY since it's a pubkey)
+			psa_key_attributes_t cert_attr = PSA_KEY_ATTRIBUTES_INIT;
+			int ret =
+			    mbedtls_pk_get_psa_attributes(&((mbedtls_x509_crt *)cert)->pk, PSA_KEY_USAGE_VERIFY_HASH, &cert_attr);
+			if (ret != 0) {
+				bctbx_error("Unable to get public key attribute from certificate public key");
+				return BCTBX_ERROR_INVALID_CERTIFICATE;
+			}
+
+			psa_key_type_t pub_type = psa_get_key_type(&cert_attr);
+			size_t key_bits = psa_get_key_bits(&cert_attr);
+
+			// Convert public key type → key pair type
+			psa_key_type_t pair_type;
+			psa_algorithm_t sign_alg;
+			psa_algorithm_t enroll_alg = PSA_ALG_NONE;
+
+			if (PSA_KEY_TYPE_IS_RSA(pub_type)) {
+				pair_type = PSA_KEY_TYPE_RSA_KEY_PAIR;
+				sign_alg = PSA_ALG_RSA_PSS_ANY_SALT(PSA_ALG_ANY_HASH);    // TLS 1.3
+				enroll_alg = PSA_ALG_RSA_PKCS1V15_SIGN(PSA_ALG_ANY_HASH); // TLS 1.2
+			} else if (PSA_KEY_TYPE_IS_ECC_PUBLIC_KEY(pub_type)) {
+				pair_type = PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_KEY_TYPE_ECC_GET_FAMILY(pub_type));
+				sign_alg = PSA_ALG_ECDSA(PSA_ALG_ANY_HASH);
+				// Same alg for TLS 1.2 and 1.3 — no enrollment needed
+			} else {
+				bctbx_error("PSA Public type not RSA nor ECC");
+				return BCTBX_ERROR_INVALID_CERTIFICATE;
+			}
+
+			psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+			psa_set_key_lifetime(&attr, PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_VOLATILE,
+			                                                                           BCTBX_SE_SIGNING_LOCATION));
+			psa_set_key_type(&attr, pair_type);
+			psa_set_key_bits(&attr, key_bits);
+			psa_set_key_algorithm(&attr, sign_alg);
+			if (enroll_alg != PSA_ALG_NONE) {
+				psa_set_key_enrollment_algorithm(&attr, enroll_alg);
+			}
+			psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_SIGN_HASH);
+
+			// Forces mbedTLS to drop the long_lived_ctx address directly into 'key_slot'
+			psa_set_key_slot_number(&attr, (psa_key_slot_number_t)(uintptr_t)ssl_config);
+
+			uint8_t dummy_payload = 0xFF;
+			psa_status_t psa_status =
+			    psa_import_key(&attr, &dummy_payload, sizeof(dummy_payload), &(ssl_config->ext_key_psa_id));
+			if (psa_status != PSA_SUCCESS) {
+				// Most likely: PSA_ERROR_NOT_SUPPORTED (driver not found)
+				//           or PSA_ERROR_BAD_STATE (psa_crypto_init not called yet / driver registered too late)
+				return BCTBX_ERROR_INVALID_CERTIFICATE;
+			}
+
+			ret = mbedtls_pk_setup_opaque(&(ssl_config->ext_key), ssl_config->ext_key_psa_id);
+			if (ret != 0) {
+				return BCTBX_ERROR_INVALID_CERTIFICATE;
+			}
+			return mbedtls_ssl_conf_own_cert(ssl_config->ssl_config, (mbedtls_x509_crt *)cert, &(ssl_config->ext_key));
+		} else { // we have no key and no key ref: can't work
+			bctbx_error("Trying to set own certificate but no key or key reference provided");
+			return BCTBX_ERROR_INVALID_CERTIFICATE;
+		}
+	}
 }
 
 int32_t bctbx_ssl_config_set_groups(BCTBX_UNUSED(bctbx_ssl_config_t *ssl_config),

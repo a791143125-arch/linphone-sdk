@@ -141,7 +141,9 @@ _linphone_core_find_indexed_tls_auth_info(LinphoneCore *lc, const char *username
 	for (elem = lc->auth_info; elem != NULL; elem = elem->next) {
 		LinphoneAuthInfo *pinfo = (LinphoneAuthInfo *)elem->data;
 		// if auth info holds tls_cert and key or a path to them
-		if ((linphone_auth_info_get_tls_cert(pinfo) && linphone_auth_info_get_tls_key(pinfo)) ||
+		if ((linphone_auth_info_get_tls_cert(pinfo) &&
+		     (linphone_auth_info_get_tls_key(pinfo) ||
+		      !bctbx_ext_signing_key_ref_empty(linphone_auth_info_get_ext_tls_key_ref(pinfo)))) ||
 		    (linphone_auth_info_get_tls_cert_path(pinfo) && linphone_auth_info_get_tls_key_path(pinfo))) {
 			// check it matches requested username/domain, when username is NULL, just check the domain
 			if (((username == NULL) || (username && linphone_auth_info_get_username(pinfo) &&
@@ -569,6 +571,7 @@ AuthStatus linphone_core_fill_belle_sip_auth_event(LinphoneCore *lc,
 			const char *key_path = nullptr;
 			const char *cert_chain = nullptr;
 			const char *key = nullptr;
+			const bctbx_ext_signing_key_ref_t *key_ref = nullptr;
 			const LinphoneAuthInfo *auth_info;
 			if (domain == NULL) domain = ae_domain;
 			auth_info = _linphone_core_find_indexed_tls_auth_info(lc, username, domain);
@@ -576,6 +579,10 @@ AuthStatus linphone_core_fill_belle_sip_auth_event(LinphoneCore *lc,
 				if (linphone_auth_info_get_tls_cert(auth_info) && linphone_auth_info_get_tls_key(auth_info)) {
 					cert_chain = linphone_auth_info_get_tls_cert(auth_info);
 					key = linphone_auth_info_get_tls_key(auth_info);
+				} else if (linphone_auth_info_get_tls_cert(auth_info) &&
+				           !bctbx_ext_signing_key_ref_empty(linphone_auth_info_get_ext_tls_key_ref(auth_info))) {
+					cert_chain = linphone_auth_info_get_tls_cert(auth_info);
+					key_ref = linphone_auth_info_get_ext_tls_key_ref(auth_info);
 				} else if (linphone_auth_info_get_tls_cert_path(auth_info) &&
 				           linphone_auth_info_get_tls_key_path(auth_info)) {
 					cert_chain_path = linphone_auth_info_get_tls_cert_path(auth_info);
@@ -598,6 +605,13 @@ AuthStatus linphone_core_fill_belle_sip_auth_event(LinphoneCore *lc,
 				belle_sip_signing_key_t *bs_key = belle_sip_signing_key_parse(key, strlen(key), nullptr);
 				if (bs_cert_chain && bs_key) {
 					belle_sip_auth_event_set_signing_key(event, bs_key);
+					belle_sip_auth_event_set_client_certificates_chain(event, bs_cert_chain);
+				}
+			} else if (cert_chain != nullptr && key_ref != nullptr) {
+				belle_sip_certificates_chain_t *bs_cert_chain = belle_sip_certificates_chain_parse(
+				    cert_chain, strlen(cert_chain), BELLE_SIP_CERTIFICATE_RAW_FORMAT_PEM);
+				if (bs_cert_chain) {
+					belle_sip_auth_event_set_signing_key(event, belle_sip_signing_new_key_ref(key_ref));
 					belle_sip_auth_event_set_client_certificates_chain(event, bs_cert_chain);
 				}
 			} else if (cert_chain_path != nullptr && key_path != nullptr) {

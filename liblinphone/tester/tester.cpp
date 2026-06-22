@@ -20,6 +20,7 @@
 
 #include <array>
 #include <exception>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -205,12 +206,12 @@ extern "C" void add_user_to_core_config(LinphoneCore *lc,
 }
 
 // Add tls information for given user into the linphone core
-extern "C" void add_tls_client_certificate(LinphoneCore *lc,
-                                           const char *username,
-                                           const char *realm,
-                                           const char *cert,
-                                           const char *key,
-                                           const certProvider method) {
+extern "C" char *add_tls_client_certificate(LinphoneCore *lc,
+                                            const char *username,
+                                            const char *realm,
+                                            const char *cert,
+                                            const char *key,
+                                            const certProvider method) {
 	// set a TLS client certificate
 	switch (method) {
 		// when using config_sip, no user name is set, we can set only one certificate anyway...
@@ -274,7 +275,80 @@ extern "C" void add_tls_client_certificate(LinphoneCore *lc,
 			linphone_core_add_auth_info(lc, auth_info);
 			linphone_auth_info_unref(auth_info);
 		} break;
+		case CertProviderConfigAuthInfoBufferExtKeyRef: {
+			// We shall already have an auth info for this username/realm, add the tls cert in it
+			LinphoneAuthInfo *auth_info =
+			    linphone_auth_info_clone(linphone_core_find_auth_info(lc, realm, username, realm));
+			// otherwise create it
+			if (auth_info == NULL) {
+				auth_info = linphone_auth_info_new(username, NULL, NULL, NULL, realm, realm);
+			}
+			if (cert && strlen(cert)) {
+				char *cert_path = bc_tester_res(cert);
+				char *cert_buffer = NULL;
+				liblinphone_tester_load_text_file_in_buffer(cert_path, &cert_buffer);
+				linphone_auth_info_set_tls_cert(auth_info, cert_buffer);
+				bc_free(cert_path);
+				bctbx_free(cert_buffer);
+			}
+			std::string ref{};
+			if (key && strlen(key)) {
+				char *key_path = bc_tester_res(key);
+				char *key_buffer = NULL;
+				liblinphone_tester_load_text_file_in_buffer(key_path, &key_buffer);
+				bctbx_free(key_path);
+				ref = Linphone::Tester::KeyStore::getInstance().setKey(key_buffer);
+				bctbx_free(key_buffer);
+				linphone_auth_info_set_ext_tls_key_ref(auth_info, (void *)(ref.c_str()));
+			}
+			linphone_core_add_auth_info(lc, auth_info);
+			linphone_auth_info_unref(auth_info);
+			return bctbx_strdup(ref.c_str());
+		} break;
+
 		case CertProviderCallback:
 			break;
 	}
+	return NULL;
 }
+
+/*** Key Store ***/
+namespace Linphone {
+namespace Tester {
+
+KeyStore &KeyStore::getInstance() {
+	static KeyStore instance;
+	return instance;
+}
+// register a key, returns a random key reference token
+std::string KeyStore::setKey(const std::string &key) {
+	std::unique_lock<std::shared_mutex> lock(mMutex);
+	std::string ref;
+	do {
+		static thread_local std::mt19937 generator(std::random_device{}());
+		std::uniform_int_distribution<uint32_t> distribution(0, 0xFFFFFFFF);
+		std::stringstream ss;
+		ss << std::hex << std::setw(8) << std::setfill('0') << distribution(generator);
+		ref = ss.str();
+	} while (mKeys.find(ref) != mKeys.end());
+	lInfo() << "Test key store add a key " << key.substr(0, 64) << " with ref " << ref;
+	mKeys[ref] = key;
+	return ref;
+}
+// key lookup from reference
+std::string KeyStore::getKey(const std::string &ref) {
+	std::shared_lock<std::shared_mutex> lock(mMutex);
+	auto it = mKeys.find(ref);
+	if (it != mKeys.end()) {
+		return it->second;
+	}
+	return ""; // return an empty string when the ref is not found
+}
+// delete key from register
+void KeyStore::deleteKey(const std::string &ref) {
+	std::shared_lock<std::shared_mutex> lock(mMutex);
+	mKeys.erase(ref);
+}
+
+} // namespace Tester
+} // namespace Linphone

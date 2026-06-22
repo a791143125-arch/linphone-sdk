@@ -34,8 +34,10 @@
 using namespace Linphone::Tester;
 
 // Helper to loop on all certificate providing methods availables
-static std::array<certProvider, 3> availCertProv{
-    {CertProviderConfigSip, CertProviderConfigAuthInfoBuffer, CertProviderConfigAuthInfoPath}};
+// static std::array<certProvider, 4> availCertProv{
+//    {CertProviderConfigSip, CertProviderConfigAuthInfoBuffer, CertProviderConfigAuthInfoBufferExtKeyRef,
+//    CertProviderConfigAuthInfoPath}};
+static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoBufferExtKeyRef}};
 
 static void TLS_mandatory_two_users_curve(const LinphoneTesterLimeAlgo curveId) {
 	LinphoneCoreManager *lcm = linphone_core_manager_create(NULL);
@@ -90,7 +92,24 @@ static void create_user_sip_client_cert_chain(const LinphoneTesterLimeAlgo curve
 	                        "sip:sip.example.org; transport=tls", "secret");
 
 	// add client certificate
-	add_tls_client_certificate(lcm->lc, username.c_str(), realm.c_str(), cert.c_str(), key.c_str(), method);
+	auto key_ref =
+	    add_tls_client_certificate(lcm->lc, username.c_str(), realm.c_str(), cert.c_str(), key.c_str(), method);
+
+	if (method == CertProviderConfigAuthInfoBufferExtKeyRef) {
+		LinphoneCoreCbs *cbs = linphone_factory_create_core_cbs(linphone_factory_get());
+		linphone_core_cbs_set_tls_ext_signature(
+		    cbs, [](BCTBX_UNUSED(LinphoneCore * core), const void *key_ref, BCTBX_UNUSED(LinphoneKeySignAlgo sign_algo),
+		            BCTBX_UNUSED(LinphoneHashAlgo hash_algo), BCTBX_UNUSED(const uint8_t *hash_ptr),
+		            BCTBX_UNUSED(size_t hash_size), BCTBX_UNUSED(size_t signature_buffer_size),
+		            BCTBX_UNUSED(uint8_t *signature_ptr), BCTBX_UNUSED(size_t *signature_size_out), int *ret_out) {
+			    auto key = Linphone::Tester::KeyStore::getInstance().getKey((const char *)key_ref);
+			    lError() << "TODO: Sign the hash with key " << key.substr(0, 64);
+			    *ret_out = -1;
+		    });
+
+		linphone_core_add_callbacks(lcm->lc, cbs);
+		linphone_core_cbs_unref(cbs);
+	}
 
 	bctbx_list_t *coresManagerList = NULL;
 	coresManagerList = bctbx_list_append(coresManagerList, lcm);
@@ -106,6 +125,10 @@ static void create_user_sip_client_cert_chain(const LinphoneTesterLimeAlgo curve
 		BC_ASSERT_EQUAL(lcm->stat.number_of_X3dhUserCreationSuccess, 0, int, "%d");
 	}
 
+	if (key_ref) {
+		Linphone::Tester::KeyStore::getInstance().deleteKey(key_ref);
+		bctbx_free(key_ref);
+	}
 	bctbx_list_free(coresList);
 	bctbx_list_free(coresManagerList);
 	linphone_core_manager_destroy(lcm);

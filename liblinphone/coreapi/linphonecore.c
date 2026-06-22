@@ -278,6 +278,14 @@ void linphone_core_cbs_set_registration_state_changed(LinphoneCoreCbs *cbs,
 	cbs->vtable->registration_state_changed = cb;
 }
 
+LinphoneCoreCbsTlsExtSignCb linphone_core_cbs_get_tls_ext_signature(LinphoneCoreCbs *cbs) {
+	return cbs->vtable->tls_ext_sign;
+}
+
+void linphone_core_cbs_set_tls_ext_signature(LinphoneCoreCbs *cbs, LinphoneCoreCbsTlsExtSignCb cb) {
+	cbs->vtable->tls_ext_sign = cb;
+}
+
 void linphone_core_cbs_set_conference_info_received(LinphoneCoreCbs *cbs, LinphoneCoreCbsConferenceInfoReceivedCb cb) {
 	cbs->vtable->conference_info_received = cb;
 }

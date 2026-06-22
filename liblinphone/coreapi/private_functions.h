@@ -492,6 +492,16 @@ void linphone_conference_scheduler_notify_invitations_sent(LinphoneConferenceSch
 
 void _linphone_participant_device_notify_video_display_error_occurred(LinphoneParticipantDevice *participant_device,
                                                                       int error_code);
+void linphone_core_notify_tls_ext_sign_requested(LinphoneCore *lc,
+                                                 const void *key_ref,
+                                                 LinphoneKeySignAlgo sign_algo,
+                                                 LinphoneHashAlgo hash_algo,
+                                                 const uint8_t *hash,
+                                                 size_t hash_size,
+                                                 size_t signature_buffer_size,
+                                                 uint8_t *signature,
+                                                 size_t *signature_size,
+                                                 int *ret);
 
 LINPHONE_PUBLIC void linphone_participant_device_set_state(LinphoneParticipantDevice *participant_device,
                                                            LinphoneParticipantDeviceState state);
