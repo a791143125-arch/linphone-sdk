@@ -4,6 +4,7 @@
 #include "cstring"
 #include "mediastreamer2/msfilter.h"
 #include "mediastreamer2/msvideo.h"
+#include "mediastreamer2/msbackgroundformater.h"
 #include "onnxruntime/onnxruntime_cxx_api.h"
 #include "string"
 #include <algorithm>
@@ -11,12 +12,15 @@
 #include <bctoolbox/defs.h>
 #include <cmath>
 #include <condition_variable>
+#include <cstdint>
 #include <mutex>
 #include <thread>
 #include <vector>
 
 #ifdef HAVE_LIBYUV_H
 #include "libyuv/convert_argb.h"
+#include "libyuv/planar_functions.h" 
+#include "libyuv/scale.h"      
 #endif
 #include <chrono>
 namespace mediastreamer {
@@ -25,7 +29,9 @@ namespace mediastreamer {
 // Contient le process et toute les fonctions nécessaires pour fonctionner
 class BackgroundReplacer {
 public:
-	BackgroundReplacer(MSFilter *f) {
+	BackgroundReplacer(MSFilter *f, bool bypass = true) {
+
+		mBypass = bypass;
 
 		// SETUP du model à faire une seule fois
 		char *path = ms_strdup_printf("%s/model.onnx", ms_factory_get_image_resources_dir(f->factory));
@@ -33,6 +39,7 @@ public:
 		mOpts.SetIntraOpNumThreads(1);
 		mSession = Ort::Session(mEnv, path, mOpts);
 		ms_free(path);
+		mTimeLastResult = std::chrono::high_resolution_clock::now();
 
 		// noms d'entrée/sortie récupérés une fois
 		Ort::AllocatorWithDefaultOptions alloc;
@@ -66,6 +73,7 @@ public:
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
 				if (mBgFrame) freemsg(mBgFrame);
 				mBgFrame = bg;
+				mBgDirty = true;
 			}
 			if (mBgFrame) {
 				ms_yuv_buf_init_from_mblk(&mBgPic, mBgFrame);
@@ -77,82 +85,88 @@ public:
 		while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
 			MSPicture pic;
 			ms_yuv_buf_init_from_mblk(&pic, m);
+			
+			if (!mBypass){
+				// YUV -> RGBA
+				std::vector<uint8_t> argb(pic.w * pic.h * 4);
+				libyuv::I420ToARGB(pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1], pic.planes[2],
+								pic.strides[2], argb.data(), pic.w * 4, pic.w, pic.h);
 
-			// YUV -> RGBA
-			std::vector<uint8_t> argb(pic.w * pic.h * 4);
-			libyuv::I420ToARGB(pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1], pic.planes[2],
-			                   pic.strides[2], argb.data(), pic.w * 4, pic.w, pic.h);
-
-			// PRODUCTEUR publie la dernière image
-			{
-				std::lock_guard<std::mutex> lk(mMutex);
-				mLastImg = std::move(argb);
-				mImgW = pic.w;
-				mImgH = pic.h;
-				mHasNewImg = true;
-			}
-			mCv.notify_one();
-
-			// CONSOMMATEUR : récupère le dernier masque dispo
-			std::vector<float> mask;
-			int mw = 0, mh = 0;
-			{
-				std::lock_guard<std::mutex> lk(mMutex);
-				if (mHasResult) {
-					mask = mLastResult;
-					mw = maskW_;
-					mh = maskH_;
+				// PRODUCTEUR publie la dernière image
+				{
+					std::lock_guard<std::mutex> lk(mMutex);
+					mLastImg = std::move(argb);
+					mImgW = pic.w;
+					mImgH = pic.h;
+					mHasNewImg = true;
 				}
-			}
+				mCv.notify_one();
 
-			// Opération de reconstruction de l'image en une seule boucle par bloc de 2*2
-			if (!mask.empty()) {
-
-				for (int y = 0; y < pic.h / 2; ++y) {
-					int y0 = y * 2, y1 = y0 + 1;
-					uint8_t *Yrow1 = pic.planes[0] + y0 * pic.strides[0];
-					uint8_t *Yrow2 = pic.planes[0] + y1 * pic.strides[0];
-					uint8_t *Urow = pic.planes[1] + y * pic.strides[1];
-					uint8_t *Vrow = pic.planes[2] + y * pic.strides[2];
-					int my0 = y0 * mh / pic.h, my1 = y1 * mh / pic.h;
-					for (int x = 0; x < pic.w / 2; ++x) {
-						int x0 = x * 2, x1 = x0 + 1;
-						int mx0 = x0 * mw / pic.w, mx1 = x1 * mw / pic.w;
-						float a00 = mask[my0 * mw + mx0], a01 = mask[my0 * mw + mx1];
-						float a10 = mask[my1 * mw + mx0], a11 = mask[my1 * mw + mx1];
-						float a = a00;
-						uint8_t Ubg = 128, Vbg = 128, Yb00 = 0, Yb01 = 0, Yb10 = 0, Yb11 = 0;
-						if (mHasBg) {
-							int by = y * mBgPic.h / pic.h;
-							int bx = x * mBgPic.w / pic.w;
-							Ubg = mBgPic.planes[1][by * mBgPic.strides[1] + bx];
-							Vbg = mBgPic.planes[2][by * mBgPic.strides[2] + bx];
-							int by0 = y0 * mBgPic.h / pic.h, by1 = y1 * mBgPic.h / pic.h;
-							int bx0 = x0 * mBgPic.w / pic.w, bx1 = x1 * mBgPic.w / pic.w;
-							uint8_t *BY0 = mBgPic.planes[0] + by0 * mBgPic.strides[0];
-							uint8_t *BY1 = mBgPic.planes[0] + by1 * mBgPic.strides[0];
-							Yb00 = BY0[bx0];
-							Yb01 = BY0[bx1];
-							Yb10 = BY1[bx0];
-							Yb11 = BY1[bx1];
+							// CONSOMMATEUR : récupère le dernier alpha dispo (uint8, déjà pleine résolution)
+				std::vector<uint8_t> alpha;
+				{
+					std::lock_guard<std::mutex> lk(mMutex);
+					if (mHasResult) {
+						auto now = std::chrono::high_resolution_clock::now();
+						auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - mTimeLastResult).count();
+						alpha = mLastResult;
+						if (age > 200) {
+							std::cout << "temps trop long depuis dernier mask\n";
+							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // fond complet (sûr)
 						}
-						Yrow1[x0] = (uint8_t)((1.0f - a00) * Yrow1[x0] + a00 * Yb00);
-						Yrow1[x1] = (uint8_t)((1.0f - a01) * Yrow1[x1] + a01 * Yb01);
-						Yrow2[x0] = (uint8_t)((1.0f - a10) * Yrow2[x0] + a10 * Yb10);
-						Yrow2[x1] = (uint8_t)((1.0f - a11) * Yrow2[x1] + a11 * Yb11);
-						Urow[x] = (uint8_t)((1.0f - a) * Urow[x] + a * Ubg);
-						Vrow[x] = (uint8_t)((1.0f - a) * Vrow[x] + a * Vbg);
 					}
 				}
-			}
 
-			auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-			std::cout << "temps du traitement : "
-			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
-			          << "ms\n";
+				// Reconstruction via blend SIMD (libyuv)
+				if (!alpha.empty()) {
+					const int W = pic.w, H = pic.h;
 
+					// (re)scale le fond vers la taille image, uniquement si nécessaire
+					if (mHasBg && (mBgDirty || mBgScaledW != W || mBgScaledH != H)) {
+						mBgY.resize((size_t)W * H);
+						mBgU.resize((size_t)(W / 2) * (H / 2));
+						mBgV.resize((size_t)(W / 2) * (H / 2));
+						libyuv::I420Scale(mBgPic.planes[0], mBgPic.strides[0], mBgPic.planes[1], mBgPic.strides[1],
+										mBgPic.planes[2], mBgPic.strides[2], mBgPic.w, mBgPic.h, mBgY.data(), W,
+										mBgU.data(), W / 2, mBgV.data(), W / 2, W, H, libyuv::kFilterBilinear);
+						mBgScaledW = W;
+						mBgScaledH = H;
+						mBgDirty = false;
+					}
+
+					// pas de fond -> fond noir (Y=0, U/V=128), comme l'ancien comportement
+					if (!mHasBg && (mBgScaledW != W || mBgScaledH != H)) {
+						mBgY.assign((size_t)W * H, 0);
+						mBgU.assign((size_t)(W / 2) * (H / 2), 128);
+						mBgV.assign((size_t)(W / 2) * (H / 2), 128);
+						mBgScaledW = W;
+						mBgScaledH = H;
+					}
+
+					// dst = fond·α + caméra·(1-α), en place dans pic, en SIMD
+					libyuv::I420Blend(mBgY.data(), W, mBgU.data(), W / 2, mBgV.data(), W / 2,             // src0 = fond
+									pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1],        // src1 = caméra
+									pic.planes[2], pic.strides[2], alpha.data(), W,                      // alpha plein écran
+									pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1],        // dst = en place
+									pic.planes[2], pic.strides[2], W, H);
+				}
+
+
+				auto tmp_trait2 = std::chrono::high_resolution_clock::now();
+				std::cout << "temps du traitement : "
+						<< std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
+						<< "ms\n";
+				}
 			ms_queue_put(f->outputs[0], m);
 		}
+	}
+
+	bool getBypass(){
+		return mBypass;
+	}
+
+	void setBypass(bool bypass){
+		mBypass = bypass;
 	}
 
 private:
@@ -254,30 +268,35 @@ private:
 
 			// masque
 			std::vector<float> mask(plane);
-			for (int i = 0; i < plane; ++i)
-				mask[i] = o[HUMAN_CH * plane + i];
-
-			// Exponential Smoothing du mask via les mask précédents stockée dans lastImgBufffer
-			if (lastImgBuffer.size() != mask.size()) lastImgBuffer = mask;
-			else
-				for (size_t i = 0; i < mask.size(); ++i)
-					lastImgBuffer[i] = alpha_ * mask[i] + (1.0f - alpha_) * lastImgBuffer[i];
+			for (int i = 0; i < plane; ++i) mask[i] = o[HUMAN_CH * plane + i];
+				
+				if (lastImgBuffer.size() != mask.size()) lastImgBuffer = mask;
+				else
+					for (size_t i = 0; i < mask.size(); ++i) lastImgBuffer[i] = alpha_ * mask[i] + (1.0f - alpha_) * lastImgBuffer[i];
 
 			std::vector<float> outMask = redimMasque(lastImgBuffer, W, H, w, h);
 
-			// publier (sous lock pour éviter les accès concurents)
+
+			// float [0..1] -> uint8 [0..255] pour libyuv
+			std::vector<uint8_t> alpha(outMask.size());
+			for (size_t i = 0; i < outMask.size(); ++i)
+				alpha[i] = (uint8_t)std::clamp(outMask[i] * 255.0f, 0.0f, 255.0f);
+
 			{
 				std::lock_guard<std::mutex> lk(mMutex);
-				mLastResult = std::move(outMask);
+				mLastResult = std::move(alpha);   // uint8 maintenant
+				mTimeLastResult = std::chrono::high_resolution_clock::now();
 				maskW_ = w;
 				maskH_ = h;
 				mHasResult = true;
 			}
 
+
 			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
 			std::cout << "Nouveau mask calculé en "
 			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
 			          << "ms\n";
+			
 		}
 	}
 
@@ -291,12 +310,17 @@ private:
 	std::vector<uint8_t> mLastImg;
 	int mImgW = 0, mImgH = 0;
 	bool mHasNewImg = false;
-	std::vector<float> mLastResult;
+	std::chrono::time_point<std::chrono::high_resolution_clock> mTimeLastResult;
+	std::vector<uint8_t> mLastResult;
 	std::vector<float> lastImgBuffer;
 	bool mHasResult = false;
 	mblk_t *mBgFrame = nullptr;
 	MSPicture mBgPic{};
 	bool mHasBg = false;
+	std::vector<uint8_t> mBgY, mBgU, mBgV;     
+	int mBgScaledW = 0, mBgScaledH = 0;
+	bool mBgDirty = false;                      
+	bool mBypass;
 
 	// etats ONNX Runtime
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};
@@ -331,7 +355,23 @@ static void ms_background_replacer_process(MSFilter *f) {
 	reinterpret_cast<BackgroundReplacer *>(f->data)->process(f);
 }
 
-static MSFilterMethod ms_background_replacer_methods[] = {{0, nullptr}};
+static int ms_background_replacer_get_bypass(MSFilter *f, void *data) {
+	BackgroundReplacer *s = (BackgroundReplacer *)f->data;
+	*(int *)data = s->getBypass();
+	return 0;
+}
+
+static int ms_background_replacer_set_bypass(MSFilter *f, void *data) {
+	BackgroundReplacer *s = (BackgroundReplacer *)f->data;
+	s->setBypass(*(int *)data);
+	return 0;
+}
+
+static MSFilterMethod ms_background_replacer_methods[] = {
+    {MS_BACKGROUND_REPLACER_SET_BYPASS, ms_background_replacer_set_bypass},
+    {MS_BACKGROUND_REPLACER_GET_BYPASS, ms_background_replacer_get_bypass},
+    {0, nullptr}};
+
 
 extern "C" {
 

@@ -20,7 +20,7 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	MSFilter *capture, *display, *pixconv;
 	MSTicker *ticker;
 	float fps = 30;
-	MSVideoSize vsize = MS_VIDEO_SIZE_VGA;
+	MSVideoSize vsize = MS_VIDEO_SIZE_720P;
 	MSPixFmt fmt = MS_PIX_FMT_UNKNOWN;
 
 	signal(SIGINT, stop_handler);
@@ -52,7 +52,8 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	MSFilter *tee = ms_factory_create_filter(factory, MS_TEE_ID);
 	MSFilter *bgimage = ms_factory_create_filter(factory, MS_STATIC_IMAGE_ID);
 
-	const char *imageName = (argc > 1) ? argv[1] : "";
+	const char *imageName = (argc > 2) ? argv[2] : "";
+	const char *type = (argc > 1) ? argv[1] : "same";
 	char *path = ms_strdup_printf("%s/%s", ms_factory_get_image_resources_dir(factory), imageName);
 
 	ms_filter_call_method(bgimage, MS_FILTER_SET_FPS, &fps);
@@ -60,8 +61,19 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	ms_filter_call_method(bgimage, MS_STATIC_IMAGE_SET_IMAGE, path);
 	ms_free(path);
 
-	int type = MSBackgroundImage;
-	ms_filter_call_method(bgformater, MS_BACKGROUND_FORMATER_SET_TYPE, &type);
+	int typeval;
+	if (strcmp(type, "image") == 0) {
+		typeval = MSBackgroundImage;
+	} else if (strcmp(type, "video") == 0) {
+		typeval = MSBackgroundVideo;
+	} else if (strcmp(type, "blur") == 0) {
+		typeval = MSBackgroundBlur;
+	} else {
+		typeval = MSBackgroundSame;
+	}
+	int bypass = 0;
+	ms_filter_call_method(bgformater, MS_BACKGROUND_FORMATER_SET_TYPE, &typeval);
+	ms_filter_call_method(bgreplacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
 
 	ms_filter_link(capture, 0, pixconv, 0);
 	ms_filter_link(pixconv, 0, tee, 0);
