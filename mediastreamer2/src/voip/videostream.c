@@ -23,6 +23,7 @@
 #include "bctoolbox/defs.h"
 
 #include "mediastreamer2/mediastream.h"
+#include "mediastreamer2/msbackgroundformater.h"
 #include "mediastreamer2/mseventqueue.h"
 #include "mediastreamer2/msextdisplay.h"
 #include "mediastreamer2/msfilter.h"
@@ -1559,6 +1560,14 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 		} else {
 			stream->tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
 			stream->local_jpegwriter = ms_factory_create_filter(stream->ms.factory, MS_JPEG_WRITER_ID);
+
+#ifdef VIDEO_BACKGROUND_ENABLED
+			stream->background_tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
+			stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
+			stream->background_replacer = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_REPLACER_ID);
+			stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
+#endif
+
 			if (stream->source_performs_encoding == TRUE) {
 				stream->ms.encoder = stream->source; /* Consider the encoder is the source */
 			}
@@ -1598,9 +1607,21 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 		if (stream->pixconv) {
 			ms_connection_helper_link(&ch, stream->pixconv, 0, 0);
 		}
+#ifdef VIDEO_BACKGROUND_ENABLED
+		ms_filter_link(stream->pixconv, 0, stream->background_tee, 0);
+		ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);    // vidéo originale
+		ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);    // copie pour le fond
+		ms_filter_link(stream->background_source, 0, stream->background_formater, 1); // image de fond
+		ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+		ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
+#else
 		if (stream->tee) {
 			ms_connection_helper_link(&ch, stream->tee, 0, 0);
 		}
+#endif
+		ch.last.filter = stream->tee;
+		ch.last.pin = 0;
+
 		if (stream->itcsink) {
 			ms_filter_link(stream->tee, 3, stream->itcsink, 0);
 		}
@@ -1785,8 +1806,12 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 
 				if (ms_filter_has_method(stream->output, MS_VIDEO_DISPLAY_SET_LOCAL_VIEW_MODE))
 					ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_LOCAL_VIEW_MODE, &stream->corner);
+
 				autofit = 0;
-				ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &stream->window_id);
+				if (stream->window_id != MS_FILTER_VIDEO_NONE) {
+					ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &stream->window_id);
+				}
+
 				if (ms_filter_has_method(stream->output, MS_VIDEO_DISPLAY_ENABLE_AUTOFIT))
 					ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_ENABLE_AUTOFIT, &autofit);
 				if (stream->display_filter_auto_rotate_enabled &&
@@ -2173,11 +2198,22 @@ static MSFilter *_video_stream_stop(VideoStream *stream, bool_t keep_source) {
 				if (stream->pixconv) {
 					ms_connection_helper_unlink(&ch, stream->pixconv, 0, 0);
 				}
+#ifdef VIDEO_BACKGROUND_ENABLED
+				if (stream->background_replacer) {
+					/* miroir exact du link */
+					ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);      // pixconv -> bg_tee
+					ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0); // bg_tee  -> replacer
+
+					ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+					ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+					ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+				}
+#endif
 				if (stream->itcsink) {
 					ms_filter_unlink(stream->tee, 3, stream->itcsink, 0);
 				}
 				if (stream->tee) {
-					ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
+					ms_connection_helper_unlink(&ch, stream->tee, 0, 0); // replacer -> tee
 				}
 				if (stream->sizeconv) {
 					ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
@@ -2298,6 +2334,15 @@ void video_stream_set_native_window_id(VideoStream *stream, void *id) {
 		ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &id);
 	}
 }
+#ifdef VIDEO_BACKGROUND_ENABLED
+void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type) {
+	if (!stream || !stream->background_formater || !stream->background_replacer) return;
+	int t = (int)type;
+	int bypass = (type == MSBackgroundSame);
+	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
+	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
+}
+#endif
 
 void video_stream_set_native_preview_window_id(VideoStream *stream, void *id) {
 	if (stream) {

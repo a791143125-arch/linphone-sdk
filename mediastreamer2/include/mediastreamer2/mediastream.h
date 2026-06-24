@@ -31,6 +31,7 @@
 #include <mediastreamer2/dtls_srtp.h>
 #include <mediastreamer2/ice.h>
 #include <mediastreamer2/ms_srtp.h>
+#include <mediastreamer2/msbackgroundformater.h>
 #include <mediastreamer2/msequalizer.h>
 #include <mediastreamer2/msfactory.h>
 #include <mediastreamer2/msfilter.h>
@@ -1348,6 +1349,14 @@ struct _VideoStream {
 	MSFilter *itcsink;      /* MS_ITC_SINK_ID linked to tee */
 	MSFilter *forward_sink; /* MS_ITC_SINK_ID linked to tee2 */
 	MSFilter *aggregator;   /* MS_VIDEO_AGGREGATOR_ID linked to all branches.recv */
+
+#ifdef VIDEO_BACKGROUND_ENABLED
+	MSFilter *background_tee;      /* linked with background_formater and background_replacer */
+	MSFilter *background_formater; /* Prepare the background with different parameters */
+	MSFilter *background_replacer; /* Replace the background of the entry with the formater output */
+	MSFilter *background_source;   /*Static image or video decoder as an entry for the background */
+#endif
+
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;
 	MSVideoSize preview_vsize;
@@ -1593,6 +1602,8 @@ MS2_PUBLIC MSFilter *video_stream_change_camera_keep_previous_source(VideoStream
 running does nothing. The following functions allow to take into account new parameters by redrawing the sending graph*/
 MS2_PUBLIC void video_preview_stream_update_video_params(VideoStream *stream);
 MS2_PUBLIC void video_stream_update_video_params(VideoStream *stream);
+/*function to change dynamically the type of background (Same, Image, Blur, etc)*/
+MS2_PUBLIC void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type);
 /*function to call periodically to handle various events */
 MS2_PUBLIC void video_stream_iterate(VideoStream *stream);
 

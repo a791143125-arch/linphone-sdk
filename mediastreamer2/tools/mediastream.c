@@ -21,8 +21,8 @@
 #include "mediastreamer2/mediastream.h"
 #include "bctoolbox/defs.h"
 #include "bctoolbox/port.h"
-
 #include "common.h"
+#include "mediastreamer2/msbackgroundformater.h"
 #include "mediastreamer2/msequalizer.h"
 #include "mediastreamer2/msvolume.h"
 #include <math.h>
@@ -152,6 +152,7 @@ typedef struct _MediastreamDatas {
 	int ice_local_candidates_nb;
 	int ice_remote_candidates_nb;
 	char *video_display_filter;
+	char *background_type;
 	FILE *logfile;
 	bool_t enable_speaker;
 
@@ -651,9 +652,9 @@ bool_t parse_args(int argc, char **argv, MediastreamDatas *out) {
 			out->enable_rtcp = FALSE;
 		} else if (strcmp(argv[i], "--help") == 0) {
 			return FALSE;
-		} else if (strcmp(argv[i], "--video-display-filter") == 0) {
+		} else if (strcmp(argv[i], "--background-type") == 0) {
 			i++;
-			out->video_display_filter = argv[i];
+			out->background_type = argv[i];
 		} else if (strcmp(argv[i], "--log") == 0) {
 			i++;
 			out->logfile = fopen(argv[i], "a+");
@@ -1060,6 +1061,14 @@ void setup_media_streams(MediastreamDatas *args) {
 		video_stream_start_from_io(args->video, args->profile, args->ip, args->remoteport, args->ip,
 		                           args->enable_rtcp ? args->remoteport + 1 : -1, args->payload, &iodef);
 		args->session = args->video->ms.sessions.rtp_session;
+
+#ifdef VIDEO_BACKGROUND_ENABLED
+		{
+			MSBackgroundType bgtype = MSBackgroundSame;
+			if (args->background_type && strcmp(args->background_type, "blur") == 0) bgtype = MSBackgroundBlur;
+			video_stream_set_background_type(args->video, bgtype);
+		}
+#endif
 
 		ms_filter_call_method(args->video->output, MS_VIDEO_DISPLAY_ZOOM, zoom);
 

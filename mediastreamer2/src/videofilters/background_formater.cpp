@@ -1,10 +1,10 @@
+#include "libyuv/scale.h"
 #include "mediastreamer2/msbackgroundformater.h"
 #include "mediastreamer2/msfilter.h"
 #include "mediastreamer2/msvideo.h"
 #include <algorithm>
-#include <vector>
 #include <chrono>
-#include "libyuv/scale.h"
+#include <vector>
 
 namespace mediastreamer {
 
@@ -17,7 +17,7 @@ static void boxBlurPlane(
 	}
 	tmp.resize((size_t)w * h);
 	const int win = 2 * r + 1;
-	const uint32_t recip = (1u << 24) / (uint32_t)win; 
+	const uint32_t recip = (1u << 24) / (uint32_t)win;
 	for (int y = 0; y < h; ++y) { // passe horizontale src -> tmp
 		const uint8_t *s = src + y * srcStride;
 		uint8_t *t = tmp.data() + (size_t)y * w;
@@ -47,8 +47,6 @@ public:
 	BackgroundFormater(MSBackgroundType mode = MSBackgroundSame) : mMode(mode) {
 	}
 
-	
-
 	~BackgroundFormater() {
 		if (mBgFrame) freemsg(mBgFrame);
 	}
@@ -68,7 +66,6 @@ public:
 			}
 		}
 
-
 		while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
 
 			if (mMode == MSBackgroundImage && mBgFrame) {
@@ -83,18 +80,17 @@ public:
 				// Plan Y : downscale ÷2 -> blur -> upscale gain de ressources
 				int sw = src.w / 2, sh = src.h / 2;
 				mSmall.resize((size_t)sw * sh);
-				mSmallBlur.resize((size_t)sw * sh);        
-				libyuv::ScalePlane(src.planes[0], src.strides[0], src.w, src.h,
-				                   mSmall.data(), sw, sw, sh, libyuv::kFilterBilinear);
+				mSmallBlur.resize((size_t)sw * sh);
+				libyuv::ScalePlane(src.planes[0], src.strides[0], src.w, src.h, mSmall.data(), sw, sw, sh,
+				                   libyuv::kFilterBilinear);
 				boxBlurPlane(mSmall.data(), sw, mSmallBlur.data(), sw, sw, sh, mRadius / 2, mTmp);
-				libyuv::ScalePlane(mSmallBlur.data(), sw, sw, sh,
-				                   dst.planes[0], dst.strides[0], src.w, src.h, libyuv::kFilterBilinear);
+				libyuv::ScalePlane(mSmallBlur.data(), sw, sw, sh, dst.planes[0], dst.strides[0], src.w, src.h,
+				                   libyuv::kFilterBilinear);
 
 				// --- Plans chroma U/V : déjà demi-résolution, blur direct ---
 				int cw = src.w / 2, ch = src.h / 2;
 				boxBlurPlane(src.planes[1], src.strides[1], dst.planes[1], dst.strides[1], cw, ch, mRadius / 2, mTmp);
 				boxBlurPlane(src.planes[2], src.strides[2], dst.planes[2], dst.strides[2], cw, ch, mRadius / 2, mTmp);
-
 
 				freemsg(m);
 				ms_queue_put(f->outputs[0], out);
@@ -116,9 +112,8 @@ public:
 			ms_queue_put(f->outputs[0], out);
 		}
 		auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-			std::cout << "temps du formater : "
-			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
-			          << "ms\n";
+		std::cout << "temps du formater : "
+		          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count() << "ms\n";
 	}
 	void setMode(int m) {
 		mMode = (MSBackgroundType)m;
