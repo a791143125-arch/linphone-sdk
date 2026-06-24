@@ -153,6 +153,7 @@ typedef struct _MediastreamDatas {
 	int ice_remote_candidates_nb;
 	char *video_display_filter;
 	char *background_type;
+	char *background_path;
 	FILE *logfile;
 	bool_t enable_speaker;
 
@@ -192,6 +193,8 @@ const char *usage =
     "[--payload <payload type number or payload name like 'audio/pmcu/8000'> ]\n"
     "[ --agc (enable automatic gain control) ]\n"
     "[ --bitrate <bits per seconds> ]\n"
+	"[ --background-type <none|same|blur|image> ]\n"
+	"[ --background-path <absolute path to jpeg background> ]\n"
     "[ --camera <camera id as listed at startup> ]\n"
     "[ --capture-card <name> ]\n"
     "[ --ec (enable echo canceller) ]\n"
@@ -362,6 +365,8 @@ MediastreamDatas *init_default_args(void) {
 	memset(args->ice_remote_candidates, 0, sizeof(args->ice_remote_candidates));
 	args->ice_local_candidates_nb = args->ice_remote_candidates_nb = 0;
 	args->video_display_filter = NULL;
+	args->background_type = NULL;
+	args->background_path = NULL;
 
 	args->enable_fec = FALSE;
 
@@ -658,6 +663,10 @@ bool_t parse_args(int argc, char **argv, MediastreamDatas *out) {
 		} else if (strcmp(argv[i], "--log") == 0) {
 			i++;
 			out->logfile = fopen(argv[i], "a+");
+		} else if (strcmp(argv[i], "--background-path") == 0) {
+			i++;
+			out->background_path = argv[i];
+
 		} else if (strcmp(argv[i], "--freeze-on-error") == 0) {
 			out->freeze_on_error = TRUE;
 		} else if (strcmp(argv[i], "--speaker") == 0) {
@@ -1063,12 +1072,21 @@ void setup_media_streams(MediastreamDatas *args) {
 		args->session = args->video->ms.sessions.rtp_session;
 
 #ifdef VIDEO_BACKGROUND_ENABLED
+		
+		if (args->background_path) {
+			video_stream_set_background_image(args->video, args->background_path);
+		}
 		{
 			MSBackgroundType bgtype = MSBackgroundSame;
-			if (args->background_type && strcmp(args->background_type, "blur") == 0) bgtype = MSBackgroundBlur;
+			if (args->background_type) {
+				if (strcmp(args->background_type, "blur") == 0) bgtype = MSBackgroundBlur;
+				else if (strcmp(args->background_type, "image") == 0) bgtype = MSBackgroundImage;
+			}
 			video_stream_set_background_type(args->video, bgtype);
 		}
 #endif
+
+
 
 		ms_filter_call_method(args->video->output, MS_VIDEO_DISPLAY_ZOOM, zoom);
 

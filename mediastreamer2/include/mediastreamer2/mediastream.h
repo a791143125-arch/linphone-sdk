@@ -1604,6 +1604,8 @@ MS2_PUBLIC void video_preview_stream_update_video_params(VideoStream *stream);
 MS2_PUBLIC void video_stream_update_video_params(VideoStream *stream);
 /*function to change dynamically the type of background (Same, Image, Blur, etc)*/
 MS2_PUBLIC void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type);
+/** Set an absolute path as a background (image or video)*/
+MS2_PUBLIC void video_stream_set_background_image(VideoStream *stream, const char *path);
 /*function to call periodically to handle various events */
 MS2_PUBLIC void video_stream_iterate(VideoStream *stream);
 

@@ -152,7 +152,7 @@ public:
 				}
 
 				auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-				std::cout << "temps du traitement : "
+				if (verbosePerf) std::cout << "temps du traitement : "
 				          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
 				          << "ms\n";
 			}
@@ -292,7 +292,8 @@ private:
 			}
 
 			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
-			std::cout << "Nouveau mask calculé en "
+			
+			if (verbosePerf) std::cout << "Nouveau mask calculé en "
 			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
 			          << "ms\n";
 		}
@@ -319,6 +320,7 @@ private:
 	int mBgScaledW = 0, mBgScaledH = 0;
 	bool mBgDirty = false;
 	bool mBypass;
+	bool verbosePerf = false;
 
 	// etats ONNX Runtime
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};

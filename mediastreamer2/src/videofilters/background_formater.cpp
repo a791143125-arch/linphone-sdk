@@ -112,7 +112,7 @@ public:
 			ms_queue_put(f->outputs[0], out);
 		}
 		auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-		std::cout << "temps du formater : "
+		if (verbosePerf) std::cout << "temps du formater : "
 		          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count() << "ms\n";
 	}
 	void setMode(int m) {
@@ -128,6 +128,7 @@ private:
 	int mRadius = 20;
 	std::vector<uint8_t> mTmp;
 	std::vector<uint8_t> mSmall, mSmallBlur;
+	bool verbosePerf = false;
 };
 } // namespace mediastreamer
 

@@ -33,6 +33,7 @@
 #include "mediastreamer2/msrtp.h"
 #include "mediastreamer2/mstee.h"
 #include "mediastreamer2/msvideo.h"
+#include "mediastreamer2/mswebcam.h"
 #include "mediastreamer2/msvideoout.h"
 #include "mediastreamer2/msvideopresets.h"
 #include "mediastreamer2/video-aggregator.h"
@@ -1608,26 +1609,36 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 			ms_connection_helper_link(&ch, stream->pixconv, 0, 0);
 		}
 #ifdef VIDEO_BACKGROUND_ENABLED
-		ms_filter_link(stream->pixconv, 0, stream->background_tee, 0);
-		ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);    // vidéo originale
-		ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);    // copie pour le fond
-		ms_filter_link(stream->background_source, 0, stream->background_formater, 1); // image de fond
-		ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
-		ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
+		{
+			/* sizeconv AVANT les filtres bg */
+			MSFilter *bg_in = ch.last.filter; 
+			if (stream->sizeconv) {
+				ms_filter_link(bg_in, 0, stream->sizeconv, 0);
+				bg_in = stream->sizeconv;
+			}
+			ms_filter_link(bg_in, 0, stream->background_tee, 0);
+			ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+			ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
+			ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
+			ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+			ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
+		}
+		ch.last.filter = stream->tee;
+		ch.last.pin = 0;
+		if (stream->itcsink) {
+			ms_filter_link(stream->tee, 3, stream->itcsink, 0);
+		}
 #else
 		if (stream->tee) {
 			ms_connection_helper_link(&ch, stream->tee, 0, 0);
 		}
-#endif
-		ch.last.filter = stream->tee;
-		ch.last.pin = 0;
-
 		if (stream->itcsink) {
 			ms_filter_link(stream->tee, 3, stream->itcsink, 0);
 		}
 		if (stream->sizeconv) {
 			ms_connection_helper_link(&ch, stream->sizeconv, 0, 0);
 		}
+#endif
 		if ((stream->source_performs_encoding == FALSE) && !rtp_source) {
 			ms_connection_helper_link(&ch, stream->ms.encoder, 0, 0);
 		}
@@ -2200,24 +2211,28 @@ static MSFilter *_video_stream_stop(VideoStream *stream, bool_t keep_source) {
 				}
 #ifdef VIDEO_BACKGROUND_ENABLED
 				if (stream->background_replacer) {
-					/* miroir exact du link */
-					ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);      // pixconv -> bg_tee
-					ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0); // bg_tee  -> replacer
-
+					if (stream->sizeconv) {
+						ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0); 
+					}
+					ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);     
+					ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0); 
 					ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
 					ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
 					ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
 				}
 #endif
+
 				if (stream->itcsink) {
 					ms_filter_unlink(stream->tee, 3, stream->itcsink, 0);
 				}
 				if (stream->tee) {
 					ms_connection_helper_unlink(&ch, stream->tee, 0, 0); // replacer -> tee
 				}
+#ifndef VIDEO_BACKGROUND_ENABLED
 				if (stream->sizeconv) {
 					ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
 				}
+#endif
 				if ((stream->source_performs_encoding == FALSE) && !rtp_source) {
 					ms_connection_helper_unlink(&ch, stream->ms.encoder, 0, 0);
 				}
@@ -2341,6 +2356,14 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 	int bypass = (type == MSBackgroundSame);
 	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
 	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
+}
+
+void video_stream_set_background_image(VideoStream *stream, const char *path) {
+	if (!stream || !stream->background_source || !stream->background_formater || !stream->background_replacer)
+		return;
+	ms_filter_call_method(stream->background_source, MS_STATIC_IMAGE_SET_IMAGE, (void *)path);
+	ms_filter_call_method(stream->background_source, MS_FILTER_SET_FPS, &stream->configured_fps);
+	ms_filter_call_method(stream->background_source, MS_FILTER_SET_VIDEO_SIZE, &stream->sent_vsize);
 }
 #endif
 
