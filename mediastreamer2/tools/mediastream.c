@@ -193,8 +193,8 @@ const char *usage =
     "[--payload <payload type number or payload name like 'audio/pmcu/8000'> ]\n"
     "[ --agc (enable automatic gain control) ]\n"
     "[ --bitrate <bits per seconds> ]\n"
-	"[ --background-type <none|same|blur|image> ]\n"
-	"[ --background-path <absolute path to jpeg background> ]\n"
+    "[ --background-type <none|same|blur|image> ]\n"
+    "[ --background-path <absolute path to jpeg background> ]\n"
     "[ --camera <camera id as listed at startup> ]\n"
     "[ --capture-card <name> ]\n"
     "[ --ec (enable echo canceller) ]\n"
@@ -1071,22 +1071,26 @@ void setup_media_streams(MediastreamDatas *args) {
 		                           args->enable_rtcp ? args->remoteport + 1 : -1, args->payload, &iodef);
 		args->session = args->video->ms.sessions.rtp_session;
 
-#ifdef VIDEO_BACKGROUND_ENABLED
-		
+	if (args->video->background_replacer != NULL) {
+
 		if (args->background_path) {
-			video_stream_set_background_image(args->video, args->background_path);
+			video_stream_set_background_path(args->video, args->background_path);
 		}
 		{
 			MSBackgroundType bgtype = MSBackgroundSame;
 			if (args->background_type) {
-				if (strcmp(args->background_type, "blur") == 0) bgtype = MSBackgroundBlur;
-				else if (strcmp(args->background_type, "image") == 0) bgtype = MSBackgroundImage;
+				if (strcmp(args->background_type, "blur") == 0){ 
+					bgtype = MSBackgroundBlur;
+				}else if (strcmp(args->background_type, "image") == 0) {
+					bgtype = MSBackgroundImage;
+				}else if (strcmp(args->background_type, "video") == 0) {
+					bgtype = MSBackgroundVideo;
+				}
 			}
+			
 			video_stream_set_background_type(args->video, bgtype);
 		}
-#endif
-
-
+	}
 
 		ms_filter_call_method(args->video->output, MS_VIDEO_DISPLAY_ZOOM, zoom);
 

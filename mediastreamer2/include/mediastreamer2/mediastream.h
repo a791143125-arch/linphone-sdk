@@ -1349,13 +1349,13 @@ struct _VideoStream {
 	MSFilter *itcsink;      /* MS_ITC_SINK_ID linked to tee */
 	MSFilter *forward_sink; /* MS_ITC_SINK_ID linked to tee2 */
 	MSFilter *aggregator;   /* MS_VIDEO_AGGREGATOR_ID linked to all branches.recv */
-
-#ifdef VIDEO_BACKGROUND_ENABLED
 	MSFilter *background_tee;      /* linked with background_formater and background_replacer */
 	MSFilter *background_formater; /* Prepare the background with different parameters */
 	MSFilter *background_replacer; /* Replace the background of the entry with the formater output */
 	MSFilter *background_source;   /*Static image or video decoder as an entry for the background */
-#endif
+	MSFilter *background_player;  /* MKV player -> entrée 2 du formater (vidéo) */
+	MSFilter *background_decoder; /* décodeur de la vidéo de fond */
+
 
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;
@@ -1605,7 +1605,7 @@ MS2_PUBLIC void video_stream_update_video_params(VideoStream *stream);
 /*function to change dynamically the type of background (Same, Image, Blur, etc)*/
 MS2_PUBLIC void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type);
 /** Set an absolute path as a background (image or video)*/
-MS2_PUBLIC void video_stream_set_background_image(VideoStream *stream, const char *path);
+MS2_PUBLIC void video_stream_set_background_path(VideoStream *stream, const char *path);
 /*function to call periodically to handle various events */
 MS2_PUBLIC void video_stream_iterate(VideoStream *stream);
 

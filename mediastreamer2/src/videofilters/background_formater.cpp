@@ -54,21 +54,39 @@ public:
 	void process(MSFilter *f) {
 		mblk_t *m;
 		auto tmp_trait = std::chrono::high_resolution_clock::now();
+		//static image
 		if (f->inputs[1]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
 				if (mMode == MSBackgroundImage) {
-					if (mBgFrame) freemsg(mBgFrame);
-					mBgFrame = bg;
+					if (mBgFrameImage) freemsg(mBgFrameImage);
+					mBgFrameImage = bg;
 				} else {
-					freemsg(bg); // pas utilisé dans ce mode, mais on libère
+					freemsg(bg);
 				}
 			}
+		}
+		//video
+		if (f->inputs[2]) {
+			mblk_t *bg;
+			while ((bg = ms_queue_get(f->inputs[2])) != nullptr) {
+				if (mMode == MSBackgroundVideo) {
+					if (mBgFrameVideo) freemsg(mBgFrameVideo);
+					mBgFrameVideo = bg;
+				} else {
+					freemsg(bg);
+				}
+			}
+		}
+		if (mMode == MSBackgroundImage){
+			mBgFrame = mBgFrameImage;
+		}else if (mMode == MSBackgroundVideo){
+			mBgFrame = mBgFrameVideo;
 		}
 
 		while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
 
-			if (mMode == MSBackgroundImage && mBgFrame) {
+			if ((mMode == MSBackgroundImage || mMode == MSBackgroundVideo) && mBgFrame) {
 				ms_queue_put(f->outputs[0], dupmsg(mBgFrame));
 				freemsg(m);
 				continue;
@@ -95,6 +113,14 @@ public:
 				freemsg(m);
 				ms_queue_put(f->outputs[0], out);
 				continue;
+			}else if (mMode == MSBackgroundVideo) {
+				MSPicture src, dst;
+				ms_yuv_buf_init_from_mblk(&src, m);
+				mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
+
+				freemsg(m);
+				ms_queue_put(f->outputs[0], out);
+				continue;
 			}
 
 			MSPicture src, dst;
@@ -112,8 +138,10 @@ public:
 			ms_queue_put(f->outputs[0], out);
 		}
 		auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-		if (verbosePerf) std::cout << "temps du formater : "
-		          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count() << "ms\n";
+		if (verbosePerf)
+			std::cout << "temps du formater : "
+			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
+			          << "ms\n";
 	}
 	void setMode(int m) {
 		mMode = (MSBackgroundType)m;
@@ -125,6 +153,8 @@ public:
 private:
 	MSBackgroundType mMode;
 	mblk_t *mBgFrame = nullptr;
+	mblk_t *mBgFrameImage = nullptr;
+	mblk_t *mBgFrameVideo = nullptr;
 	int mRadius = 20;
 	std::vector<uint8_t> mTmp;
 	std::vector<uint8_t> mSmall, mSmallBlur;
@@ -170,7 +200,7 @@ MSFilterDesc ms_BackgroundFormater_desc = {
     .name = "MSBackgroundFormater",
     .text = "YUV420P background formater",
     .category = MS_FILTER_OTHER,
-    .ninputs = 2,
+    .ninputs = 3,
     .noutputs = 1,
     .init = ms_background_formater_init,
     .process = ms_background_formater_process,

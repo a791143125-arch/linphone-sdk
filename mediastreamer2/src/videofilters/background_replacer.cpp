@@ -152,9 +152,10 @@ public:
 				}
 
 				auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-				if (verbosePerf) std::cout << "temps du traitement : "
-				          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
-				          << "ms\n";
+				if (verbosePerf)
+					std::cout << "temps du traitement : "
+					          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
+					          << "ms\n";
 			}
 			ms_queue_put(f->outputs[0], m);
 		}
@@ -277,10 +278,14 @@ private:
 
 			std::vector<float> outMask = redimMasque(lastImgBuffer, W, H, w, h);
 
-			// float [0..1] -> uint8 [0..255] pour libyuv
+			
 			std::vector<uint8_t> alpha(outMask.size());
-			for (size_t i = 0; i < outMask.size(); ++i)
-				alpha[i] = (uint8_t)std::clamp(outMask[i] * 255.0f, 0.0f, 255.0f);
+			for (size_t i = 0; i < outMask.size(); ++i) {
+				float person = 1.0f - outMask[i];                                
+				float a = std::clamp((person - mThreshold) / (1.0f - mThreshold), 0.0f, 1.0f);
+				a = a * a * (3.0f - 2.0f * a);                                    
+				alpha[i] = (uint8_t)((1.0f - a) * 255.0f);                         
+			}
 
 			{
 				std::lock_guard<std::mutex> lk(mMutex);
@@ -292,10 +297,11 @@ private:
 			}
 
 			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
-			
-			if (verbosePerf) std::cout << "Nouveau mask calculé en "
-			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
-			          << "ms\n";
+
+			if (verbosePerf)
+				std::cout << "Nouveau mask calculé en "
+				          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
+				          << "ms\n";
 		}
 	}
 
@@ -330,6 +336,7 @@ private:
 	std::string mInName, mOutName;
 
 	// params du modèle
+	float mThreshold = 0.5f; // proba personne mini pour garder la caméra (0..1)
 	float alpha_ = 0.5f;
 	int modelW_ = 192, modelH_ = 192;
 	int maskW_ = 0, maskH_ = 0;
