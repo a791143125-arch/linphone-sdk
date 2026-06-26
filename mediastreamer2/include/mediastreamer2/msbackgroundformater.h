@@ -11,5 +11,4 @@ typedef enum { MSBackgroundSame, MSBackgroundImage, MSBackgroundVideo, MSBackgro
 #define MS_BACKGROUND_REPLACER_GET_BYPASS MS_FILTER_METHOD(MS_BACKGROUND_REPLACER_ID, 1, int)
 #define MS_BACKGROUND_FORMATER_SET_PATH MS_FILTER_METHOD(MS_BACKGROUND_FORMATER_ID, 2, const char)
 
-
 #endif

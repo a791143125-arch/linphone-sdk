@@ -228,7 +228,6 @@ private:
 	// Fonction sur laquelle le thread du calcul de l'inférence va tourner
 	void inference_computer() {
 
-		std::cout << "lancement inference worker\n";
 		while (mRunning) {
 
 			std::vector<uint8_t> img;
@@ -278,13 +277,12 @@ private:
 
 			std::vector<float> outMask = redimMasque(lastImgBuffer, W, H, w, h);
 
-			
 			std::vector<uint8_t> alpha(outMask.size());
 			for (size_t i = 0; i < outMask.size(); ++i) {
-				float person = 1.0f - outMask[i];                                
+				float person = 1.0f - outMask[i];
 				float a = std::clamp((person - mThreshold) / (1.0f - mThreshold), 0.0f, 1.0f);
-				a = a * a * (3.0f - 2.0f * a);                                    
-				alpha[i] = (uint8_t)((1.0f - a) * 255.0f);                         
+				a = a * a * (3.0f - 2.0f * a);
+				alpha[i] = (uint8_t)((1.0f - a) * 255.0f);
 			}
 
 			{

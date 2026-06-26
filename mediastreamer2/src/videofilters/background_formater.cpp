@@ -54,7 +54,7 @@ public:
 	void process(MSFilter *f) {
 		mblk_t *m;
 		auto tmp_trait = std::chrono::high_resolution_clock::now();
-		//static image
+		// static image
 		if (f->inputs[1]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
@@ -66,7 +66,7 @@ public:
 				}
 			}
 		}
-		//video
+		// video
 		if (f->inputs[2]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[2])) != nullptr) {
@@ -78,9 +78,9 @@ public:
 				}
 			}
 		}
-		if (mMode == MSBackgroundImage){
+		if (mMode == MSBackgroundImage) {
 			mBgFrame = mBgFrameImage;
-		}else if (mMode == MSBackgroundVideo){
+		} else if (mMode == MSBackgroundVideo) {
 			mBgFrame = mBgFrameVideo;
 		}
 
@@ -113,7 +113,7 @@ public:
 				freemsg(m);
 				ms_queue_put(f->outputs[0], out);
 				continue;
-			}else if (mMode == MSBackgroundVideo) {
+			} else if (mMode == MSBackgroundVideo) {
 				MSPicture src, dst;
 				ms_yuv_buf_init_from_mblk(&src, m);
 				mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
@@ -155,7 +155,7 @@ private:
 	mblk_t *mBgFrame = nullptr;
 	mblk_t *mBgFrameImage = nullptr;
 	mblk_t *mBgFrameVideo = nullptr;
-	int mRadius = 20;
+	int mRadius = 25;
 	std::vector<uint8_t> mTmp;
 	std::vector<uint8_t> mSmall, mSmallBlur;
 	bool verbosePerf = false;

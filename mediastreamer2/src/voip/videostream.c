@@ -278,7 +278,6 @@ void video_stream_free(VideoStream *stream) {
 	if (stream->background_player) ms_filter_destroy(stream->background_player);
 	if (stream->background_decoder) ms_filter_destroy(stream->background_decoder);
 
-
 	for (int i = 0; i < VIDEO_STREAM_MAX_BRANCHES; i++) {
 		if (stream->branches[i].recv) ms_filter_destroy(stream->branches[i].recv);
 	}
@@ -1570,8 +1569,8 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 			stream->local_jpegwriter = ms_factory_create_filter(stream->ms.factory, MS_JPEG_WRITER_ID);
 
 			stream->background_replacer = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_REPLACER_ID);
-			
-			if (stream->background_replacer != NULL){
+
+			if (stream->background_replacer != NULL) {
 				stream->background_tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
 				stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
 				stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
@@ -1617,37 +1616,37 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 		if (stream->pixconv) {
 			ms_connection_helper_link(&ch, stream->pixconv, 0, 0);
 		}
-if (stream->background_replacer != NULL){
-		{
-			/* sizeconv AVANT les filtres bg */
-			MSFilter *bg_in = ch.last.filter;
-			if (stream->sizeconv) {
-				ms_filter_link(bg_in, 0, stream->sizeconv, 0);
-				bg_in = stream->sizeconv;
+		if (stream->background_replacer != NULL) {
+			{
+				/* sizeconv AVANT les filtres bg */
+				MSFilter *bg_in = ch.last.filter;
+				if (stream->sizeconv) {
+					ms_filter_link(bg_in, 0, stream->sizeconv, 0);
+					bg_in = stream->sizeconv;
+				}
+				ms_filter_link(bg_in, 0, stream->background_tee, 0);
+				ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+				ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
+				ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
+				ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+				ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
 			}
-			ms_filter_link(bg_in, 0, stream->background_tee, 0);
-			ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
-			ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
-			ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
-			ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
-			ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
+			ch.last.filter = stream->tee;
+			ch.last.pin = 0;
+			if (stream->itcsink) {
+				ms_filter_link(stream->tee, 3, stream->itcsink, 0);
+			}
+		} else {
+			if (stream->tee) {
+				ms_connection_helper_link(&ch, stream->tee, 0, 0);
+			}
+			if (stream->itcsink) {
+				ms_filter_link(stream->tee, 3, stream->itcsink, 0);
+			}
+			if (stream->sizeconv) {
+				ms_connection_helper_link(&ch, stream->sizeconv, 0, 0);
+			}
 		}
-		ch.last.filter = stream->tee;
-		ch.last.pin = 0;
-		if (stream->itcsink) {
-			ms_filter_link(stream->tee, 3, stream->itcsink, 0);
-		}
-	}else{
-		if (stream->tee) {
-			ms_connection_helper_link(&ch, stream->tee, 0, 0);
-		}
-		if (stream->itcsink) {
-			ms_filter_link(stream->tee, 3, stream->itcsink, 0);
-		}
-		if (stream->sizeconv) {
-			ms_connection_helper_link(&ch, stream->sizeconv, 0, 0);
-		}
-	}
 		if ((stream->source_performs_encoding == FALSE) && !rtp_source) {
 			ms_connection_helper_link(&ch, stream->ms.encoder, 0, 0);
 		}
@@ -2218,18 +2217,18 @@ static MSFilter *_video_stream_stop(VideoStream *stream, bool_t keep_source) {
 				if (stream->pixconv) {
 					ms_connection_helper_unlink(&ch, stream->pixconv, 0, 0);
 				}
-if (stream->background_replacer != NULL){
-				if (stream->background_replacer) {
-					if (stream->sizeconv) {
-						ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+				if (stream->background_replacer != NULL) {
+					if (stream->background_replacer) {
+						if (stream->sizeconv) {
+							ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+						}
+						ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
+						ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
+						ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+						ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+						ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
 					}
-					ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
-					ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
-					ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
-					ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
-					ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
 				}
-			}
 
 				if (stream->itcsink) {
 					ms_filter_unlink(stream->tee, 3, stream->itcsink, 0);
@@ -2237,11 +2236,11 @@ if (stream->background_replacer != NULL){
 				if (stream->tee) {
 					ms_connection_helper_unlink(&ch, stream->tee, 0, 0); // replacer -> tee
 				}
-if (stream->background_replacer == NULL){
-				if (stream->sizeconv) {
-					ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+				if (stream->background_replacer == NULL) {
+					if (stream->sizeconv) {
+						ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+					}
 				}
-			}
 				if ((stream->source_performs_encoding == FALSE) && !rtp_source) {
 					ms_connection_helper_unlink(&ch, stream->ms.encoder, 0, 0);
 				}
@@ -2401,10 +2400,9 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 			if (stream->background_decoder) {
 				ms_filter_link(stream->background_player, 0, stream->background_decoder, 0);
 				ms_filter_link(stream->background_decoder, 0, stream->background_formater, 2);
-			}else {
+			} else {
 				ms_error("MKV background: aucun décodeur pour le codec '%s'", vpf.fmt->encoding);
 			}
-		
 		}
 		if (ticker) {
 			ms_ticker_attach(ticker, stream->source);
@@ -2415,10 +2413,6 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 		ms_filter_call_method(stream->background_player, MS_PLAYER_START, NULL);
 	}
 }
-
-
-
-
 
 void video_stream_set_native_preview_window_id(VideoStream *stream, void *id) {
 	if (stream) {

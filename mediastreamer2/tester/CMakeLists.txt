@@ -187,6 +187,7 @@ endif()
 
 if(ENABLE_VIDEO)
 	list(APPEND SOURCE_FILES_C mediastreamer2_video_stream_tester.c)
+	list(APPEND SOURCE_FILES_C mediastreamer2_background_tester.c)
 	list(APPEND SOURCE_FILES_C filters/framemarking_tester.c)
 	list(APPEND SOURCE_FILES_CXX mediastreamer2_h26x_tools_tester.cpp)
 	if(ENABLE_QRCODE)
