@@ -78,25 +78,13 @@ void ClientChatRoom::deletePendingMessage(const std::shared_ptr<ChatMessage> &ch
 	if (it != mPendingCreationMessages.end()) mPendingCreationMessages.erase(it);
 }
 
-void ClientChatRoom::onChatRoomCreated(const std::shared_ptr<Address> &remoteContact) {
+void ClientChatRoom::onChatRoomCreated(const std::shared_ptr<Address> &remoteAddress,
+                                       const std::shared_ptr<Address> &remoteContact) {
 	auto conference = dynamic_pointer_cast<ClientConference>(getConference());
-	conference->onConferenceCreated(remoteContact);
+	auto conferenceAddress = Conference::buildConferenceAddress(remoteAddress, remoteContact);
+	conference->onConferenceCreated(conferenceAddress);
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	bool needToSubscribe = true;
-	auto &clientListHandler = getCore()->getPrivate()->clientListEventHandler;
-	auto handler = clientListHandler->findHandler(getConferenceId());
-	if (handler) {
-		if (handler->getSubscriptionState() == LinphoneSubscriptionError) {
-			lInfo() << "Detach " << *this << " from ClientConferenceListEventHandler [" << clientListHandler.get()
-			        << "] because the subscription errored out";
-			needToSubscribe = true;
-			clientListHandler->removeHandler(handler);
-		} else {
-			needToSubscribe = false;
-		}
-	}
-	if (needToSubscribe && remoteContact->hasParam(Conference::kIsFocusParameter)) {
-		mBgTask.start(getCore(), 32); // It will be stopped when receiving the first notify
+	if (remoteContact->hasParam(Conference::kIsFocusParameter)) {
 		conference->subscribe(false, false);
 	}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
@@ -339,7 +327,6 @@ void ClientChatRoom::exhume() {
 	}
 	auto session = static_pointer_cast<ClientConference>(conference)->createSessionTo(conferenceFactoryAddress);
 	session->startInvite(nullptr, conference->getUtf8Subject(), content);
-	setState(ConferenceInterface::State::CreationPending);
 }
 
 void ClientChatRoom::onExhumedConference(const ConferenceId &oldConfId, const ConferenceId &newConfId) {
@@ -359,18 +346,17 @@ void ClientChatRoom::onExhumedConference(const ConferenceId &oldConfId, const Co
 }
 
 // Will be called on A when A is sending a message into a chat room with B previously terminated by B
-void ClientChatRoom::onLocallyExhumedConference(const std::shared_ptr<Address> &remoteContact) {
-	auto conference = dynamic_pointer_cast<ClientConference>(getConference());
+void ClientChatRoom::onLocallyExhumedConference(const std::shared_ptr<Address> &conferenceAddress) {
 	ConferenceId oldConfId = getConferenceId();
 	ConferenceId newConfId =
-	    ConferenceId(remoteContact, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
+	    ConferenceId(conferenceAddress, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
 
-	lInfo() << *conference << ": old conference ID [" << oldConfId << "] has been locally exhumed into [" << newConfId
-	        << "]";
+	lInfo() << *this << ": old conference ID [" << oldConfId << "] has been locally exhumed into [" << newConfId << "]";
 
 	onExhumedConference(oldConfId, newConfId);
 
 	setState(ConferenceInterface::State::Created);
+	auto conference = static_pointer_cast<ClientConference>(getConference());
 	conference->subscribe(false);
 
 	lInfo() << "Found " << mPendingCreationMessages.size() << " messages waiting for exhume";
@@ -382,8 +368,11 @@ void ClientChatRoom::onLocallyExhumedConference(const std::shared_ptr<Address> &
 void ClientChatRoom::onRemotelyExhumedConference(SalCallOp *op) {
 	const auto &conference = static_pointer_cast<ClientConference>(getConference());
 	ConferenceId oldConfId = getConferenceId();
-	ConferenceId newConfId = ConferenceId(Address::create(op->getRemoteContact()), oldConfId.getLocalAddress(),
-	                                      getCore()->createConferenceIdParams());
+	auto remoteAddress = Address::create(op->getRemoteAddress());
+	auto remoteContact = Address::create(op->getRemoteContact());
+	auto conferenceAddress = Conference::buildConferenceAddress(remoteAddress, remoteContact);
+	ConferenceId newConfId =
+	    ConferenceId(conferenceAddress, oldConfId.getLocalAddress(), getCore()->createConferenceIdParams());
 
 	if (getState() != Conference::State::Terminated) {
 		lWarning() << *conference << " is being exhumed but wasn't terminated first!";
@@ -469,16 +458,21 @@ void ClientChatRoom::sendChatMessage(const shared_ptr<ChatMessage> &chatMessage)
 					            "retrieve the list of participants";
 					chatMessage->getPrivate()->setParticipantState(
 					    getMe()->getAddress(), ChatMessage::State::NotDelivered, ::ms_time(nullptr));
-				} else if (coreRunning && (!eventHandler || (eventSubscribeState == LinphoneSubscriptionError))) {
+				} else if (coreRunning && (!eventHandler || (getCurrentParams()->isGroup() &&
+				                                             (eventSubscribeState == LinphoneSubscriptionError)))) {
+					// A subscription error in a one-on-one chatroom can be easily caught up. Let the core send the
+					// message and wait for the server response. If the client receives a 403 response, then it will
+					// create a new one-on-one chatroom and send the message again.
 					lError() << *this << ": Unable to send chat message [" << chatMessage
 					         << "] because the subscription to retrieve the list of participant devices errored out "
 					            "(current state is "
 					         << linphone_subscription_state_to_string(eventSubscribeState)
 					         << ") or the event handler has not been instantiated (event handler [" << eventHandler
-					         << "]";
+					         << "])";
 					chatMessage->getPrivate()->setParticipantState(
 					    getMe()->getAddress(), ChatMessage::State::NotDelivered, ::ms_time(nullptr));
-				} else if (eventSubscribeState != LinphoneSubscriptionActive) {
+				} else if ((eventSubscribeState == LinphoneSubscriptionNone) ||
+				           (eventSubscribeState == LinphoneSubscriptionOutgoingProgress)) {
 					lInfo() << *this << ": Delaying sending of message [" << chatMessage
 					        << "] in an encrypted chat room because subscription is not active yet";
 					queueMessage = true;
@@ -752,6 +746,14 @@ long ClientChatRoom::getEphemeralNotReadLifetime() const {
 bool ClientChatRoom::ephemeralSupportedByAllParticipants() const {
 	// TODO
 	return false;
+}
+
+void ClientChatRoom::startBgTask() {
+	mBgTask.start(getCore(), 32); // It will be stopped when receiving the first notify
+}
+
+void ClientChatRoom::stopBgTask() {
+	mBgTask.stop();
 }
 
 LINPHONE_END_NAMESPACE

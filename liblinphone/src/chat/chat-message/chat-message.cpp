@@ -1037,7 +1037,10 @@ void ChatMessagePrivate::updateToAddress(const shared_ptr<AbstractChatRoom> &cha
 	std::shared_ptr<Address> address;
 	if (direction == ChatMessage::Direction::Outgoing) {
 		const ConferenceId &conferenceId = chatRoom->getConferenceId();
-		address = conferenceId.getPeerAddress()->clone()->toSharedPtr();
+		auto peerAddress = conferenceId.getPeerAddress();
+		if (peerAddress && peerAddress->isValid()) {
+			address = peerAddress->clone()->toSharedPtr();
+		}
 	} else {
 		address = getLocalAddressFromChatRoom(chatRoom);
 	}

@@ -519,11 +519,10 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 						tryToAddToConference(conference, session);
 					}
 				} else if (op->getRemoteContactAddress()) {
-					const auto &confId = session->getPrivate()->getConferenceId();
 					// Check if the request was sent by the focus
 					if (remoteContactIsFocus) {
 						createClientConference(session);
-					} else if (!confId.empty()) {
+					} else if (isInConference()) {
 						auto localAddress = session->getContactAddress();
 						if (localAddress && localAddress->isValid()) {
 							ConferenceId serverConferenceId =
@@ -535,8 +534,8 @@ void Call::onCallSessionStateChanged(const shared_ptr<CallSession> &session,
 								conference->addParticipantDevice(getSharedFromThis());
 							}
 						} else {
-							lError() << "Call " << this << " cannot be added to conference with ID " << confId
-							         << " because the contact address has not been retrieved";
+							lError() << *this
+							         << " cannot be added to a conference because the contact address is not known";
 						}
 					}
 				}
@@ -576,15 +575,13 @@ void Call::createClientConference(const shared_ptr<CallSession> &session) {
 	// If the call is for a conference stored in the core, then add call to conference once ICE negotiations are
 	// terminated
 	const auto op = session->getPrivate()->getOp();
-	std::shared_ptr<Address> remoteContactAddress = Address::create();
-	remoteContactAddress->setImpl(op->getRemoteContactAddress());
-	ConferenceId conferenceId =
-	    ConferenceId(remoteContactAddress, getLocalAddress(), getCore()->createConferenceIdParams());
+	std::shared_ptr<Address> remoteAddress = Address::create();
+	remoteAddress->setImpl(op->getRemoteAddress());
+	ConferenceId conferenceId = ConferenceId(remoteAddress, getLocalAddress(), getCore()->createConferenceIdParams());
 
 	const auto &conference = getCore()->findConference(conferenceId, false);
 
 	std::shared_ptr<ClientConference> clientConference = nullptr;
-
 	if (conference) {
 		const auto &conferenceAddress = conference->getConferenceAddress();
 		const auto conferenceAddressStr = (conferenceAddress ? conferenceAddress->toString() : std::string("sip:"));
@@ -606,12 +603,15 @@ void Call::createClientConference(const shared_ptr<CallSession> &session) {
 			confParams->enableAudio(md->nbActiveStreamsOfType(SalAudio) > 0);
 			confParams->enableVideo(md->nbActiveStreamsOfType(SalVideo) > 0);
 		}
+
+		std::shared_ptr<Address> remoteContactAddress = Address::create();
+		remoteContactAddress->setImpl(op->getRemoteContactAddress());
 		confParams->enableChat(remoteContactAddress && remoteContactAddress->hasParam(Conference::kTextParameter));
 
 		if (confParams->audioEnabled() || confParams->videoEnabled() || confParams->chatEnabled()) {
 			clientConference = dynamic_pointer_cast<ClientConference>(
 			    (new ClientConference(getCore(), nullptr, confParams))->toSharedPtr());
-			clientConference->initWithFocus(remoteContactAddress, session, op);
+			clientConference->initWithFocus(remoteAddress, session, op);
 		} else {
 			lError() << "Unable to attach call (local address " << *session->getLocalAddress() << " remote address "
 			         << *session->getRemoteAddress()
@@ -620,11 +620,6 @@ void Call::createClientConference(const shared_ptr<CallSession> &session) {
 	}
 
 	setConference(clientConference);
-
-	// Record conf-id to be used later when terminating the client conference
-	if (clientConference && remoteContactAddress->hasUriParam(Conference::kConfIdParameter)) {
-		setConferenceId(remoteContactAddress->getUriParamValue(Conference::kConfIdParameter));
-	}
 }
 
 void Call::onCallSessionTransferStateChanged(BCTBX_UNUSED(const shared_ptr<CallSession> &session),
@@ -1408,14 +1403,6 @@ std::shared_ptr<CallStats> Call::getVideoStats() const {
 // Boolean to state whether it is the focus of a local conference
 bool Call::isInConference() const {
 	return getActiveSession()->getPrivate()->isInConference();
-}
-
-void Call::setConferenceId(const std::string &conferenceId) {
-	return getActiveSession()->getPrivate()->setConferenceId(conferenceId);
-}
-
-std::string Call::getConferenceId() const {
-	return getActiveSession()->getPrivate()->getConferenceId();
 }
 
 bool Call::mediaInProgress() const {

@@ -89,7 +89,8 @@ private:
 	ConferenceIdParams mParams;
 	mutable std::string mIdentifier;
 
-	bool canUpdateAddress(const std::shared_ptr<const Address> &addr, bool useLocal) const;
+	bool canUpdateAddress(const std::shared_ptr<const Address> &addr, bool isLocal) const;
+	bool checkAddress(const std::shared_ptr<const Address> &addr, bool forceUpdate, bool isLocal) const;
 	std::shared_ptr<Address> processAddress(const Address &addr) const;
 };
 

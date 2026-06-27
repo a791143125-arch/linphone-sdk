@@ -838,15 +838,6 @@ void ClientConferenceEventHandler::subscribeStateChangedCb(LinphoneEvent *lev, L
 		auto cbs = ev->getCurrentCallbacks();
 		ClientConferenceEventHandler *handler = static_cast<ClientConferenceEventHandler *>(cbs->getUserData());
 		handler->setInitialSubscriptionUnderWayFlag(false);
-		auto conf = handler->getConference();
-		if (conf && (ev->getReason() == LinphoneReasonDeclined)) {
-			lInfo() << "Leave " << *conf << " because the subscription [" << ev << "] errored out";
-			auto mainSession = conf->getMainSession();
-			if (mainSession) {
-				mainSession->terminate();
-			}
-			conf->setState(ConferenceInterface::State::Terminated);
-		}
 	}
 }
 

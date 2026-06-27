@@ -161,10 +161,12 @@ static void call_received(SalCallOp *h) {
 
 #ifdef HAVE_ADVANCED_IM
 	// Chat settings
-	string endToEndEncrypted = L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kEndToEndEncryptedHeader.c_str()));
+	string endToEndEncrypted =
+	    L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kEndToEndEncryptedHeader.c_str()));
 	bool encrypted = endToEndEncrypted == "true";
 	string ephemerable = L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kEphemerableHeader.c_str()));
-	string ephemeralLifeTime = L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kEphemeralLifeTimeHeader.c_str()));
+	string ephemeralLifeTime =
+	    L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kEphemeralLifeTimeHeader.c_str()));
 	string ephemeralNotReadLifeTime =
 	    L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kEphemeralNotReadLifeTimeHeader.c_str()));
 	auto ephemeralMode = (ephemerable == "true") && (!ephemeralLifeTime.empty() || !ephemeralNotReadLifeTime.empty())
@@ -176,7 +178,8 @@ static void call_received(SalCallOp *h) {
 		if (!ephemeralLifeTime.empty()) parsedEphemeralLifeTime = stol(ephemeralLifeTime, nullptr);
 		if (!ephemeralNotReadLifeTime.empty()) parsedEphemeralNotReadLifeTime = stol(ephemeralNotReadLifeTime, nullptr);
 	}
-	string oneOnOneChatRoom = L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kOneOnOneChatRoomHeader.c_str()));
+	string oneOnOneChatRoom =
+	    L_C_TO_STRING(sal_custom_header_find(recvCustomHeaders, ChatRoom::kOneOnOneChatRoomHeader.c_str()));
 	bool isOneOnOne = (oneOnOneChatRoom == "true");
 	// Chat capabilities are enabled if the text parameter is in the contact address or at least one chat configuration
 	// parameter is listed in the custom headers
@@ -243,10 +246,12 @@ static void call_received(SalCallOp *h) {
 				}
 			}
 		}
+		auto remoteAddress = Address::create(h->getRemoteAddress());
 		auto remoteContact = Address::create(h->getRemoteContact());
+		auto peerAddress = Conference::buildConferenceAddress(remoteAddress, remoteContact);
 		auto conferenceIdParams = core->createConferenceIdParams();
 		conferenceIdParams.enableExtractUri(true);
-		ConferenceId conferenceId(remoteContact, to, conferenceIdParams);
+		ConferenceId conferenceId(peerAddress, to, conferenceIdParams);
 		shared_ptr<AbstractChatRoom> chatRoom = core->findChatRoom(conferenceId, false);
 		if (chatRoom && chatRoom->getCapabilities() & ChatRoom::Capabilities::Basic) {
 			lError() << "Invalid basic chat room found. It should have been a ClientChatRoom... Recreating it...";
@@ -254,8 +259,6 @@ static void call_received(SalCallOp *h) {
 			chatRoom.reset();
 		}
 		if (!chatRoom) {
-			const auto localAddressWithoutGruu = Address::create(to->getUriWithoutGruu());
-			const auto peerAddressWithoutGruu = Address::create(remoteContact->getUriWithoutGruu());
 			chatRoom = L_GET_PRIVATE_FROM_C_OBJECT(lc)->createClientChatRoom(to, conferenceId, h, params);
 		}
 		if (!chatRoom) return;

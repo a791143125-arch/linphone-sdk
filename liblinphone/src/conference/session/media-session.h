@@ -83,7 +83,6 @@ public:
 	LinphoneStatus pauseFromConference(const MediaSessionParams *msp);
 	LinphoneStatus pause();
 	LinphoneStatus resume();
-	LinphoneStatus delayResume();
 	LinphoneStatus sendDtmf(char dtmf);
 	LinphoneStatus sendDtmfs(const std::string &dtmfs);
 	void sendVfuRequest();

@@ -156,37 +156,6 @@ LinphoneMediaEncryption MediaSessionPrivate::getNegotiatedMediaEncryption() cons
 }
 
 // -----------------------------------------------------------------------------
-
-bool MediaSessionPrivate::tryEnterConference() {
-	L_Q();
-	q->updateContactAddressInOp();
-	const auto updatedContactAddress = q->getContactAddress();
-	ConferenceId serverConferenceId =
-	    ConferenceId(updatedContactAddress, updatedContactAddress, q->getCore()->createConferenceIdParams());
-	shared_ptr<Conference> conference = q->getCore()->findConference(serverConferenceId, false);
-	// If the call conference ID is not an empty string but no conference is linked to the call means that it was added
-	// to the conference after the INVITE session was started but before its completition
-	if (conference) {
-		if (state == CallSession::State::Paused) {
-			// Resume call as it was added to conference
-			lInfo() << "Media session (local address " << *q->getLocalAddress() << " remote address "
-			        << *q->getRemoteAddress() << ") was added to " << *conference
-			        << " while the call was being paused. Resuming the session.";
-			q->resume();
-		} else {
-			// Send update to notify that the call enters conference
-			MediaSessionParams *newParams = q->getMediaParams()->clone();
-			lInfo() << "Media session (local address " << *q->getLocalAddress() << " remote address "
-			        << *q->getRemoteAddress() << ") was added to " << *conference
-			        << " while the call was establishing. Sending update to notify remote participant.";
-			q->update(newParams, CallSession::UpdateMethod::Default, q->isCapabilityNegotiationEnabled());
-			delete newParams;
-		}
-		return true;
-	}
-	return false;
-}
-
 bool MediaSessionPrivate::rejectMediaSession(const std::shared_ptr<SalMediaDescription> &localMd,
                                              const std::shared_ptr<SalMediaDescription> &remoteMd,
                                              const std::shared_ptr<SalMediaDescription> &finalMd) const {
@@ -358,7 +327,6 @@ void MediaSessionPrivate::accepted() {
 				fixCallParams(rmd, false);
 
 				setState(nextState, nextStateMsg);
-				bool capabilityNegotiationReInviteSent = false;
 				const bool capabilityNegotiationReInviteEnabled =
 				    getParams()->getPrivate()->capabilityNegotiationReInviteEnabled();
 				// If capability negotiation is enabled, a second invite must be sent if the selected configuration is
@@ -389,7 +357,6 @@ void MediaSessionPrivate::accepted() {
 							MediaSessionParams newParams(*getParams());
 							newParams.getPrivate()->setInternalCallUpdate(true);
 							q->update(&newParams, CallSession::UpdateMethod::Default, true);
-							capabilityNegotiationReInviteSent = true;
 						} else {
 							lInfo()
 							    << "Using actual configuration after capability negotiation procedure, hence no need "
@@ -398,31 +365,6 @@ void MediaSessionPrivate::accepted() {
 					} else {
 						lInfo() << "Capability negotiation and ICE are both enabled hence wait for the end of ICE "
 						           "checklist completion to send a reINVITE";
-					}
-				}
-
-				if (getOp() && getOp()->getContactAddress()) {
-					const auto contactAddress = q->getContactAddress();
-					const auto &confId = getConferenceId();
-					if (!confId.empty() && isInConference() &&
-					    !contactAddress->hasParam(Conference::kIsFocusParameter)) {
-						// If the call was added to a conference after the last INVITE session was started, the reINVITE
-						// to enter conference must be sent only if capability negotiation reINVITE was not sent
-						if (!capabilityNegotiationReInviteSent) {
-							// Add to conference if it was added after last INVITE message sequence started
-							// It occurs if the local participant calls the remote participant and the call is added to
-							// the conference when it is in state OutgoingInit, OutgoingProgress or OutgoingRinging
-							q->getCore()->doLater([this]() {
-								/* This has to be done outside of the accepted callback, because after the callback the
-								 * SIP ACK is going to be sent. Despite it is not forbidden by RFC3261, it is preferable
-								 * for the sake of clarity that the ACK for the current transaction is sent before the
-								 * new INVITE that will be sent by tryEnterConference(). Some implementations (eg
-								 * FreeSwitch) reply "500 Overlapped request" otherwise ( which is in fact a
-								 * misunderstanding of RFC3261).
-								 */
-								tryEnterConference();
-							});
-						}
 					}
 				}
 				bundleModeAccepted = q->getCurrentParams()->rtpBundleEnabled();
@@ -3403,12 +3345,14 @@ void MediaSessionPrivate::performMutualAuthentication() {
 	// Is call direction really relevant ? might be linked to offerer/answerer rather than call direction ?
 	const std::shared_ptr<SalMediaDescription> &md =
 	    localIsOfferer ? op->getLocalMediaDescription() : op->getRemoteMediaDescription();
-	const auto audioStreamIndex = md->findIdxBestStream(SalAudio);
-	Stream *stream = audioStreamIndex != -1 ? getStreamsGroup().getStream(audioStreamIndex) : nullptr;
-	MS2AudioStream *ms2a = dynamic_cast<MS2AudioStream *>(stream);
-	if (encryptionEngine && ms2a && ms2a->getZrtpContext()) {
-		encryptionEngine->mutualAuthentication(ms2a->getZrtpContext(), op->getLocalMediaDescription(),
-		                                       op->getRemoteMediaDescription(), q->getDirection());
+	if (md) {
+		const auto audioStreamIndex = md->findIdxBestStream(SalAudio);
+		Stream *stream = audioStreamIndex != -1 ? getStreamsGroup().getStream(audioStreamIndex) : nullptr;
+		MS2AudioStream *ms2a = dynamic_cast<MS2AudioStream *>(stream);
+		if (encryptionEngine && ms2a && ms2a->getZrtpContext()) {
+			encryptionEngine->mutualAuthentication(ms2a->getZrtpContext(), op->getLocalMediaDescription(),
+			                                       op->getRemoteMediaDescription(), q->getDirection());
+		}
 	}
 }
 
@@ -3773,7 +3717,7 @@ void MediaSessionPrivate::handleIncomingReceivedStateInIncomingNotification() {
 	L_Q();
 	auto logContext = getLogContextualizer();
 	/* Try to be best-effort in giving real local or routable contact address for 100Rel case */
-	setContactOp({});
+	setContactOp();
 	if (notifyRinging) {
 		bool proposeEarlyMedia = !!linphone_config_get_int(linphone_core_get_config(q->getCore()->getCCore()), "sip",
 		                                                   "incoming_calls_early_media", false);
@@ -4243,16 +4187,8 @@ LinphoneStatus MediaSessionPrivate::startAccept() {
 		}
 	}
 
-	// It occurs if the remote participant calls the core hosting the conference and the call is added to the conference
-	// when it is in state IncomingReceived
-	// Do not do anything if the contact address is not yet known
-	const auto &confId = getConferenceId();
-	if (getOp() && getOp()->getContactAddress() && !confId.empty() && isInConference()) {
-		q->updateContactAddressInOp();
-	}
-
 	/* Give a chance a set card prefered sampling frequency */
-	if (localDesc->streams[0].getMaxRate() > 0) {
+	if (localDesc && (localDesc->streams[0].getMaxRate() > 0)) {
 		lInfo() << "Configuring prefered card sampling rate to [" << localDesc->streams[0].getMaxRate() << "]";
 		if (q->getCore()->getCCore()->sound_conf.play_sndcard)
 			ms_snd_card_set_preferred_sample_rate(q->getCore()->getCCore()->sound_conf.play_sndcard,
@@ -4627,7 +4563,7 @@ LinphoneStatus MediaSession::acceptEarlyMedia(const MediaSessionParams *msp) {
 		return -1;
 	}
 	/* Try to be best-effort in giving real local or routable contact address for 100Rel case */
-	d->setContactOp({});
+	d->setContactOp();
 	/* If parameters are passed, update the media description */
 	if (msp) {
 		d->setParams(new MediaSessionParams(*msp));
@@ -4879,12 +4815,6 @@ LinphoneStatus MediaSession::pause() {
 	LinphoneStatus result = d->pause();
 	if (result != 0) d->pausedByApp = false;
 	return result;
-}
-
-LinphoneStatus MediaSession::delayResume() {
-	lInfo() << "Delaying call resume";
-	addPendingAction([this] { return this->resume(); });
-	return -1;
 }
 
 LinphoneStatus MediaSession::resume() {
@@ -6232,9 +6162,12 @@ int MediaSession::getMainVideoStreamIdx(const std::shared_ptr<SalMediaDescriptio
 			const auto &confLayout = computeConferenceLayout(refMd);
 			const auto isConferenceLayoutActiveSpeaker = (confLayout == ConferenceLayout::ActiveSpeaker);
 			const auto isConferenceLayoutGrid = (confLayout == ConferenceLayout::Grid);
-			const auto &participantDevice = (isInLocalConference)
-			                                    ? conference->findParticipantDevice(getSharedFromThis())
-			                                    : conference->getMe()->findDevice(getSharedFromThis());
+			std::shared_ptr<ParticipantDevice> participantDevice;
+			if (isInLocalConference) {
+				participantDevice = conference->findParticipantDevice(getSharedFromThis());
+			} else if (auto me = conference->getMe()) {
+				participantDevice = me->findDevice(getSharedFromThis());
+			}
 
 			// Try to find a stream with the screen sharing content attribute as it will be for sure the main video
 			// stream. Indeed, screen sharing can be enabled regardless of the conference layout, it is needed to always

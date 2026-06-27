@@ -817,7 +817,7 @@ void check_call_establishment(std::initializer_list<std::reference_wrapper<CoreM
 		LinphoneConference *conference = linphone_core_search_conference_2(mgr->lc, confAddr);
 		BC_ASSERT_PTR_NOT_NULL(conference);
 		int nb_chatrooms = 0;
-		if (ics_sent && !is_dialout) {
+		if (conference && ics_sent && !is_dialout) {
 			if (is_organizer) {
 				nb_chatrooms += nb_ics_sent;
 			} else {
@@ -9062,14 +9062,15 @@ void two_overlapping_conferences_base(bool_t same_organizer, bool_t dialout) {
 				// Need to search the call by looking at the conference id parameter (conf-id) as both calls to a
 				// conference have the same remote address the conference server.
 				const char *confId2 = linphone_address_get_uri_param(confAddr2, "conf-id");
+				BC_ASSERT_PTR_NOT_NULL(confId2);
 				for (auto mgr : participants2) {
 					LinphoneCall *participant_call = NULL;
 					const bctbx_list_t *call_list = linphone_core_get_calls(mgr->lc);
 					for (const bctbx_list_t *elem = call_list; elem != NULL; elem = elem->next) {
 						LinphoneCall *call = (LinphoneCall *)elem->data;
-						const LinphoneAddress *remote_contact_address = linphone_call_get_remote_contact_address(call);
+						const LinphoneAddress *remote_address = linphone_call_get_remote_address(call);
 						if (confId2 &&
-						    (strcmp(confId2, linphone_address_get_uri_param(remote_contact_address, "conf-id")) == 0)) {
+						    (strcmp(confId2, linphone_address_get_uri_param(remote_address, "conf-id")) == 0)) {
 							participant_call = call;
 							break;
 						}

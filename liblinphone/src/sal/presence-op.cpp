@@ -327,6 +327,7 @@ SalPresenceOp::SalPresenceOp(Sal *sal) : SalSubscribeOp(sal) {
 }
 
 int SalPresenceOp::subscribe(int expires) {
+	mDir = Dir::Outgoing;
 	if (expires == -1) {
 		if (mRefresher) {
 			expires = belle_sip_refresher_get_expires(mRefresher);

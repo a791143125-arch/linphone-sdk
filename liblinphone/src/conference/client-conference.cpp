@@ -157,7 +157,7 @@ void ClientConference::init(SalCallOp *op, BCTBX_UNUSED(ConferenceListener *conf
 	const auto &core = getCore();
 #endif // defined(HAVE_ADVANCED_IM) || defined(HAVE_DB_STORAGE)
 	std::shared_ptr<Address> organizerAddress = nullptr;
-	auto conferenceAddress = mFocus ? mFocus->getAddress() : nullptr;
+	auto conferenceAddress = ClientConference::buildConferenceAddress(op);
 	std::shared_ptr<ConferenceInfo> conferenceInfo = nullptr;
 #ifdef HAVE_DB_STORAGE
 	if (conferenceAddress && supportsMedia()) {
@@ -239,6 +239,22 @@ void ClientConference::init(SalCallOp *op, BCTBX_UNUSED(ConferenceListener *conf
 	}
 }
 
+std::shared_ptr<Address> ClientConference::buildConferenceAddress(const SalCallOp *op) {
+	if (!op) {
+		return nullptr;
+	}
+	auto remoteAddress = Address::create(op->getRemoteAddress());
+	auto remoteContact = Address::create(op->getRemoteContact());
+	return Conference::buildConferenceAddress(remoteAddress, remoteContact);
+}
+
+std::shared_ptr<Address> ClientConference::buildConferenceAddress(const std::shared_ptr<CallSession> &session) {
+	if (!session) {
+		return nullptr;
+	}
+	return Conference::buildConferenceAddress(session->getRemoteAddress(), session->getRemoteContactAddress());
+}
+
 void ClientConference::createEventHandler(BCTBX_UNUSED(ConferenceListener *confListener),
                                           BCTBX_UNUSED(bool addToListEventHandler)) {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
@@ -253,6 +269,11 @@ void ClientConference::createEventHandler(BCTBX_UNUSED(ConferenceListener *confL
 		} else {
 			const auto &conferenceId = getConferenceId();
 			if (conferenceId.isValid()) {
+				auto chatRoom = getChatRoom();
+				if (chatRoom) {
+					auto clientChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
+					clientChatRoom->startBgTask();
+				}
 				mEventHandler->subscribe(conferenceId);
 			}
 		}
@@ -344,8 +365,10 @@ MediaSessionParams *ClientConference::createDefaultMediaParams() const {
 		if (mConfParams->getChatParams()->getEphemeralMode() == AbstractChatRoom::EphemeralMode::AdminManaged) {
 			msp->addCustomHeader(ChatRoom::kEphemerableHeader, "true");
 		}
-		msp->addCustomHeader(ChatRoom::kEphemeralLifeTimeHeader, to_string(mConfParams->getChatParams()->getEphemeralLifetime()));
-		msp->addCustomHeader(ChatRoom::kEphemeralNotReadLifeTimeHeader, to_string(mConfParams->getChatParams()->getEphemeralLifetime()));
+		msp->addCustomHeader(ChatRoom::kEphemeralLifeTimeHeader,
+		                     to_string(mConfParams->getChatParams()->getEphemeralLifetime()));
+		msp->addCustomHeader(ChatRoom::kEphemeralNotReadLifeTimeHeader,
+		                     to_string(mConfParams->getChatParams()->getEphemeralNotReadLifetime()));
 	}
 	if (!!linphone_core_get_add_admin_information_to_contact(getCore()->getCCore())) {
 		msp->addCustomContactParameter(Conference::kAdminParameter, Utils::toString(mMe->isAdmin()));
@@ -394,15 +417,15 @@ void ClientConference::confirmJoining(BCTBX_UNUSED(SalCallOp *op)) {
 	if (!chatRoom) return;
 	auto focusSession = getMainSession();
 	bool previousSession = (focusSession != nullptr);
-
-	auto remoteContact = Address::create(op->getRemoteContact());
-	auto clientGroupChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
 	bool found = false;
-	if (clientGroupChatRoom) {
-		auto previousConferenceIds = clientGroupChatRoom->getPreviousConferenceIds();
+
+	const auto conferenceAddress = ClientConference::buildConferenceAddress(op);
+	auto clientChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
+	if (clientChatRoom) {
+		auto previousConferenceIds = clientChatRoom->getPreviousConferenceIds();
 		found = std::find_if(previousConferenceIds.cbegin(), previousConferenceIds.cend(),
-		                     [&remoteContact](const auto &confId) {
-			                     return (*confId.getPeerAddress() == *remoteContact);
+		                     [&conferenceAddress](const auto &confId) {
+			                     return (*confId.getPeerAddress() == *conferenceAddress);
 		                     }) != previousConferenceIds.cend();
 	}
 
@@ -438,11 +461,10 @@ void ClientConference::confirmJoining(BCTBX_UNUSED(SalCallOp *op)) {
 	auto to = Address::create(op->getTo());
 	session->configure(LinphoneCallIncoming, nullptr, op, from, to);
 	session->startIncomingNotification(false);
-	setConferenceAddress(remoteContact);
+	setConferenceAddress(conferenceAddress);
 
 	// If INVITE is for a previous conference ID, only accept the session to acknowledge the BYE
 	if (!previousSession && !found) {
-		setState(ConferenceInterface::State::CreationPending);
 		// Handle participants addition
 		const auto resourceList = op->getContentInRemote(ContentType::ResourceLists);
 		bool isEmpty = !resourceList || resourceList.value().get().isEmpty();
@@ -477,7 +499,7 @@ void ClientConference::attachCall(const shared_ptr<CallSession> &session) {
 	setMainSession(session);
 	setState(ConferenceInterface::State::CreationPending);
 	// Update the conference address so to take into account any change in the URI parameters as soon as possible
-	setConferenceAddress(session->getRemoteContactAddress());
+	setConferenceAddress(ClientConference::buildConferenceAddress(session));
 	mFullStateReceived = (getLastNotify() != 0);
 	session->addListener(getSharedFromThis());
 	initializeHandlers(this, false);
@@ -532,10 +554,8 @@ bool ClientConference::isIn() const {
 	const auto &session = getMainSession();
 	if (!session) return false;
 	CallSession::State callState = session->getState();
-	const auto &focusContactAddress = session->getRemoteContactAddress();
-	return (((callState == CallSession::State::UpdatedByRemote) || (callState == CallSession::State::Updating) ||
-	         (callState == CallSession::State::StreamsRunning)) &&
-	        focusContactAddress->hasUriParam(Conference::kConfIdParameter));
+	return ((callState == CallSession::State::UpdatedByRemote) || (callState == CallSession::State::Updating) ||
+	        (callState == CallSession::State::StreamsRunning));
 }
 
 void ClientConference::setUtf8Subject(const std::string &subject) {
@@ -869,7 +889,7 @@ bool ClientConference::focusIsReady() const {
 
 bool ClientConference::transferToFocus(std::shared_ptr<Call> call) {
 	auto session = getMainSession();
-	std::shared_ptr<Address> referToAddr(session->getRemoteContactAddress());
+	std::shared_ptr<Address> referToAddr = getConferenceAddress()->clone()->toSharedPtr();
 	const std::shared_ptr<Address> &remoteAddress = call->getRemoteAddress();
 	std::shared_ptr<Participant> participant = findInvitedParticipant(remoteAddress);
 	if (participant) {
@@ -920,10 +940,16 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 	// Take a ref as conference may be deleted when the call goes to states PausedByRemote or End
 	shared_ptr<Conference> ref = getSharedFromThis();
 	std::shared_ptr<Address> focusContactAddress;
-	std::shared_ptr<Call> call = nullptr;
+	std::shared_ptr<Address> focusAddress;
+	std::shared_ptr<Address> conferenceAddress;
+	std::shared_ptr<Call> call;
+	if (session) {
+		focusAddress = session->getRemoteAddress();
+		focusContactAddress = session->getRemoteContactAddress();
+		conferenceAddress = Conference::buildConferenceAddress(focusAddress, focusContactAddress);
+	}
 	if (supportsMedia()) {
 		if (session) {
-			focusContactAddress = session->getRemoteContactAddress();
 			SalCallOp *op = session->getPrivate()->getOp();
 			call = op ? getCore()->getCallByCallId(op->getCallId()) : nullptr;
 		}
@@ -953,12 +979,7 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 			case CallSession::State::StreamsRunning: {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 				// Handle session reconnection if network dropped only for a short period of time
-				if (mEventHandler && mEventHandler->needToSubscribe()) {
-					const auto &conferenceId = getConferenceId();
-					if (conferenceId.isValid()) {
-						mEventHandler->subscribe(conferenceId);
-					}
-				}
+				subscribe(false, false);
 				if (mClientEktManager) {
 					mClientEktManager->subscribe();
 				}
@@ -1009,7 +1030,7 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 				BCTBX_NO_BREAK; /* Intentional no break */
 			case CallSession::State::Connected:
 				if (isFocusFound) {
-					setConferenceAddress(focusContactAddress);
+					setConferenceAddress(conferenceAddress);
 					// Now that the conference address is known, store the conference information in the database.
 					// Note that at this point, they might not be up to date or the capabilities right but it will allow
 					// to recover from early network issues
@@ -1037,13 +1058,10 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 					}
 
 					if (!mFinalized) {
-						setConferenceId(ConferenceId(focusContactAddress, getMe()->getAddress(),
-						                             getCore()->createConferenceIdParams()), true);
+						setConferenceId(ConferenceId(conferenceAddress, getMe()->getAddress(),
+						                             getCore()->createConferenceIdParams()),
+						                true);
 						if (call) {
-							if (focusContactAddress->hasUriParam(Conference::kConfIdParameter)) {
-								call->setConferenceId(
-								    focusContactAddress->getUriParamValue(Conference::kConfIdParameter));
-							}
 							if (!call->mediaInProgress() ||
 							    !!!linphone_config_get_int(linphone_core_get_config(session->getCore()->getCCore()),
 							                               "sip", "update_call_when_ice_completed", TRUE)) {
@@ -1059,7 +1077,7 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 					// The call was in conference and the focus removed its attribute to show that the call exited the
 					// conference
 					lInfo() << "Ending " << *this << " because server removed '" << Conference::kIsFocusParameter
-					        << "' attribute from its remote address " << *focusContactAddress;
+					        << "' attribute from its remote contact address " << *focusContactAddress;
 					endConference();
 				}
 				break;
@@ -1077,7 +1095,7 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 			case CallSession::State::End:
 				lInfo() << "Ending " << *this << " because focus call (local address "
 				        << (session ? session->getLocalAddress()->toString() : "sip:") << " remote address "
-				        << (session ? session->getRemoteAddress()->toString() : "sip:") << ") has ended";
+				        << (focusAddress ? focusAddress->toString() : "sip:") << ") has ended";
 				endConference();
 				break;
 			default:
@@ -1105,21 +1123,18 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 	} else if (isChatOnly()) {
 #ifdef HAVE_ADVANCED_IM
 		auto chatRoom = getChatRoom();
-		auto clientGroupChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
+		auto clientChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
 		switch (state) {
 			case CallSession::State::Connected: {
 				mPendingSubject.clear();
 				if ((mState == ConferenceInterface::State::Instantiated) ||
-				    (mState == ConferenceInterface::State::CreationPending)) {
+				    (mState == ConferenceInterface::State::CreationPending) ||
+				    (mState == ConferenceInterface::State::CreationFailed)) {
 					if (!mConfParams->getAccount()) {
 						mConfParams->setAccount(session->getParams()->getAccount());
 					}
-					if (clientGroupChatRoom) {
-						if (clientGroupChatRoom->isLocalExhumePending()) {
-							clientGroupChatRoom->onLocallyExhumedConference(session->getRemoteContactAddress());
-						} else {
-							clientGroupChatRoom->onChatRoomCreated(session->getRemoteContactAddress());
-						}
+					if (clientChatRoom) {
+						clientChatRoom->onChatRoomCreated(focusAddress, focusContactAddress);
 					}
 					getCore()->getPrivate()->insertChatRoomWithDb(chatRoom, getLastNotify());
 				} else if (mState == ConferenceInterface::State::TerminationPending) {
@@ -1136,6 +1151,20 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 							mExitReason = LinphoneReasonNone;
 						}
 					});
+				} else if (clientChatRoom && clientChatRoom->isLocalExhumePending()) {
+					clientChatRoom->onLocallyExhumedConference(conferenceAddress);
+					getCore()->getPrivate()->insertChatRoomWithDb(chatRoom, getLastNotify());
+				} else {
+					// Rejoining an existing chatroom:
+					// - set its state back to Created
+					// - subscribe to the event handler if it was not already in the list event handler handler list.
+					setState(ConferenceInterface::State::Created);
+					getCore()->getPrivate()->insertChatRoomWithDb(chatRoom, getLastNotify());
+#if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
+					if (focusContactAddress->hasParam(Conference::kIsFocusParameter)) {
+						subscribe(false, false);
+					}
+#endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 				}
 			} break;
 			case CallSession::State::End: {
@@ -1156,27 +1185,26 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 						setMainSession(session);
 					}
 				} else {
-					const auto &clientConferenceAddress = session->getRemoteAddress();
 					bool found = false;
-					if (clientGroupChatRoom) {
-						auto previousConferenceIds = clientGroupChatRoom->getPreviousConferenceIds();
+					if (clientChatRoom) {
+						auto previousConferenceIds = clientChatRoom->getPreviousConferenceIds();
 						for (auto it = previousConferenceIds.begin(); it != previousConferenceIds.end(); it++) {
 							ConferenceId confId = static_cast<ConferenceId>(*it);
-							if (*confId.getPeerAddress() == *clientConferenceAddress) {
+							if (*confId.getPeerAddress() == *conferenceAddress) {
 								lInfo() << *this << ": found previous chat room conference ID [" << confId
 								        << "] for chat room with current ID [" << getConferenceId() << "]";
-								clientGroupChatRoom->removeConferenceIdFromPreviousList(confId);
+								clientChatRoom->removeConferenceIdFromPreviousList(confId);
 								found = true;
 								break;
 							}
 						}
 					}
-					const auto isLocalExhume = clientGroupChatRoom && clientGroupChatRoom->isLocalExhumePending();
+					const auto isLocalExhume = clientChatRoom && clientChatRoom->isLocalExhumePending();
 					if (found) {
 						/* This is the case where we are accepting a BYE for an already exhumed chat room, don't change
 						 * it's state */
 						lInfo() << *this << ": received a BYE referred to previous conference address ["
-						        << *clientConferenceAddress << "] before the exhume has been terminated";
+						        << *conferenceAddress << "] before the exhume has been terminated";
 					} else if (isLocalExhume) {
 						lInfo() << *this << " has been successfully recreated";
 					} else {
@@ -1214,18 +1242,19 @@ void ClientConference::onFocusCallStateChanged(CallSession::State state, BCTBX_U
 			case CallSession::State::Error: {
 				const auto &reason = session->getReason();
 				if ((mState == ConferenceInterface::State::Instantiated) ||
-				    (mState == ConferenceInterface::State::CreationPending)) {
+				    (mState == ConferenceInterface::State::CreationPending) ||
+				    (mState == ConferenceInterface::State::Terminated)) {
 					setState(ConferenceInterface::State::CreationFailed);
 					// If there are chat message pending chat room creation, set state to NotDelivered and remove them
 					// from queue.
-					if (clientGroupChatRoom) {
+					if (clientChatRoom) {
 						const std::list<std::shared_ptr<ChatMessage>> &pendingCreationMessages =
-						    clientGroupChatRoom->getPendingCreationMessages();
+						    clientChatRoom->getPendingCreationMessages();
 						for (const auto &msg : pendingCreationMessages) {
 							msg->getPrivate()->setParticipantState(
 							    getMe()->getAddress(), ChatMessage::State::NotDelivered, ::ms_time(nullptr));
 						}
-						clientGroupChatRoom->clearPendingCreationMessages();
+						clientChatRoom->clearPendingCreationMessages();
 					}
 					if (reason == LinphoneReasonForbidden) {
 						setState(ConferenceInterface::State::Terminated);
@@ -2472,12 +2501,9 @@ int ClientConference::enter() {
 			    ->addCustomContactParameter(Conference::kAdminParameter, Utils::toString(getMe()->isAdmin()));
 		}
 
-		const std::shared_ptr<Address> &address = getConferenceAddress();
-		const string &confId = address->getUriParamValue(Conference::kConfIdParameter);
-		linphone_call_params_set_conference_id(new_params, confId.c_str());
-
 		std::string subject = getMe()->isAdmin() ? getUtf8Subject() : std::string();
 
+		const std::shared_ptr<Address> &address = getConferenceAddress();
 		linphone_core_invite_address_with_params_2(getCore()->getCCore(), address->toC(), new_params,
 		                                           L_STRING_TO_C(subject), nullptr);
 
@@ -2730,36 +2756,39 @@ void ClientConference::onCallSessionSetTerminated(const shared_ptr<CallSession> 
 #ifdef HAVE_ADVANCED_IM
 	const auto &chatRoom = getChatRoom();
 	if (chatRoom) {
-		auto clientGroupChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
-		isLocalExhume = clientGroupChatRoom && clientGroupChatRoom->isLocalExhumePending();
+		auto clientChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
+		isLocalExhume = clientChatRoom && clientChatRoom->isLocalExhumePending();
 	}
 #endif // HAVE_ADVANCED_IM
 
 	if (!getConferenceAddress() || isLocalExhume) {
-		const std::shared_ptr<Address> remoteAddress = session->getRemoteContactAddress();
+		// The conference address is the remote contact address when the server sends a 302 Moved Temporarely response
+		const auto conferenceAddress = session->getRemoteContactAddress();
 		auto ref = getSharedFromThis();
 		getCore()->removeConferencePendingCreation(ref);
-		if (remoteAddress == nullptr) {
+		if (!conferenceAddress) {
 			lError() << *this
 			         << " The session to update the conference information did not successfully establish hence it is "
 			            "likely that the request wasn't taken into account by the server";
 			setState(ConferenceInterface::State::CreationFailed);
 		} else if (dynamic_pointer_cast<MediaSession>(session) &&
-		           ((mState == ConferenceInterface::State::Instantiated) ||
+		           (isLocalExhume || (mState == ConferenceInterface::State::Instantiated) ||
 		            (mState == ConferenceInterface::State::CreationPending)) &&
 		           (session->getParams()->getPrivate()->getStartTime() < 0)) {
-			auto conferenceAddress = remoteAddress;
 
-			lInfo() << *this << " has been successfully created: " << *conferenceAddress;
-			const auto &meAddress = getMe()->getAddress();
-			ConferenceId conferenceId(conferenceAddress, meAddress, getCore()->createConferenceIdParams());
-			// Do not change the conference ID yet if exhuming a chatroom
-			if (!isLocalExhume) {
+			auto conferenceUri = Address::create(conferenceAddress->getUri());
+			if (isLocalExhume) {
+				lInfo() << *this << " has been successfully exhumed: " << *conferenceUri;
+			} else {
+				const auto &meAddress = getMe()->getAddress();
+				// Do not change the conference ID yet if exhuming a chatroom
+				lInfo() << *this << " has been successfully created: " << *conferenceUri;
+				ConferenceId conferenceId(conferenceUri, meAddress, getCore()->createConferenceIdParams());
 				setConferenceId(conferenceId, true);
 			}
-			setConferenceAddress(conferenceAddress);
+			setConferenceAddress(conferenceUri);
 
-			// The conference pointer must be set here because from now we are sure that the shared pointer ref count
+			// The conference pointer must be set here because from now on we are sure that the shared pointer ref count
 			// will be always greater than 1 (the core holds it)
 			getMe()->setConference(getSharedFromThis());
 
@@ -2846,7 +2875,7 @@ void ClientConference::onCallSessionSetTerminated(const shared_ptr<CallSession> 
 			const auto &subject = mConfParams->getUtf8Subject();
 			if (mediaSupported) {
 				LinphoneCall *call = linphone_core_invite_address_with_params_2(
-				    cCore, remoteAddress->toC(), L_GET_C_BACK_PTR(dialoutParams), L_STRING_TO_C(subject),
+				    cCore, conferenceUri->toC(), L_GET_C_BACK_PTR(dialoutParams), L_STRING_TO_C(subject),
 				    content ? content->toC() : nullptr);
 				auto session = Call::toCpp(call)->getActiveSession();
 				setMainSession(session);
@@ -2867,7 +2896,7 @@ void ClientConference::onCallSessionSetTerminated(const shared_ptr<CallSession> 
 				auto session = mMe->createSession(getCore(), dialoutParams, TRUE);
 				setMainSession(session);
 				session->addListener(getSharedFromThis());
-				session->configure(LinphoneCallOutgoing, account, nullptr, from, remoteAddress);
+				session->configure(LinphoneCallOutgoing, account, nullptr, from, conferenceUri);
 				bool defer = session->initiateOutgoing(subject, content);
 				if (!defer) {
 					session->startInvite(nullptr, subject, content);
@@ -2916,18 +2945,15 @@ void ClientConference::onCallSessionStateChanged(const shared_ptr<CallSession> &
 }
 
 void ClientConference::onCallSessionSetReleased(const shared_ptr<CallSession> &session) {
-#ifdef HAVE_ADVANCED_IM
-	auto chatRoom = getChatRoom();
-	auto clientGroupChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
-#endif // HAVE_ADVANCED_IM
-
 	bool creationFailed = (mState == ConferenceInterface::State::CreationFailed);
 	if ((session == getMainSession()) || creationFailed) {
 #ifdef HAVE_ADVANCED_IM
-		if (clientGroupChatRoom && clientGroupChatRoom->getDeletionOnTerminationEnabled()) {
+		auto chatRoom = getChatRoom();
+		auto clientChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
+		if (clientChatRoom && clientChatRoom->getDeletionOnTerminationEnabled()) {
 			shared_ptr<Conference> ref = getSharedFromThis();
-			clientGroupChatRoom->setDeletionOnTerminationEnabled(false);
-			clientGroupChatRoom->deleteFromDbWithoutLeaving();
+			clientChatRoom->setDeletionOnTerminationEnabled(false);
+			clientChatRoom->deleteFromDbWithoutLeaving();
 			setState(ConferenceInterface::State::Deleted);
 		}
 #endif // HAVE_ADVANCED_IM
@@ -2960,10 +2986,30 @@ void ClientConference::unsubscribe() {
 void ClientConference::subscribe(BCTBX_UNUSED(bool addToListEventHandler), BCTBX_UNUSED(bool unsubscribeFirst)) {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 	if (mEventHandler) {
-		if (unsubscribeFirst) {
-			mEventHandler->unsubscribe(); // Required for next subscribe to be sent
+		bool needToSubscribe = true;
+		auto &clientListHandler = getCore()->getPrivate()->clientListEventHandler;
+		auto handler = clientListHandler->findHandler(getConferenceId());
+		if (handler) {
+			if (handler->getSubscriptionState() == LinphoneSubscriptionError) {
+				lInfo() << "Detach " << *this << " from ClientConferenceListEventHandler [" << clientListHandler.get()
+				        << "] because the subscription errored out";
+				needToSubscribe = true;
+				clientListHandler->removeHandler(handler);
+			} else {
+				needToSubscribe = false;
+			}
 		}
-		mEventHandler->subscribe(getConferenceId());
+		if (needToSubscribe) {
+			if (unsubscribeFirst) {
+				mEventHandler->unsubscribe(); // Required for next subscribe to be sent
+			}
+			auto chatRoom = getChatRoom();
+			if (chatRoom) {
+				auto clientChatRoom = dynamic_pointer_cast<ClientChatRoom>(chatRoom);
+				clientChatRoom->startBgTask();
+			}
+			mEventHandler->subscribe(getConferenceId());
+		}
 	} else {
 		initializeHandlers(this, addToListEventHandler);
 	}

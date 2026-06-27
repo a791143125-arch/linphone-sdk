@@ -365,7 +365,7 @@ static void group_chat_room_with_imdn_and_core_restarts() {
 	group_chat_room_with_imdn_base(TRUE);
 }
 
-static void group_chat_room_with_imdn_sent_to_one_one(void) {
+static void group_chat_room_with_imdn_sent_to_one_on_one(void) {
 	Focus focus("chloe_rc");
 	{ // to make sure focus is destroyed after clients.
 		const LinphoneTesterLimeAlgo lime_algo = C25519;
@@ -460,7 +460,7 @@ static void group_chat_room_with_imdn_sent_to_one_one(void) {
 		initialPaulineStats = pauline.getStats();
 		initialMichelleStats = michelle.getStats();
 
-		ms_message("%s creates a one-one chat with %s", linphone_core_get_identity(marie.getLc()),
+		ms_message("%s creates a one-on-one chat with %s", linphone_core_get_identity(marie.getLc()),
 		           linphone_core_get_identity(pauline.getLc()));
 		initialSubject = "Marie-Pauline one one";
 		conference_params = linphone_core_create_conference_params_2(marie.getLc(), NULL);
@@ -555,7 +555,7 @@ static void group_chat_room_with_imdn_sent_to_one_one(void) {
 		initialPaulineStats = pauline.getStats();
 		initialMichelleStats = michelle.getStats();
 
-		ms_message("%s creates a one-one chat with %s", linphone_core_get_identity(marie.getLc()),
+		ms_message("%s creates a one-on-one chat with %s", linphone_core_get_identity(marie.getLc()),
 		           linphone_core_get_identity(michelle.getLc()));
 		initialSubject = "Marie-Michelle one one";
 		linphone_conference_params_set_subject(conference_params, initialSubject);
@@ -3049,7 +3049,7 @@ static void secure_group_chat_room_with_aggregated_imdn(void) {
 			}
 		}
 
-		// wait until the one-one chatroom to send IMDNs is created on the client side
+		// wait until the one-on-one chatroom to send IMDNs is created on the client side
 		BC_ASSERT_TRUE(
 		    CoreManagerAssert({focus, marie, pauline, michelle, laure}).waitUntil(chrono::seconds(120), [&marie] {
 			    return marie.getCore().getChatRooms().size() == 2;
@@ -3160,7 +3160,7 @@ static test_t local_conference_chat_imdn_tests[] = {
                  LinphoneTest::secure_group_chat_message_state_transition_from_not_delivered_to_displayed,
                  "LeaksMemory"), /* LeaksMemory because of network up and down */
     TEST_NO_TAG("Group chat with IMDN", LinphoneTest::group_chat_room_with_imdn),
-    TEST_NO_TAG("Group chat with IMDN sent to one-one", LinphoneTest::group_chat_room_with_imdn_sent_to_one_one),
+    TEST_NO_TAG("Group chat with IMDN sent to one-on-one", LinphoneTest::group_chat_room_with_imdn_sent_to_one_on_one),
     TEST_NO_TAG("Group chat with IMDN and core restarts", LinphoneTest::group_chat_room_with_imdn_and_core_restarts),
     TEST_ONE_TAG(
         "Secure group chat with client IMDN sent after restart and participant added and core stopped before sending "

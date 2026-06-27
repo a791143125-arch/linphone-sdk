@@ -118,7 +118,7 @@ static void ephemeral_message_test(const LinphoneEphemeralChatMessagePolicy poli
 		}
 	}
 
-	// Marie disable ephemeral in the group chat room
+	// Marie disables ephemeral in the group chat room
 	linphone_chat_room_deactivate_ephemeral(marieCr);
 	LinphoneChatMessage *messageNormal = _send_message(marieCr, "See you later");
 
@@ -808,7 +808,8 @@ static void ephemeral_group_message_test_curve_with_policy(const int curveId,
 		goto end;
 	BC_ASSERT_FALSE(linphone_chat_room_ephemeral_enabled(marieCr));
 
-	// Marie disable ephemeral in the group chat room
+	// Marie disables ephemeral in the group chat room
+	linphone_chat_room_deactivate_ephemeral(marieCr);
 	LinphoneChatMessage *messageNormal = _send_message(marieCr, "See you later");
 
 	BC_ASSERT_TRUE(wait_for_list(coresList, &pauline->stat.number_of_LinphoneMessageReceived,

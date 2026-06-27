@@ -158,6 +158,7 @@ void ConferenceParams::setConferenceAddress(const std::shared_ptr<Address> &conf
 	} else {
 		mConferenceAddress = Address::create(conferenceAddress->getUriWithoutGruu());
 	}
+	mConferenceAddress->removeUriParam(Address::kTransportParameter);
 };
 
 bool ConferenceParams::isGroup() const {
