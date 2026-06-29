@@ -362,6 +362,8 @@ static void preview_memory_msogl(void) {
 #endif
 }
 
+static void video_call_with_background(void);
+
 static test_t video_tests[] = {
     TEST_NO_TAG("Enable/disable camera after camera switches", enable_disable_camera_after_camera_switches),
     TEST_ONE_TAG("Decode QRCode from image", decode_qrcode_from_image, "QRCode"),
@@ -373,7 +375,8 @@ static test_t video_tests[] = {
     TEST_NO_TAG("Fallback camera while preview is only enabled", camera_switches_while_only_preview),
 
     TEST_ONE_TAG("Preview memory default", preview_memory_default, "skip"),
-    TEST_ONE_TAG("Preview memory MSOGL", preview_memory_msogl, "skip")};
+    TEST_ONE_TAG("Preview memory MSOGL", preview_memory_msogl, "skip"),
+    TEST_NO_TAG("Video call with background", video_call_with_background)};
 
 test_suite_t video_test_suite = {"Video",
                                  NULL,
@@ -383,5 +386,43 @@ test_suite_t video_test_suite = {"Video",
                                  sizeof(video_tests) / sizeof(video_tests[0]),
                                  video_tests,
                                  0};
+
+static void video_call_with_background(void) {
+	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
+	LinphoneCoreManager *pauline = linphone_core_manager_new("pauline_rc");
+
+	/* caméra de test animée des deux côtés */
+	linphone_core_set_video_device(marie->lc, liblinphone_tester_mire_id);
+	linphone_core_set_video_device(pauline->lc, liblinphone_tester_mire_id);
+
+	/* vidéo auto des deux côtés */
+	LinphoneVideoActivationPolicy *pol = linphone_factory_create_video_activation_policy(linphone_factory_get());
+	linphone_video_activation_policy_set_automatically_accept(pol, TRUE);
+	linphone_video_activation_policy_set_automatically_initiate(pol, TRUE);
+	linphone_core_set_video_activation_policy(marie->lc, pol);
+	linphone_core_set_video_activation_policy(pauline->lc, pol);
+	linphone_video_activation_policy_unref(pol);
+
+	linphone_core_enable_video_capture(marie->lc, TRUE);
+	linphone_core_enable_video_display(marie->lc, TRUE);
+	linphone_core_enable_video_capture(pauline->lc, TRUE);
+	linphone_core_enable_video_display(pauline->lc, TRUE);
+ 
+	linphone_core_set_native_video_window_id(pauline->lc, LINPHONE_VIDEO_DISPLAY_AUTO);
+
+	BC_ASSERT_TRUE(call(marie, pauline));
+
+	/* applique le background sur la vidéo émise*/
+	linphone_core_set_video_background_type(marie->lc, 3 /* blur */);
+	wait_for_until(marie->lc, pauline->lc, NULL, 0, 6000); 
+
+	linphone_core_set_video_background_path(marie->lc, "/chemin/absolu/fond.jpg");
+	linphone_core_set_video_background_type(marie->lc, 1 /* image */);
+	wait_for_until(marie->lc, pauline->lc, NULL, 0, 6000); 
+
+	end_call(marie, pauline);
+	linphone_core_manager_destroy(pauline);
+	linphone_core_manager_destroy(marie);
+}
 
 #endif // ifdef VIDEO_ENABLED

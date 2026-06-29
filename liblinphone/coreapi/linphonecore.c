@@ -7955,6 +7955,12 @@ void _linphone_core_stop_async_end(LinphoneCore *lc) {
 		lc->video_policy = NULL;
 	}
 
+	if (lc->video_background_path != NULL) {
+		ms_free(lc->video_background_path);
+		lc->video_background_path = NULL;
+	}
+
+
 	linphone_core_free_payload_types(lc);
 	if (lc->supported_formats) ms_free((void *)lc->supported_formats);
 	lc->supported_formats = NULL;
@@ -10200,4 +10206,35 @@ void linphone_core_upgrade_database(LinphoneCore *core) {
 		ms_error("Trying to upgrade database before linphone_core_start() has been called, it has not been initialized "
 		         "yet.");
 	}
+}
+
+#ifdef VIDEO_ENABLED
+static VideoStream *linphone_core_get_active_video_stream(LinphoneCore *lc) {
+	LinphoneCall *call = linphone_core_get_current_call(lc);
+	if (call) {
+		return reinterpret_cast<VideoStream *>(linphone_call_get_stream(call, LinphoneStreamTypeVideo));
+	} else if (linphone_core_video_preview_enabled(lc)) {
+		return lc->previewstream;
+	}
+	return NULL;
+}
+#endif
+
+void linphone_core_set_video_background_type(LinphoneCore *lc, int type) {
+	CoreLogContextualizer logContextualizer(lc);
+	lc->video_background_type = type; /* persisted, re-applied at each video stream start */
+#ifdef VIDEO_ENABLED
+	VideoStream *vstream = linphone_core_get_active_video_stream(lc);
+	if (vstream) video_stream_set_background_type(vstream, (MSBackgroundType)type);
+#endif
+}
+
+void linphone_core_set_video_background_path(LinphoneCore *lc, const char *path) {
+	CoreLogContextualizer logContextualizer(lc);
+	if (lc->video_background_path) ms_free(lc->video_background_path);
+	lc->video_background_path = path ? ms_strdup(path) : NULL;
+#ifdef VIDEO_ENABLED
+	VideoStream *vstream = linphone_core_get_active_video_stream(lc);
+	if (vstream && lc->video_background_path) video_stream_set_background_path(vstream, lc->video_background_path);
+#endif
 }

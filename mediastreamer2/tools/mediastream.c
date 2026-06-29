@@ -1091,7 +1091,6 @@ void setup_media_streams(MediastreamDatas *args) {
 
 				video_stream_set_background_type(args->video, bgtype);
 				args->background_current_type = bgtype;
-
 			}
 		}
 
@@ -1194,11 +1193,11 @@ static void mediastream_tool_iterate(MediastreamDatas *args) {
 					args->netsim.max_bandwidth = intarg;
 					rtp_session_enable_network_simulation(args->session, &args->netsim);
 				} else if (strstr(commands, "bg")) {
-				#ifdef VIDEO_ENABLED
+#ifdef VIDEO_ENABLED
 					if (args->video && args->video->background_replacer != NULL) {
 						/* ordre de cyclage : same -> blur -> image -> video -> same */
-						static const MSBackgroundType order[] = {
-						    MSBackgroundSame, MSBackgroundBlur, MSBackgroundImage, MSBackgroundVideo};
+						static const MSBackgroundType order[] = {MSBackgroundSame, MSBackgroundBlur, MSBackgroundImage,
+						                                         MSBackgroundVideo};
 						static const char *names[] = {"same", "image", "video", "blur"};
 						char name[32];
 						MSBackgroundType next;
@@ -1210,7 +1209,10 @@ static void mediastream_tool_iterate(MediastreamDatas *args) {
 						} else {
 							int i, cur = 0;
 							for (i = 0; i < 4; i++)
-								if (order[i] == (MSBackgroundType) args->background_current_type) { cur = i; break; }
+								if (order[i] == (MSBackgroundType)args->background_current_type) {
+									cur = i;
+									break;
+								}
 							next = order[(cur + 1) % 4];
 						}
 						video_stream_set_background_type(args->video, next);
@@ -1219,7 +1221,7 @@ static void mediastream_tool_iterate(MediastreamDatas *args) {
 					} else {
 						ms_warning("Background replacer not available.\n");
 					}
-				#endif
+#endif
 				} else if (strstr(commands, "quit")) {
 					cond = 0;
 				} else ms_warning("Cannot understand this.\n");

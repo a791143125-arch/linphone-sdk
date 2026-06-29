@@ -1355,6 +1355,9 @@ struct _VideoStream {
 	MSFilter *background_source;   /*Static image or video decoder as an entry for the background */
 	MSFilter *background_player;   /* MKV player -> entrée 2 du formater (vidéo) */
 	MSFilter *background_decoder;  /* décodeur de la vidéo de fond */
+	bool_t background_user_image;  /* TRUE if not the default image */
+	bool_t background_user_video;  /* TRUE if not the default video */
+
 
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;

@@ -32,6 +32,12 @@ add_executable(liblinphone-auto-answer ${USE_BUNDLE} ${LP_AUTO_ANSWER_SOURCE_FIL
 target_link_libraries(liblinphone-auto-answer PRIVATE ${LINPHONE_LIBS_FOR_TOOLS} ${Mediastreamer2_TARGET} ${Ortp_TARGET} ${BCToolbox_TARGET} ${XSD_LIBRARIES})
 set_target_properties(liblinphone-auto-answer PROPERTIES LINKER_LANGUAGE CXX)
 
+set(LP_BACKGROUND_TEST_SOURCE_FILES background_replacer.c)
+bc_apply_compile_flags(LP_BACKGROUND_TEST_SOURCE_FILES STRICT_OPTIONS_CPP STRICT_OPTIONS_C)
+add_executable(liblinphone-background-test ${USE_BUNDLE} ${LP_BACKGROUND_TEST_SOURCE_FILES})
+target_link_libraries(liblinphone-background-test PRIVATE ${LINPHONE_LIBS_FOR_TOOLS} ${Mediastreamer2_TARGET} ${Ortp_TARGET} ${BCToolbox_TARGET} ${XSD_LIBRARIES} X11)
+set_target_properties(liblinphone-background-test PROPERTIES LINKER_LANGUAGE CXX)
+
 set(LP_SENDMSG_SOURCE_FILES lpsendmsg.c)
 bc_apply_compile_flags(LP_SENDMSG_SOURCE_FILES STRICT_OPTIONS_CPP STRICT_OPTIONS_C)
 add_executable(liblinphone-sendmsg ${USE_BUNDLE} ${LP_SENDMSG_SOURCE_FILES})
@@ -61,7 +67,7 @@ target_link_libraries(liblinphone-test-ecc PRIVATE ${LINPHONE_LIBS_FOR_TOOLS} ${
 set_target_properties(liblinphone-test-ecc PROPERTIES LINKER_LANGUAGE CXX)
 
 if(NOT IOS)
-	install(TARGETS liblinphone-auto-answer liblinphone-sendmsg liblinphone-test-ecc ${LINPHONE_XMLTOOLS}
+	install(TARGETS liblinphone-auto-answer liblinphone-sendmsg liblinphone-test-ecc liblinphone-background-test ${LINPHONE_XMLTOOLS}
 		RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 		LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 		ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

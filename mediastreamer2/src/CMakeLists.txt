@@ -819,7 +819,17 @@ endif()
 
 if(ENABLE_VIDEO)
 	install(FILES videofilters/model.onnx
-    	DESTINATION ${CMAKE_INSTALL_DATADIR}/images
+    	DESTINATION ${CMAKE_INSTALL_DATADIR}/background_model
+    	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+	)
+
+	install(FILES videofilters/default_background_image.jpg
+    	DESTINATION ${CMAKE_INSTALL_DATADIR}/backgrounds
+    	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+	)
+
+	install(FILES videofilters/default_background_video.mkv
+    	DESTINATION ${CMAKE_INSTALL_DATADIR}/backgrounds
     	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 	)
 

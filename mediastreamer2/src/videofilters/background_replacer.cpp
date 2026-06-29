@@ -34,7 +34,7 @@ public:
 		mBypass = bypass;
 
 		// SETUP du model à faire une seule fois
-		char *path = ms_strdup_printf("%s/model.onnx", ms_factory_get_image_resources_dir(f->factory));
+		char *path = ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
 		mOpts.SetInterOpNumThreads(1);
 		mOpts.SetIntraOpNumThreads(1);
 		mSession = Ort::Session(mEnv, path, mOpts);

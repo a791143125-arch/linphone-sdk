@@ -17,7 +17,6 @@ static int tester_after_all(void) {
 	return 0;
 }
 
-
 static void background_formater_creation(void) {
 	MSFilter *f = ms_factory_create_filter(_factory, MS_BACKGROUND_FORMATER_ID);
 	BC_ASSERT_PTR_NOT_NULL(f);
@@ -27,7 +26,6 @@ static void background_formater_creation(void) {
 		ms_filter_destroy(f);
 	}
 }
-
 
 static void background_formater_type_change(void) {
 	MSFilter *f = ms_factory_create_filter(_factory, MS_BACKGROUND_FORMATER_ID);
@@ -76,11 +74,5 @@ static test_t tests[] = {
 #endif
 };
 
-test_suite_t background_test_suite = {"Background",
-                                      tester_before_all,
-                                      tester_after_all,
-                                      NULL,
-                                      NULL,
-                                      sizeof(tests) / sizeof(tests[0]),
-                                      tests,
-                                      0};
+test_suite_t background_test_suite = {
+    "Background", tester_before_all, tester_after_all, NULL, NULL, sizeof(tests) / sizeof(tests[0]), tests, 0};

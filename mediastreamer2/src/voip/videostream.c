@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <X11/Xlib.h>
 #include <math.h>
 
 #include "bctoolbox/defs.h"
@@ -39,6 +40,7 @@
 #include "mediastreamer2/video-aggregator.h"
 #include "mediastreamer2/zrtp.h"
 #include "private.h"
+#include "stdbool.h"
 
 #if __APPLE__
 #include "TargetConditionals.h"
@@ -1575,7 +1577,7 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 				stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
 				stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
 				stream->background_player = ms_factory_create_filter(stream->ms.factory, MS_MKV_PLAYER_ID);
-			}
+			}	
 
 			if (stream->source_performs_encoding == TRUE) {
 				stream->ms.encoder = stream->source; /* Consider the encoder is the source */
@@ -2001,7 +2003,19 @@ static MSFilter *_video_stream_change_camera(VideoStream *stream,
 		/*unlink source filters and subsequent post processing filters */
 		if (encoder_has_builtin_converter || (stream->source_performs_encoding == TRUE)) {
 			ms_filter_unlink(stream->source, 0, stream->tee, 0);
-		} else {
+		}	else if (stream->background_replacer != NULL) {
+				MSFilter *bg_in = stream->source;
+				if (stream->pixconv) {
+					ms_filter_unlink(stream->source, 0, stream->pixconv, 0);
+					bg_in = stream->pixconv;
+				}
+				if (stream->sizeconv) {
+					ms_filter_unlink(bg_in, 0, stream->sizeconv, 0);
+					ms_filter_unlink(stream->sizeconv, 0, stream->background_tee, 0);
+				} else {
+					ms_filter_unlink(bg_in, 0, stream->background_tee, 0);
+				}
+			}else {
 			if (stream->pixconv) {
 				ms_filter_unlink(stream->source, 0, stream->pixconv, 0);
 				ms_filter_unlink(stream->pixconv, 0, stream->tee, 0);
@@ -2092,6 +2106,18 @@ static MSFilter *_video_stream_change_camera(VideoStream *stream,
 
 		if (encoder_has_builtin_converter || (stream->source_performs_encoding == TRUE)) {
 			ms_filter_link(stream->source, 0, stream->tee, 0);
+		}else if (stream->background_replacer != NULL) {
+			MSFilter *bg_in = stream->source;
+			if (stream->pixconv) {
+				ms_filter_link(stream->source, 0, stream->pixconv, 0);
+				bg_in = stream->pixconv;
+			}
+			if (stream->sizeconv) {
+				ms_filter_link(bg_in, 0, stream->sizeconv, 0);
+				ms_filter_link(stream->sizeconv, 0, stream->background_tee, 0);
+			} else {
+				ms_filter_link(bg_in, 0, stream->background_tee, 0);
+			}
 		} else {
 			if (stream->pixconv) {
 				ms_filter_link(stream->source, 0, stream->pixconv, 0);
@@ -2360,6 +2386,20 @@ void video_stream_set_native_window_id(VideoStream *stream, void *id) {
 
 void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type) {
 	if (!stream || !stream->background_formater || !stream->background_replacer) return;
+
+	if (stream->background_user_video == False && (type == MSBackgroundVideo) && stream->background_decoder == NULL) {
+		const char *def = "/../backgrounds/default_background_video.mkv";
+		char *p = ms_strdup_printf("%s%s", ms_factory_get_image_resources_dir(stream->ms.factory), def);
+		video_stream_set_background_path(stream, p);
+		ms_free(p);
+		stream->background_user_video = False;
+	}else if (stream->background_user_image == False && (type == MSBackgroundImage)) {
+		const char *def = "/../backgrounds/default_background_image.jpg";
+		char *p = ms_strdup_printf("%s%s", ms_factory_get_image_resources_dir(stream->ms.factory), def);
+		video_stream_set_background_path(stream, p);
+		ms_free(p);
+		stream->background_user_image = False;
+	}
 	int t = (int)type;
 	int bypass = (type == MSBackgroundSame);
 	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
@@ -2368,6 +2408,7 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 
 void video_stream_set_background_path(VideoStream *stream, const char *path) {
 	if (!stream || !path || !stream->background_replacer) return;
+	
 	const char *ext = strrchr(path, '.');
 
 	if (ext && (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)) {
@@ -2375,7 +2416,7 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 		ms_filter_call_method(stream->background_source, MS_STATIC_IMAGE_SET_IMAGE, (void *)path);
 		ms_filter_call_method(stream->background_source, MS_FILTER_SET_FPS, &stream->configured_fps);
 		ms_filter_call_method(stream->background_source, MS_FILTER_SET_VIDEO_SIZE, &stream->sent_vsize);
-
+		stream->background_user_image = true;
 	} else if (ext && strcasecmp(ext, ".mkv") == 0) {
 		MSTicker *ticker = stream->ms.sessions.ticker;
 		bool_t wasSetup = (stream->background_decoder != NULL);
@@ -2411,6 +2452,7 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 		int loop = 0;
 		ms_filter_call_method(stream->background_player, MS_PLAYER_SET_LOOP, &loop);
 		ms_filter_call_method(stream->background_player, MS_PLAYER_START, NULL);
+		stream->background_user_video = True;
 	}
 }
 
