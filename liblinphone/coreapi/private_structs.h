@@ -543,9 +543,9 @@ class Core;
 	bool_t auto_send_ringing;                                                                                          \
 	int number_of_duplicated_messages;                                                                                 \
 	bool_t goog_remb_enabled;                                                                                          \
-	bool_t in_iterate;																								   \
+	bool_t in_iterate;                                                                                                 \
 	int video_background_type;                                                                                         \
-	char *video_background_path;    
+	char *video_background_path;
 
 #define LINPHONE_CORE_STRUCT_FIELDS                                                                                    \
 	LINPHONE_CORE_STRUCT_BASE_FIELDS                                                                                   \

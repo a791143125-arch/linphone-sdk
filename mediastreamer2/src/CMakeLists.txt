@@ -818,21 +818,23 @@ if(FFMpeg_FOUND AND NOT WIN32)
 endif()
 
 if(ENABLE_VIDEO)
-	install(FILES videofilters/model.onnx
-    	DESTINATION ${CMAKE_INSTALL_DATADIR}/background_model
-    	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-	)
+	if (ENABLE_VIDEO_BACKGROUND)
+		install(FILES videofilters/model.onnx
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/background_model
+			PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+		)
 
-	install(FILES videofilters/default_background_image.jpg
-    	DESTINATION ${CMAKE_INSTALL_DATADIR}/backgrounds
-    	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-	)
+		install(FILES videofilters/default_background_image.jpg
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/backgrounds
+			PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+		)
 
-	install(FILES videofilters/default_background_video.mkv
-    	DESTINATION ${CMAKE_INSTALL_DATADIR}/backgrounds
-    	PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-	)
-
+		install(FILES videofilters/default_background_video.mkv
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/backgrounds
+			PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+		)
+	endif()
+	
   	install(FILES voip/nowebcamCIF.jpg
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/images
 		PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ

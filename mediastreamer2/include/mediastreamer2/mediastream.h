@@ -1358,7 +1358,6 @@ struct _VideoStream {
 	bool_t background_user_image;  /* TRUE if not the default image */
 	bool_t background_user_video;  /* TRUE if not the default video */
 
-
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;
 	MSVideoSize preview_vsize;

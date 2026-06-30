@@ -1,12 +1,11 @@
-#include <signal.h>
 #include <poll.h>
+#include <signal.h>
 
-#include <bctoolbox/defs.h>
 #include "linphone/core.h"
-#include <bctoolbox/port.h>
-#include <string.h>  
 #include <X11/Xlib.h>
-
+#include <bctoolbox/defs.h>
+#include <bctoolbox/port.h>
+#include <string.h>
 
 static bool_t running = TRUE;
 static void stop(BCTBX_UNUSED(int signum)) {
@@ -35,14 +34,13 @@ static void setup(LinphoneCore *lc) {
 	ms_error("[bgtest] Mire camera not found (DEBUG=1 manquant ?)");
 }
 
-
-static void call_state_changed(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate,
-                               BCTBX_UNUSED(const char *msg)) {
+static void
+call_state_changed(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate, BCTBX_UNUSED(const char *msg)) {
 	switch (cstate) {
 		case LinphoneCallIncomingReceived: {
 			LinphoneCallParams *p = linphone_core_create_call_params(lc, call);
 			linphone_call_params_enable_video(p, TRUE);
-			linphone_call_params_set_video_direction(p, LinphoneMediaDirectionRecvOnly);  /* pauline REÇOIT+affiche */
+			linphone_call_params_set_video_direction(p, LinphoneMediaDirectionRecvOnly); /* pauline REÇOIT+affiche */
 			linphone_core_accept_call_with_params(lc, call, p);
 			linphone_call_params_unref(p);
 			break;
@@ -63,7 +61,7 @@ static LinphoneCore *make_core(const char *name, int udp_port, bool_t display) {
 	bctbx_mkdir(dir);
 
 	LinphoneFactory *factory = linphone_factory_get();
-	linphone_factory_set_data_dir(factory, dir);   /* main.db, zrtp, etc. -> temp */
+	linphone_factory_set_data_dir(factory, dir); /* main.db, zrtp, etc. -> temp */
 	linphone_factory_set_config_dir(factory, dir);
 	linphone_factory_set_cache_dir(factory, dir);
 
@@ -71,7 +69,7 @@ static LinphoneCore *make_core(const char *name, int udp_port, bool_t display) {
 	linphone_config_set_string(cfg, "sip", "bind_address", "127.0.0.1");
 	linphone_config_set_string(cfg, "rtp", "bind_address", "127.0.0.1");
 
-    LinphoneCoreVTable vtable = {0};
+	LinphoneCoreVTable vtable = {0};
 	vtable.call_state_changed = call_state_changed;
 	LinphoneCore *lc = linphone_core_new_with_config(&vtable, cfg, NULL);
 	linphone_config_unref(cfg);
@@ -95,41 +93,37 @@ static LinphoneCore *make_core(const char *name, int udp_port, bool_t display) {
 	linphone_core_set_audio_port_range(lc, 1024, 65000);
 	linphone_core_set_video_port_range(lc, 1024, 65000);
 
-
 	setup(lc);
 
-    force_vp8(lc);
+	force_vp8(lc);
 	return lc;
 }
 
-
 int main(int argc, char *argv[]) {
-    XInitThreads();                     
+	XInitThreads();
 	Display *dpy = XOpenDisplay(NULL);
 	Window win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 640, 480, 0, 0, 0);
 	XStoreName(dpy, win, "background test (recu de marie)");
 	XMapWindow(dpy, win);
 	XSync(dpy, False);
-    setenv("DEBUG", "1", 1);  
+	setenv("DEBUG", "1", 1);
 	const char *image_path = (argc > 1) ? argv[1] : NULL; /* chemin .jpg/.mkv optionnel */
-	int bg = 0; /* 0=same 1=image 2=video 3=blur */
+	int bg = 0;                                           /* 0=same 1=image 2=video 3=blur */
 	signal(SIGINT, stop);
-	linphone_core_set_log_level_mask( ORTP_WARNING | ORTP_ERROR | ORTP_FATAL);
+	linphone_core_set_log_level_mask(ORTP_WARNING | ORTP_ERROR | ORTP_FATAL);
 
 	LinphoneCore *pauline = make_core("pauline", 5061, TRUE);
-    linphone_core_set_native_video_window_id(pauline, (void *)win);
-	LinphoneCore *marie = make_core("marie", 5060, FALSE);  
+	linphone_core_set_native_video_window_id(pauline, (void *)win);
+	LinphoneCore *marie = make_core("marie", 5060, FALSE);
 
 	if (image_path) linphone_core_set_video_background_path(marie, image_path);
 
 	/* marie appelle pauline */
 	LinphoneCallParams *cp = linphone_core_create_call_params(marie, NULL);
 	linphone_call_params_enable_video(cp, TRUE);
-	linphone_call_params_set_video_direction(cp, LinphoneMediaDirectionSendOnly);  /* marie ÉMET son flux bg */
+	linphone_call_params_set_video_direction(cp, LinphoneMediaDirectionSendOnly); /* marie ÉMET son flux bg */
 	linphone_core_invite_with_params(marie, "sip:pauline@127.0.0.1:5061", cp);
 	linphone_call_params_unref(cp);
-
-
 
 	printf("\n=== Touches : [0]same [1]image [2]video [3]blur  [q]quitter ===\n");
 	if (!image_path) printf("Pas de path de passé en paramètre !!!\n");
@@ -144,7 +138,10 @@ int main(int argc, char *argv[]) {
 			char line[32];
 			if (fgets(line, sizeof(line), stdin)) {
 				switch (line[0]) {
-					case '0': case '1': case '2': case '3':
+					case '0':
+					case '1':
+					case '2':
+					case '3':
 						bg = line[0] - '0';
 						linphone_core_set_video_background_type(marie, bg);
 						printf("background -> %d\n", bg);

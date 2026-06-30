@@ -7960,7 +7960,6 @@ void _linphone_core_stop_async_end(LinphoneCore *lc) {
 		lc->video_background_path = NULL;
 	}
 
-
 	linphone_core_free_payload_types(lc);
 	if (lc->supported_formats) ms_free((void *)lc->supported_formats);
 	lc->supported_formats = NULL;

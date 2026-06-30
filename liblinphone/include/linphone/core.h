@@ -226,7 +226,7 @@ typedef struct _LinphoneCoreVTable {
 	LinphoneCoreCbsReferReceivedCb refer_received; /**< Notifies when an out-of-call refer is received */
 	LinphoneCoreCbsCallGoClearAckSentCb call_goclear_ack_sent; /**< Notifies when a GoClear Ack is sent */
 	LinphoneCoreCbsCallMediaEncryptionStatusChangedCb
-	call_media_encryption_status_changed; /**< Notifies on change in the media encryption status of call streams */
+	    call_media_encryption_status_changed; /**< Notifies on change in the media encryption status of call streams */
 	LinphoneCoreCallEncryptionChangedCb
 	    call_encryption_changed; /**< Notifies when the encryption of call streams changes */
 	LinphoneCoreCbsCallSendMasterKeyChangedCb
