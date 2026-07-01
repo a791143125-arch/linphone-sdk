@@ -13,7 +13,7 @@
 set -euxo pipefail
 
 DOCKERFILE=$1
-BUILD=${BUILD:-false}
+BUILD=${BUILD:-true}
 RUN=${RUN:-false}
 PUSH=${PUSH:-true}
 

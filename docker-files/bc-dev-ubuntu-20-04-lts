@@ -92,6 +92,19 @@ USER bc
 WORKDIR /home/bc
 
 RUN sudo pip3 install --upgrade setuptools
+
+# Installing dependencies as suggested in https://github.com/pypa/setuptools/issues/4478
+RUN sudo pip3 install "packaging>=24"
+RUN sudo pip3 install "ordered-set>=3.1.1"
+RUN sudo pip3 install "more_itertools>=8.8"
+RUN sudo pip3 install "jaraco.text>=3.7"
+RUN sudo pip3 install "importlib_resources>=5.10.2"
+RUN sudo pip3 install "importlib_metadata>=6"
+RUN sudo pip3 install "tomli>=2.0.1"
+RUN sudo pip3 install "wheel>=0.43.0"
+# pkg_resources
+RUN sudo pip3 install "platformdirs>=2.6.2"
+
 RUN sudo pip3 install ez_setup
 
 ## Install Qt download tool
