@@ -370,21 +370,18 @@ static void video_preview_with_background(void) {
 	linphone_core_enable_video_display(marie->lc, TRUE);
 	linphone_core_set_native_preview_window_id(marie->lc, LINPHONE_VIDEO_DISPLAY_AUTO);
 
-	
 	linphone_core_set_video_background_type(marie->lc, 3);
 
 	linphone_core_enable_video_preview(marie->lc, TRUE);
 	BC_ASSERT_TRUE(linphone_core_video_preview_enabled(marie->lc));
 	wait_for_until(marie->lc, NULL, NULL, 0, 2000);
 
-	
 	linphone_core_set_video_background_path(marie->lc, image);
-	linphone_core_set_video_background_type(marie->lc, 1 );
+	linphone_core_set_video_background_type(marie->lc, 1);
 	wait_for_until(marie->lc, NULL, NULL, 0, 2000);
-	linphone_core_set_video_background_type(marie->lc, 0 );
+	linphone_core_set_video_background_type(marie->lc, 0);
 	wait_for_until(marie->lc, NULL, NULL, 0, 1000);
 
-	
 	linphone_core_enable_video_preview(marie->lc, FALSE);
 	wait_for_until(marie->lc, NULL, NULL, 0, 500);
 	linphone_core_enable_video_preview(marie->lc, TRUE);
@@ -401,9 +398,10 @@ static void video_background_api(void) {
 	char *image = bc_tester_res("images/nowebcamCIF.jpg");
 	int i;
 
-	for (i = 0; i <= 3; i++) linphone_core_set_video_background_type(marie->lc, i);
+	for (i = 0; i <= 3; i++)
+		linphone_core_set_video_background_type(marie->lc, i);
 	linphone_core_set_video_background_path(marie->lc, image);
-	linphone_core_set_video_background_path(marie->lc, NULL); 
+	linphone_core_set_video_background_path(marie->lc, NULL);
 	linphone_core_set_video_background_path(marie->lc, image);
 	linphone_core_set_video_background_type(marie->lc, 1);
 
@@ -472,7 +470,7 @@ static test_t video_tests[] = {
     TEST_ONE_TAG("Preview memory default", preview_memory_default, "skip"),
     TEST_ONE_TAG("Preview memory MSOGL", preview_memory_msogl, "skip"),
     TEST_NO_TAG("Video call with background", video_call_with_background),
-	TEST_NO_TAG("Video preview with background", video_preview_with_background),
+    TEST_NO_TAG("Video preview with background", video_preview_with_background),
     TEST_NO_TAG("Video background API", video_background_api)};
 
 test_suite_t video_test_suite = {"Video",
@@ -483,7 +481,5 @@ test_suite_t video_test_suite = {"Video",
                                  sizeof(video_tests) / sizeof(video_tests[0]),
                                  video_tests,
                                  0};
-
-
 
 #endif // ifdef VIDEO_ENABLED

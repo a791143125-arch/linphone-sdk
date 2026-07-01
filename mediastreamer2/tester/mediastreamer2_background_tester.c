@@ -53,8 +53,6 @@ static void background_formater_default_type(void) {
 	ms_filter_destroy(f);
 }
 
-
-
 static void background_replacer_bypass_change(void) {
 	MSFilter *f = ms_factory_create_filter(_factory, MS_BACKGROUND_REPLACER_ID);
 	int v;
@@ -123,7 +121,7 @@ static void background_formater_process_all_modes(void) {
 	for (i = 0; i < 4; i++) {
 		int t = (int)modes[i];
 		ms_filter_call_method(formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
-		ms_usleep(300000); 
+		ms_usleep(300000);
 	}
 
 	ms_ticker_detach(ticker, cam);
@@ -131,7 +129,7 @@ static void background_formater_process_all_modes(void) {
 	ms_filter_unlink(image, 0, formater, 1);
 	ms_filter_unlink(video, 0, formater, 2);
 	ms_filter_unlink(formater, 0, sink, 0);
-	BC_ASSERT_TRUE(TRUE); 
+	BC_ASSERT_TRUE(TRUE);
 end:
 	if (ticker) ms_ticker_destroy(ticker);
 	if (cam) ms_filter_destroy(cam);
@@ -147,10 +145,10 @@ static test_t tests[] = {
 #ifdef VIDEO_BACKGROUND_ENABLED
     TEST_NO_TAG("Background formater creation", background_formater_creation),
     TEST_NO_TAG("Background formater type change", background_formater_type_change),
-	TEST_NO_TAG("Background formater default type", background_formater_default_type),
+    TEST_NO_TAG("Background formater default type", background_formater_default_type),
 
     TEST_NO_TAG("Background replacer bypass change", background_replacer_bypass_change),
-	TEST_NO_TAG("Background replacer creation", background_replacer_creation),
+    TEST_NO_TAG("Background replacer creation", background_replacer_creation),
     TEST_NO_TAG("Background formater process all modes", background_formater_process_all_modes),
 #endif
 };

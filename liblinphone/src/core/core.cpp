@@ -1020,9 +1020,9 @@ void Core::toggleVideoPreview(bool enabled) {
 					video_preview_set_decode_rect(lc->previewstream, lc->qrcode_rect);
 				}
 			}
-						
+
 			video_preview_start(lc->previewstream, lc->video_conf.device);
-			
+
 			if (lc->video_background_path)
 				video_stream_set_background_path(lc->previewstream, lc->video_background_path);
 			video_stream_set_background_type(lc->previewstream, (MSBackgroundType)lc->video_background_type);

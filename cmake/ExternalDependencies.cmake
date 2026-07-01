@@ -1486,6 +1486,7 @@ if(BUILD_ONNXRUNTIME)
 				"-DCMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}"
 				"-Donnxruntime_BUILD_SHARED_LIB=ON"
 				"-Donnxruntime_BUILD_UNIT_TESTS=OFF"
+				"--compile-no-warning-as-error"
 			LOG_CONFIGURE TRUE
 			LOG_BUILD TRUE
 			LOG_INSTALL TRUE

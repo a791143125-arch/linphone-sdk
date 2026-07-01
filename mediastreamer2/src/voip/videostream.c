@@ -2660,13 +2660,13 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 	stream->background_replacer = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_REPLACER_ID);
 
 	if (stream->background_replacer != NULL) {
-				stream->background_tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
-				stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
-				stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
-				stream->background_player = ms_factory_create_filter(stream->ms.factory, MS_MKV_PLAYER_ID);
-			}
+		stream->background_tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
+		stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
+		stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
+		stream->background_player = ms_factory_create_filter(stream->ms.factory, MS_MKV_PLAYER_ID);
+	}
 
-		ms_connection_helper_start(&ch);
+	ms_connection_helper_start(&ch);
 	ms_connection_helper_link(&ch, stream->source, -1, 0);
 
 	/* décoder d'abord si la source délivre de l'encodé */
@@ -2688,14 +2688,14 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 	}
 
 	if (stream->enable_qrcode_decoder) {
-	#ifdef QRCODE_ENABLED
-			stream->qrcode = ms_factory_create_filter(stream->ms.factory, MS_QRCODE_READER_ID);
-			configure_qrcode_filter(stream);
-			ms_connection_helper_link(&ch, stream->qrcode, 0, 0);
-			ms_filter_call_method(stream->qrcode, MS_QRCODE_READET_SET_DECODER_RECT, &stream->decode_rect);
-	#else
-			ms_error("Can't create qrcode decoder, dependency not enabled.");
-	#endif
+#ifdef QRCODE_ENABLED
+		stream->qrcode = ms_factory_create_filter(stream->ms.factory, MS_QRCODE_READER_ID);
+		configure_qrcode_filter(stream);
+		ms_connection_helper_link(&ch, stream->qrcode, 0, 0);
+		ms_filter_call_method(stream->qrcode, MS_QRCODE_READET_SET_DECODER_RECT, &stream->decode_rect);
+#else
+		ms_error("Can't create qrcode decoder, dependency not enabled.");
+#endif
 	}
 
 	/* sous-graphe background, inséré entre la chaîne source et l'affichage */
@@ -2717,7 +2717,6 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 	} else {
 		if (stream->output2) ms_filter_link(ch.last.filter, 0, stream->output2, 0);
 	}
-
 
 	/* create the ticker */
 	ticker_params.name = "Preview";
@@ -2782,7 +2781,7 @@ static MSFilter *_video_preview_stop(VideoPreview *stream, bool_t keep_source) {
 		ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
 		ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
 	}
-	
+
 	if (stream->tee) {
 		ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
 		if (stream->output2) {
