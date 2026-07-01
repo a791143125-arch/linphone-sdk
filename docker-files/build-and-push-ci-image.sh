@@ -13,9 +13,9 @@
 set -euxo pipefail
 
 DOCKERFILE=$1
-BUILD=${BUILD:-true}
+BUILD=${BUILD:-false}
 RUN=${RUN:-false}
-PUSH=${PUSH:-false}
+PUSH=${PUSH:-true}
 
 IMAGE_TAG=$(grep --only-matching --regexp="gitlab.linphone.org.*" $DOCKERFILE | head -1)
 

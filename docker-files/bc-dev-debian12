@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian12:20260106_add_deps_for_hidapi
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian12:20260701_add_cmake_3.28
 ###############################################################################
 
 FROM debian:bookworm
@@ -24,13 +24,20 @@ RUN apt-get update && \
 
 # Install development tools
 RUN apt-get update && \
-    apt-get install -y alien at autoconf bison ccache clang cmake doxygen elfutils g++ gdb git graphviz intltool libtool lsb-release make meson nasm ninja-build openssh-client patch perl yasm jq && \
+    apt-get install -y alien at autoconf bison ccache clang curl doxygen elfutils g++ gdb git graphviz intltool libtool lsb-release make meson nasm ninja-build openssh-client patch perl yasm jq && \
     apt-get clean
 
 # Install linphone & flexisip dependencies development packages
 RUN apt-get update && \
     apt-get install -y libasound2-dev libavcodec-dev libavutil-dev libbsd-dev libegl1-mesa-dev libglew-dev libgsm1-dev libmariadb-dev libmbedtls-dev libopus-dev libpq-dev libpulse-dev libspeex-dev libspeexdsp-dev libsqlite3-dev libsrtp2-dev libssl-dev libswscale-dev libturbojpeg0-dev libudev-dev libv4l-dev libvpx-dev libxerces-c-dev libxml2-dev libxv-dev xsdcxx libjsoncpp-dev && \
     apt-get clean
+
+# Install CMake from the tar.gz as we need a newer version than the one being packaged
+ENV CMAKE3_HOME=/opt/cmake3
+RUN mkdir $CMAKE3_HOME && \
+    curl --fail --silent --show-error \
+         --location https://cmake.org/files/v3.28/cmake-3.28.0-linux-x86_64.tar.gz | \
+    tar --extract --gzip --no-same-owner --file - --strip-components=1 --directory $CMAKE3_HOME
 
 # Configure user bc
 RUN useradd -ms /bin/bash bc && \
@@ -57,6 +64,6 @@ RUN sudo apt-get install -y python3-full python3-pip && sudo python3 -m venv /op
     sudo /opt/bc/pip-packages/bin/pip install six pystache graphviz jsonschema jinja2 && \
     sudo /opt/bc/pip-packages/bin/pip install cython wheel pdoc
 
-ENV PATH=/opt/bc/pip-packages/bin:$PATH:/home/bc/.local/bin
+ENV PATH=/opt/bc/pip-packages/bin:$PATH:$CMAKE3_HOME/bin:/home/bc/.local/bin
 
 CMD bash

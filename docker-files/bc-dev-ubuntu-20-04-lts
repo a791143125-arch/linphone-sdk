@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-20-04-lts:20240506_add_jsoncpp_for_oauth2
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-20-04-lts:20260701_add_cmake_3.28
 ###############################################################################
 
 FROM ubuntu:20.04
@@ -71,11 +71,11 @@ RUN useradd -ms /bin/bash bc && \
     echo 'bc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Install newest cmake. Documented at https://gist.github.com/bmegli/4049b7394f9cfa016c24ed67e5041930
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.25.3/cmake-3.25.3.tar.gz && \
-	tar -zvxf cmake-3.25.3.tar.gz && \
-	cd cmake-3.25.3 && ./bootstrap && make -j8 && \
-	sudo apt-get install checkinstall && sudo checkinstall --pkgname=cmake --pkgversion="3.25-custom" --default && hash -r && \
-	cd .. && sudo rm -rf cmake-3.25.3 && rm -rf cmake-3.25.3.tar.gz
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.28.0/cmake-3.28.0.tar.gz && \
+	tar -zvxf cmake-3.28.0.tar.gz && \
+	cd cmake-3.28.0 && ./bootstrap && make -j8 && \
+	sudo apt-get install checkinstall && sudo checkinstall --pkgname=cmake --pkgversion="3.28-custom" --default && hash -r && \
+	cd .. && sudo rm -rf cmake-3.28.0 && rm -rf cmake-3.28.0.tar.gz
 
 # Install nasm from source as we need a newer version than the one being packaged
 RUN curl --fail --silent --show-error --location https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz | \
