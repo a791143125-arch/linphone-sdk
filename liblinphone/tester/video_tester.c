@@ -422,7 +422,6 @@ static void video_call_with_background(void) {
 	LinphoneCoreManager *marie = linphone_core_manager_new("marie_rc");
 	LinphoneCoreManager *pauline = linphone_core_manager_new("pauline_rc");
 
-	/* caméra de test animée des deux côtés */
 	linphone_core_set_video_device(marie->lc, liblinphone_tester_mire_id);
 	linphone_core_set_video_device(pauline->lc, liblinphone_tester_mire_id);
 

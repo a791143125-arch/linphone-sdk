@@ -31,7 +31,7 @@ static void setup(LinphoneCore *lc) {
 			return;
 		}
 	}
-	ms_error("[bgtest] Mire camera not found (DEBUG=1 manquant ?)");
+	ms_error("[bgtest] Mire camera not found (DEBUG=1 missing ?)");
 }
 
 static void
@@ -103,11 +103,11 @@ int main(int argc, char *argv[]) {
 	XInitThreads();
 	Display *dpy = XOpenDisplay(NULL);
 	Window win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 640, 480, 0, 0, 0);
-	XStoreName(dpy, win, "background test (recu de marie)");
+	XStoreName(dpy, win, "background test (received from marie)");
 	XMapWindow(dpy, win);
 	XSync(dpy, False);
 	setenv("DEBUG", "1", 1);
-	const char *image_path = (argc > 1) ? argv[1] : NULL; /* chemin .jpg/.mkv optionnel */
+	const char *image_path = (argc > 1) ? argv[1] : NULL; /* chemin .jpg/.mkv optionnal */
 	int bg = 0;                                           /* 0=same 1=image 2=video 3=blur */
 	signal(SIGINT, stop);
 	linphone_core_set_log_level_mask(ORTP_WARNING | ORTP_ERROR | ORTP_FATAL);
@@ -118,15 +118,15 @@ int main(int argc, char *argv[]) {
 
 	if (image_path) linphone_core_set_video_background_path(marie, image_path);
 
-	/* marie appelle pauline */
+	/* marie calls pauline */
 	LinphoneCallParams *cp = linphone_core_create_call_params(marie, NULL);
 	linphone_call_params_enable_video(cp, TRUE);
-	linphone_call_params_set_video_direction(cp, LinphoneMediaDirectionSendOnly); /* marie ÉMET son flux bg */
+	linphone_call_params_set_video_direction(cp, LinphoneMediaDirectionSendOnly);
 	linphone_core_invite_with_params(marie, "sip:pauline@127.0.0.1:5061", cp);
 	linphone_call_params_unref(cp);
 
-	printf("\n=== Touches : [0]same [1]image [2]video [3]blur  [q]quitter ===\n");
-	if (!image_path) printf("Pas de path de passé en paramètre !!!\n");
+	printf("\n=== Touches : [0]same [1]image [2]video [3]blur  [q]quit ===\n");
+	if (!image_path) printf("No path gave in parameters\n");
 	fflush(stdout);
 
 	while (running) {

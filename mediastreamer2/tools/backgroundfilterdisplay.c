@@ -8,6 +8,7 @@
 #include "mediastreamer2/mswebcam.h"
 #include <signal.h>
 
+
 static int active = 1;
 
 static void stop_handler(BCTBX_UNUSED(int signum)) {
@@ -32,13 +33,13 @@ int main(BCTBX_UNUSED(int argc), BCTBX_UNUSED(char *argv[])) {
 	capture = ms_web_cam_create_reader(cam);
 	display = ms_factory_create_filter(factory, MS_X11VIDEO_ID);
 
-	/* Configure la source comme le recorder, puis relit le format/taille réels */
+	/* Configure source as the recorder, then read the real format/size*/
 	ms_filter_call_method(capture, MS_FILTER_SET_FPS, &fps);
 	ms_filter_call_method(capture, MS_FILTER_SET_VIDEO_SIZE, &vsize);
 	ms_filter_call_method(capture, MS_FILTER_GET_VIDEO_SIZE, &vsize);
 	ms_filter_call_method(capture, MS_FILTER_GET_PIX_FMT, &fmt);
 
-	/* Crée le bon convertisseur selon le format réel de la caméra */
+	/* Create the right filter*/
 	if (fmt == MS_MJPEG) {
 		pixconv = ms_factory_create_decoder(factory, "MJPEG");
 	} else {

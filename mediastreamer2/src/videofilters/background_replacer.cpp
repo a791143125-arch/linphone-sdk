@@ -1,5 +1,3 @@
-// Filtre prenant une image Yuv420 en entrée et une background (optionnel) aussi en Yuv420
-// Et sort l'image avec l'arrière plan remplacé par le background
 #include "array"
 #include "cstring"
 #include "mediastreamer2/msbackgroundformater.h"
@@ -25,15 +23,14 @@
 #include <chrono>
 namespace mediastreamer {
 
-// Classe principal du filtre
-// Contient le process et toute les fonctions nécessaires pour fonctionner
+
 class BackgroundReplacer {
 public:
 	BackgroundReplacer(MSFilter *f, bool bypass = true) {
 
 		mBypass = bypass;
 
-		// SETUP du model à faire une seule fois
+		// One time model setup
 		char *path =
 		    ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
 		mOpts.SetInterOpNumThreads(1);
@@ -42,7 +39,7 @@ public:
 		ms_free(path);
 		mTimeLastResult = std::chrono::high_resolution_clock::now();
 
-		// noms d'entrée/sortie récupérés une fois
+		// Input/Output name
 		Ort::AllocatorWithDefaultOptions alloc;
 		mInName = mSession.GetInputNameAllocated(0, alloc).get();
 		mOutName = mSession.GetOutputNameAllocated(0, alloc).get();
@@ -50,7 +47,6 @@ public:
 		mWorker = std::thread(&BackgroundReplacer::inference_computer, this);
 	}
 
-	// Destruction du filtre en détruisant aussi le thread
 	~BackgroundReplacer() {
 		{
 			std::lock_guard<std::mutex> lk(mMutex);
@@ -67,8 +63,7 @@ public:
 	void process(MSFilter *f) {
 		mblk_t *m;
 		auto tmp_trait = std::chrono::high_resolution_clock::now();
-		// Lit si il y a une deuxième entrée pour le fond
-		// et l'assigne à mBgFrame
+		
 		if (f->inputs[1]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
@@ -82,7 +77,6 @@ public:
 			}
 		}
 
-		// Lit l'entrée de laquelle il faut séparer la personne
 		while ((m = ms_queue_get(f->inputs[0])) != nullptr) {
 			MSPicture pic;
 			ms_yuv_buf_init_from_mblk(&pic, m);
@@ -93,7 +87,7 @@ public:
 				libyuv::I420ToARGB(pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1], pic.planes[2],
 				                   pic.strides[2], argb.data(), pic.w * 4, pic.w, pic.h);
 
-				// PRODUCTEUR publie la dernière image
+				// PRODUCER publish the last image
 				{
 					std::lock_guard<std::mutex> lk(mMutex);
 					mLastImg = std::move(argb);
@@ -103,7 +97,7 @@ public:
 				}
 				mCv.notify_one();
 
-				// CONSOMMATEUR : récupère le dernier alpha dispo (uint8, déjà pleine résolution)
+				// CONSUMER : get the last alpha available
 				std::vector<uint8_t> alpha;
 				{
 					std::lock_guard<std::mutex> lk(mMutex);
@@ -112,17 +106,16 @@ public:
 						auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - mTimeLastResult).count();
 						alpha = mLastResult;
 						if (age > 200) {
-							std::cout << "temps trop long depuis dernier mask\n";
+							std::cout << "Too much time since last mask\n";
 							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // fond complet (sûr)
 						}
 					}
 				}
 
-				// Reconstruction via blend SIMD (libyuv)
+				// Reconstuction of final image with blend
 				if (!alpha.empty()) {
 					const int W = pic.w, H = pic.h;
 
-					// (re)scale le fond vers la taille image, uniquement si nécessaire
 					if (mHasBg && (mBgDirty || mBgScaledW != W || mBgScaledH != H)) {
 						mBgY.resize((size_t)W * H);
 						mBgU.resize((size_t)(W / 2) * (H / 2));
@@ -135,7 +128,6 @@ public:
 						mBgDirty = false;
 					}
 
-					// pas de fond -> fond noir (Y=0, U/V=128), comme l'ancien comportement
 					if (!mHasBg && (mBgScaledW != W || mBgScaledH != H)) {
 						mBgY.assign((size_t)W * H, 0);
 						mBgU.assign((size_t)(W / 2) * (H / 2), 128);
@@ -144,7 +136,6 @@ public:
 						mBgScaledH = H;
 					}
 
-					// dst = fond·α + caméra·(1-α), en place dans pic, en SIMD
 					libyuv::I420Blend(mBgY.data(), W, mBgU.data(), W / 2, mBgV.data(), W / 2,       // src0 = fond
 					                  pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1], // src1 = caméra
 					                  pic.planes[2], pic.strides[2], alpha.data(), W, // alpha plein écran
@@ -154,7 +145,7 @@ public:
 
 				auto tmp_trait2 = std::chrono::high_resolution_clock::now();
 				if (verbosePerf)
-					std::cout << "temps du traitement : "
+					std::cout << "Replacer processing time : "
 					          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
 					          << "ms\n";
 			}
@@ -171,8 +162,8 @@ public:
 	}
 
 private:
-	// fonction destiné à redimensionner l'image donnée pour correspondre
-	// à la dimension et au format (RGBA) du filtre
+	// function designed to resize the given image to match the dimensions 
+	// and format (RGBA) of the filter
 	std::vector<float> preprocesser(const std::vector<uint8_t> &rgba, int srcW, int srcH) const {
 		std::vector<uint8_t> redim = redimRGBA(rgba, srcW, srcH, modelW_, modelH_);
 		std::vector<float> tenseur(1 * 3 * modelH_ * modelW_);
@@ -203,7 +194,6 @@ private:
 		return out;
 	}
 
-	// redimension bilinéaire pour un résultat fluide
 	std::vector<float> redimMasque(const std::vector<float> &s, int sw, int sh, int dw, int dh) {
 		std::vector<float> out((size_t)dw * dh);
 		for (int y = 0; y < dh; ++y) {
@@ -226,7 +216,7 @@ private:
 		return out;
 	}
 
-	// Fonction sur laquelle le thread du calcul de l'inférence va tourner
+	// Function on wich the thread is processing foreground
 	void inference_computer() {
 
 		while (mRunning) {
@@ -234,7 +224,6 @@ private:
 			std::vector<uint8_t> img;
 			int w, h;
 
-			// Lit la dernière image disponible (lock pour éviter accès concurrent)
 			{
 				std::unique_lock<std::mutex> lk(mMutex);
 				mCv.wait(lk, [this] { return mHasNewImg || !mRunning; });
@@ -246,16 +235,15 @@ private:
 			}
 
 			auto tmp_infwork = std::chrono::high_resolution_clock::now();
-			// preprocess redimension de l'image à la bonne taille
 			std::vector<float> input = preprocesser(img, w, h);
 			std::array<int64_t, 4> inShape = {1, 3, modelH_, modelW_};
 
-			// Setup le model pour acceuillir notre image
+			// Model setup for the frame
 			Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 			Ort::Value inT =
 			    Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
 
-			// inférence
+			// Inference processing
 			const char *insN[] = {mInName.c_str()};
 			const char *outsN[] = {mOutName.c_str()};
 			auto out = mSession.Run(Ort::RunOptions{nullptr}, insN, &inT, 1, outsN, 1);
@@ -266,7 +254,7 @@ private:
 			int plane = H * W;
 			const float *o = out[0].GetTensorMutableData<float>();
 
-			// masque
+			// mask
 			std::vector<float> mask(plane);
 			for (int i = 0; i < plane; ++i)
 				mask[i] = o[HUMAN_CH * plane + i];
@@ -298,19 +286,19 @@ private:
 			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
 
 			if (verbosePerf)
-				std::cout << "Nouveau mask calculé en "
+				std::cout << "New mask processed in "
 				          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
 				          << "ms\n";
 		}
 	}
 
-	// variables pour le thread
+	// variables for the thread gestion
 	std::thread mWorker;
 	std::mutex mMutex;
 	std::condition_variable mCv;
 	std::atomic<bool> mRunning{true};
 
-	// variables globales
+	// globales variables
 	std::vector<uint8_t> mLastImg;
 	int mImgW = 0, mImgH = 0;
 	bool mHasNewImg = false;
@@ -327,15 +315,15 @@ private:
 	bool mBypass;
 	bool verbosePerf = false;
 
-	// etats ONNX Runtime
+	// ONNX Runtime states
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};
 	Ort::SessionOptions mOpts;
 	Ort::Session mSession{nullptr};
 	Ort::AllocatorWithDefaultOptions mAlloc;
 	std::string mInName, mOutName;
 
-	// params du modèle
-	float mThreshold = 0.5f; // proba personne mini pour garder la caméra (0..1)
+	// model parameters
+	float mThreshold = 0.5f; // Min probability to keep a pixel as a person
 	float alpha_ = 0.5f;
 	int modelW_ = 192, modelH_ = 192;
 	int maskW_ = 0, maskH_ = 0;

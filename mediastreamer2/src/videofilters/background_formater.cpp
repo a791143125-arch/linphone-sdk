@@ -18,7 +18,7 @@ static void boxBlurPlane(
 	tmp.resize((size_t)w * h);
 	const int win = 2 * r + 1;
 	const uint32_t recip = (1u << 24) / (uint32_t)win;
-	for (int y = 0; y < h; ++y) { // passe horizontale src -> tmp
+	for (int y = 0; y < h; ++y) { // horizontal pass src -> tmp
 		const uint8_t *s = src + y * srcStride;
 		uint8_t *t = tmp.data() + (size_t)y * w;
 		int sum = 0;
@@ -30,7 +30,7 @@ static void boxBlurPlane(
 			sum += s[std::clamp(x + r + 1, 0, w - 1)];
 		}
 	}
-	for (int x = 0; x < w; ++x) { // passe verticale tmp -> dst
+	for (int x = 0; x < w; ++x) { // vertical pass tmp -> dst
 		int sum = 0;
 		for (int i = -r; i <= r; ++i)
 			sum += tmp[(size_t)std::clamp(i, 0, h - 1) * w + x];
@@ -95,7 +95,7 @@ public:
 				ms_yuv_buf_init_from_mblk(&src, m);
 				mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
 
-				// Plan Y : downscale ÷2 -> blur -> upscale gain de ressources
+				// Y Plan : downscale ÷2 -> blur -> upscale to gain ressources
 				int sw = src.w / 2, sh = src.h / 2;
 				mSmall.resize((size_t)sw * sh);
 				mSmallBlur.resize((size_t)sw * sh);
@@ -105,7 +105,7 @@ public:
 				libyuv::ScalePlane(mSmallBlur.data(), sw, sw, sh, dst.planes[0], dst.strides[0], src.w, src.h,
 				                   libyuv::kFilterBilinear);
 
-				// --- Plans chroma U/V : déjà demi-résolution, blur direct ---
+				// U/V chroma plan : already at semi resolution, directly blurred
 				int cw = src.w / 2, ch = src.h / 2;
 				boxBlurPlane(src.planes[1], src.strides[1], dst.planes[1], dst.strides[1], cw, ch, mRadius / 2, mTmp);
 				boxBlurPlane(src.planes[2], src.strides[2], dst.planes[2], dst.strides[2], cw, ch, mRadius / 2, mTmp);
@@ -139,7 +139,7 @@ public:
 		}
 		auto tmp_trait2 = std::chrono::high_resolution_clock::now();
 		if (verbosePerf)
-			std::cout << "temps du formater : "
+			std::cout << "Formater time : "
 			          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
 			          << "ms\n";
 	}

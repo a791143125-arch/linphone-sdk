@@ -1195,7 +1195,7 @@ static void mediastream_tool_iterate(MediastreamDatas *args) {
 				} else if (strstr(commands, "bg")) {
 #ifdef VIDEO_ENABLED
 					if (args->video && args->video->background_replacer != NULL) {
-						/* ordre de cyclage : same -> blur -> image -> video -> same */
+						/* Cycle order : same -> blur -> image -> video -> same */
 						static const MSBackgroundType order[] = {MSBackgroundSame, MSBackgroundBlur, MSBackgroundImage,
 						                                         MSBackgroundVideo};
 						static const char *names[] = {"same", "image", "video", "blur"};

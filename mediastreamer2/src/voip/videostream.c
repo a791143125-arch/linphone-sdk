@@ -1620,7 +1620,7 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 		}
 		if (stream->background_replacer != NULL) {
 			{
-				/* sizeconv AVANT les filtres bg */
+				/* sizeconv BEFORE bg filter */
 				MSFilter *bg_in = ch.last.filter;
 				if (stream->sizeconv) {
 					ms_filter_link(bg_in, 0, stream->sizeconv, 0);
@@ -2412,12 +2412,13 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 	const char *ext = strrchr(path, '.');
 
 	if (ext && (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)) {
-		// JPEG -> on alimente la source image
+		// JPEG 
 		ms_filter_call_method(stream->background_source, MS_STATIC_IMAGE_SET_IMAGE, (void *)path);
 		ms_filter_call_method(stream->background_source, MS_FILTER_SET_FPS, &stream->configured_fps);
 		ms_filter_call_method(stream->background_source, MS_FILTER_SET_VIDEO_SIZE, &stream->sent_vsize);
 		stream->background_user_image = true;
 	} else if (ext && strcasecmp(ext, ".mkv") == 0) {
+		// MKV
 		MSTicker *ticker = stream->ms.sessions.ticker;
 		bool_t wasSetup = (stream->background_decoder != NULL);
 
@@ -2669,7 +2670,7 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 	ms_connection_helper_start(&ch);
 	ms_connection_helper_link(&ch, stream->source, -1, 0);
 
-	/* décoder d'abord si la source délivre de l'encodé */
+	/* First Decode if the source is encoded */
 	if (ms_filter_implements_interface(stream->source, MSFilterVideoEncoderInterface)) {
 		stream->ms.decoder = ms_factory_create_decoder(stream->ms.factory, stream->source->desc->enc_fmt);
 		if (stream->ms.decoder == NULL) {
@@ -2698,7 +2699,7 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 #endif
 	}
 
-	/* sous-graphe background, inséré entre la chaîne source et l'affichage */
+	/* Background subgraph insertion between source and display */
 	if (stream->background_replacer != NULL) {
 		MSFilter *bg_in = ch.last.filter;
 		ms_filter_link(bg_in, 0, stream->background_tee, 0);

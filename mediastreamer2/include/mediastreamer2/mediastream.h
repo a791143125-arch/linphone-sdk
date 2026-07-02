@@ -1352,9 +1352,9 @@ struct _VideoStream {
 	MSFilter *background_tee;      /* linked with background_formater and background_replacer */
 	MSFilter *background_formater; /* Prepare the background with different parameters */
 	MSFilter *background_replacer; /* Replace the background of the entry with the formater output */
-	MSFilter *background_source;   /*Static image or video decoder as an entry for the background */
-	MSFilter *background_player;   /* MKV player -> entrée 2 du formater (vidéo) */
-	MSFilter *background_decoder;  /* décodeur de la vidéo de fond */
+	MSFilter *background_source;   /* Static image or video decoder as an input for the background */
+	MSFilter *background_player;   /* MKV player -> 2nd formater input (video) */
+	MSFilter *background_decoder;  /* Decode the mkv file from the MKV player */
 	bool_t background_user_image;  /* TRUE if not the default image */
 	bool_t background_user_video;  /* TRUE if not the default video */
 

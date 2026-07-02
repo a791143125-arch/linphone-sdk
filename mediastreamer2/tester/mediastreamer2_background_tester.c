@@ -49,7 +49,7 @@ static void background_formater_default_type(void) {
 	BC_ASSERT_PTR_NOT_NULL(f);
 	if (!f) return;
 	ms_filter_call_method(f, MS_BACKGROUND_FORMATER_GET_TYPE, &t);
-	BC_ASSERT_EQUAL(t, MSBackgroundSame, int, "%d"); /* passthrough par défaut */
+	BC_ASSERT_EQUAL(t, MSBackgroundSame, int, "%d"); /* passthrough by default*/
 	ms_filter_destroy(f);
 }
 
@@ -81,11 +81,11 @@ static void background_replacer_creation(void) {
 	BC_ASSERT_EQUAL(f->desc->ninputs, 2, int, "%d");
 	BC_ASSERT_EQUAL(f->desc->noutputs, 1, int, "%d");
 	ms_filter_call_method(f, MS_BACKGROUND_REPLACER_GET_BYPASS, &bypass);
-	BC_ASSERT_EQUAL(bypass, 1, int, "%d"); /* bypass actif par défaut */
+	BC_ASSERT_EQUAL(bypass, 1, int, "%d"); /* bypass is active by default */
 	ms_filter_destroy(f);
 }
 
-/* alimente les 3 entrées du formater et cycle les 4 modes via un ticker. */
+/* feeds the formatter's 3 inputs and cycles through the 4 modes via a ticker */
 static void background_formater_process_all_modes(void) {
 	MSFilter *cam = NULL, *image = NULL, *video = NULL, *formater = NULL, *sink = NULL;
 	MSTicker *ticker = NULL;
