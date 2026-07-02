@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8:20260226_soci_mysql_systemd_devel
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8:20260702_rocky8_py312_pystache
 ###############################################################################
 
 FROM rockylinux:8
@@ -36,7 +36,7 @@ RUN dnf -y install alsa-lib-devel glew-devel gsm-devel jansson-devel libbsd-deve
 # Install CMake from the tar.gz as we need a newer version than the one being packaged
 ENV CMAKE3_HOME=/opt/cmake3
 RUN mkdir $CMAKE3_HOME && \
-    curl --fail --silent --show-error --location https://cmake.org/files/v3.22/cmake-3.22.6-linux-x86_64.tar.gz | tar --extract --gzip --no-same-owner --file - --strip-components=1 --directory $CMAKE3_HOME
+    curl --fail --silent --show-error --location https://cmake.org/files/v3.28/cmake-3.28.0-linux-x86_64.tar.gz | tar --extract --gzip --no-same-owner --file - --strip-components=1 --directory $CMAKE3_HOME
 
 # Configure user bc
 RUN useradd -ms /bin/bash bc && \
@@ -59,6 +59,8 @@ WORKDIR /home/bc
 # as root, and rpmbuild prevents python from searching its modules in this prefix. Installing with user 'bc' puts
 # the modules in /home/bc/.local/bin.
 RUN python3 -m pip install --user pystache six
+RUN sudo dnf install -y python3.12-pip
+RUN sudo pip3.12 install pystache six
 
 ENV PATH=$PATH:$CMAKE3_HOME/bin:/home/bc/.local/bin
 

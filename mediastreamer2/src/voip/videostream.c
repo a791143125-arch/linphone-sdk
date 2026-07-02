@@ -18,11 +18,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <X11/Xlib.h>
 #include <math.h>
 
 #include "bctoolbox/defs.h"
 
 #include "mediastreamer2/mediastream.h"
+#include "mediastreamer2/msbackgroundformater.h"
 #include "mediastreamer2/mseventqueue.h"
 #include "mediastreamer2/msextdisplay.h"
 #include "mediastreamer2/msfilter.h"
@@ -34,9 +36,11 @@
 #include "mediastreamer2/msvideo.h"
 #include "mediastreamer2/msvideoout.h"
 #include "mediastreamer2/msvideopresets.h"
+#include "mediastreamer2/mswebcam.h"
 #include "mediastreamer2/video-aggregator.h"
 #include "mediastreamer2/zrtp.h"
 #include "private.h"
+#include "stdbool.h"
 
 #if __APPLE__
 #include "TargetConditionals.h"
@@ -269,6 +273,12 @@ void video_stream_free(VideoStream *stream) {
 	if (stream->itcsink) ms_filter_destroy(stream->itcsink);
 	if (stream->forward_sink) ms_filter_destroy(stream->forward_sink);
 	if (stream->aggregator) ms_filter_destroy(stream->aggregator);
+	if (stream->background_tee) ms_filter_destroy(stream->background_tee);
+	if (stream->background_formater) ms_filter_destroy(stream->background_formater);
+	if (stream->background_replacer) ms_filter_destroy(stream->background_replacer);
+	if (stream->background_source) ms_filter_destroy(stream->background_source);
+	if (stream->background_player) ms_filter_destroy(stream->background_player);
+	if (stream->background_decoder) ms_filter_destroy(stream->background_decoder);
 
 	for (int i = 0; i < VIDEO_STREAM_MAX_BRANCHES; i++) {
 		if (stream->branches[i].recv) ms_filter_destroy(stream->branches[i].recv);
@@ -1559,6 +1569,16 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 		} else {
 			stream->tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
 			stream->local_jpegwriter = ms_factory_create_filter(stream->ms.factory, MS_JPEG_WRITER_ID);
+
+			stream->background_replacer = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_REPLACER_ID);
+
+			if (stream->background_replacer != NULL) {
+				stream->background_tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
+				stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
+				stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
+				stream->background_player = ms_factory_create_filter(stream->ms.factory, MS_MKV_PLAYER_ID);
+			}
+
 			if (stream->source_performs_encoding == TRUE) {
 				stream->ms.encoder = stream->source; /* Consider the encoder is the source */
 			}
@@ -1598,14 +1618,36 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 		if (stream->pixconv) {
 			ms_connection_helper_link(&ch, stream->pixconv, 0, 0);
 		}
-		if (stream->tee) {
-			ms_connection_helper_link(&ch, stream->tee, 0, 0);
-		}
-		if (stream->itcsink) {
-			ms_filter_link(stream->tee, 3, stream->itcsink, 0);
-		}
-		if (stream->sizeconv) {
-			ms_connection_helper_link(&ch, stream->sizeconv, 0, 0);
+		if (stream->background_replacer != NULL) {
+			{
+				/* sizeconv BEFORE bg filter */
+				MSFilter *bg_in = ch.last.filter;
+				if (stream->sizeconv) {
+					ms_filter_link(bg_in, 0, stream->sizeconv, 0);
+					bg_in = stream->sizeconv;
+				}
+				ms_filter_link(bg_in, 0, stream->background_tee, 0);
+				ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+				ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
+				ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
+				ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+				ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
+			}
+			ch.last.filter = stream->tee;
+			ch.last.pin = 0;
+			if (stream->itcsink) {
+				ms_filter_link(stream->tee, 3, stream->itcsink, 0);
+			}
+		} else {
+			if (stream->tee) {
+				ms_connection_helper_link(&ch, stream->tee, 0, 0);
+			}
+			if (stream->itcsink) {
+				ms_filter_link(stream->tee, 3, stream->itcsink, 0);
+			}
+			if (stream->sizeconv) {
+				ms_connection_helper_link(&ch, stream->sizeconv, 0, 0);
+			}
 		}
 		if ((stream->source_performs_encoding == FALSE) && !rtp_source) {
 			ms_connection_helper_link(&ch, stream->ms.encoder, 0, 0);
@@ -1785,8 +1827,12 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 
 				if (ms_filter_has_method(stream->output, MS_VIDEO_DISPLAY_SET_LOCAL_VIEW_MODE))
 					ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_LOCAL_VIEW_MODE, &stream->corner);
+
 				autofit = 0;
-				ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &stream->window_id);
+				if (stream->window_id != MS_FILTER_VIDEO_NONE) {
+					ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &stream->window_id);
+				}
+
 				if (ms_filter_has_method(stream->output, MS_VIDEO_DISPLAY_ENABLE_AUTOFIT))
 					ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_ENABLE_AUTOFIT, &autofit);
 				if (stream->display_filter_auto_rotate_enabled &&
@@ -1957,6 +2003,18 @@ static MSFilter *_video_stream_change_camera(VideoStream *stream,
 		/*unlink source filters and subsequent post processing filters */
 		if (encoder_has_builtin_converter || (stream->source_performs_encoding == TRUE)) {
 			ms_filter_unlink(stream->source, 0, stream->tee, 0);
+		} else if (stream->background_replacer != NULL) {
+			MSFilter *bg_in = stream->source;
+			if (stream->pixconv) {
+				ms_filter_unlink(stream->source, 0, stream->pixconv, 0);
+				bg_in = stream->pixconv;
+			}
+			if (stream->sizeconv) {
+				ms_filter_unlink(bg_in, 0, stream->sizeconv, 0);
+				ms_filter_unlink(stream->sizeconv, 0, stream->background_tee, 0);
+			} else {
+				ms_filter_unlink(bg_in, 0, stream->background_tee, 0);
+			}
 		} else {
 			if (stream->pixconv) {
 				ms_filter_unlink(stream->source, 0, stream->pixconv, 0);
@@ -2048,6 +2106,18 @@ static MSFilter *_video_stream_change_camera(VideoStream *stream,
 
 		if (encoder_has_builtin_converter || (stream->source_performs_encoding == TRUE)) {
 			ms_filter_link(stream->source, 0, stream->tee, 0);
+		} else if (stream->background_replacer != NULL) {
+			MSFilter *bg_in = stream->source;
+			if (stream->pixconv) {
+				ms_filter_link(stream->source, 0, stream->pixconv, 0);
+				bg_in = stream->pixconv;
+			}
+			if (stream->sizeconv) {
+				ms_filter_link(bg_in, 0, stream->sizeconv, 0);
+				ms_filter_link(stream->sizeconv, 0, stream->background_tee, 0);
+			} else {
+				ms_filter_link(bg_in, 0, stream->background_tee, 0);
+			}
 		} else {
 			if (stream->pixconv) {
 				ms_filter_link(stream->source, 0, stream->pixconv, 0);
@@ -2173,14 +2243,29 @@ static MSFilter *_video_stream_stop(VideoStream *stream, bool_t keep_source) {
 				if (stream->pixconv) {
 					ms_connection_helper_unlink(&ch, stream->pixconv, 0, 0);
 				}
+				if (stream->background_replacer != NULL) {
+					if (stream->background_replacer) {
+						if (stream->sizeconv) {
+							ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+						}
+						ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
+						ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
+						ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+						ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+						ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+					}
+				}
+
 				if (stream->itcsink) {
 					ms_filter_unlink(stream->tee, 3, stream->itcsink, 0);
 				}
 				if (stream->tee) {
-					ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
+					ms_connection_helper_unlink(&ch, stream->tee, 0, 0); // replacer -> tee
 				}
-				if (stream->sizeconv) {
-					ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+				if (stream->background_replacer == NULL) {
+					if (stream->sizeconv) {
+						ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+					}
 				}
 				if ((stream->source_performs_encoding == FALSE) && !rtp_source) {
 					ms_connection_helper_unlink(&ch, stream->ms.encoder, 0, 0);
@@ -2296,6 +2381,79 @@ void video_stream_set_native_window_id(VideoStream *stream, void *id) {
 	stream->window_id = id;
 	if (stream->output) {
 		ms_filter_call_method(stream->output, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &id);
+	}
+}
+
+void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type) {
+	if (!stream || !stream->background_formater || !stream->background_replacer) return;
+
+	if (stream->background_user_video == False && (type == MSBackgroundVideo) && stream->background_decoder == NULL) {
+		const char *def = "/../backgrounds/default_background_video.mkv";
+		char *p = ms_strdup_printf("%s%s", ms_factory_get_image_resources_dir(stream->ms.factory), def);
+		video_stream_set_background_path(stream, p);
+		ms_free(p);
+		stream->background_user_video = False;
+	} else if (stream->background_user_image == False && (type == MSBackgroundImage)) {
+		const char *def = "/../backgrounds/default_background_image.jpg";
+		char *p = ms_strdup_printf("%s%s", ms_factory_get_image_resources_dir(stream->ms.factory), def);
+		video_stream_set_background_path(stream, p);
+		ms_free(p);
+		stream->background_user_image = False;
+	}
+	int t = (int)type;
+	int bypass = (type == MSBackgroundSame);
+	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
+	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
+}
+
+void video_stream_set_background_path(VideoStream *stream, const char *path) {
+	if (!stream || !path || !stream->background_replacer) return;
+
+	const char *ext = strrchr(path, '.');
+
+	if (ext && (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)) {
+		// JPEG 
+		ms_filter_call_method(stream->background_source, MS_STATIC_IMAGE_SET_IMAGE, (void *)path);
+		ms_filter_call_method(stream->background_source, MS_FILTER_SET_FPS, &stream->configured_fps);
+		ms_filter_call_method(stream->background_source, MS_FILTER_SET_VIDEO_SIZE, &stream->sent_vsize);
+		stream->background_user_image = true;
+	} else if (ext && strcasecmp(ext, ".mkv") == 0) {
+		// MKV
+		MSTicker *ticker = stream->ms.sessions.ticker;
+		bool_t wasSetup = (stream->background_decoder != NULL);
+
+		if (ticker && stream->source) ms_ticker_detach(ticker, stream->source);
+		if (ticker && wasSetup) ms_ticker_detach(ticker, stream->background_player);
+
+		if (wasSetup) {
+			ms_filter_call_method(stream->background_player, MS_PLAYER_CLOSE, NULL);
+			ms_filter_unlink(stream->background_player, 0, stream->background_decoder, 0);
+			ms_filter_unlink(stream->background_decoder, 0, stream->background_formater, 2);
+			ms_filter_destroy(stream->background_decoder);
+			stream->background_decoder = NULL;
+		}
+
+		ms_filter_call_method(stream->background_player, MS_PLAYER_OPEN, (void *)path);
+		MSPinFormat vpf = {0};
+		vpf.pin = 0;
+		ms_filter_call_method(stream->background_player, MS_FILTER_GET_OUTPUT_FMT, &vpf);
+		if (vpf.fmt) {
+			stream->background_decoder = ms_factory_create_decoder(stream->ms.factory, vpf.fmt->encoding);
+			if (stream->background_decoder) {
+				ms_filter_link(stream->background_player, 0, stream->background_decoder, 0);
+				ms_filter_link(stream->background_decoder, 0, stream->background_formater, 2);
+			} else {
+				ms_error("MKV background: aucun décodeur pour le codec '%s'", vpf.fmt->encoding);
+			}
+		}
+		if (ticker) {
+			ms_ticker_attach(ticker, stream->source);
+			if (stream->background_decoder) ms_ticker_attach(ticker, stream->background_player);
+		}
+		int loop = 0;
+		ms_filter_call_method(stream->background_player, MS_PLAYER_SET_LOOP, &loop);
+		ms_filter_call_method(stream->background_player, MS_PLAYER_START, NULL);
+		stream->background_user_video = True;
 	}
 }
 
@@ -2500,14 +2658,22 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 		stream->tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
 	}
 
+	stream->background_replacer = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_REPLACER_ID);
+
+	if (stream->background_replacer != NULL) {
+		stream->background_tee = ms_factory_create_filter(stream->ms.factory, MS_TEE_ID);
+		stream->background_formater = ms_factory_create_filter(stream->ms.factory, MS_BACKGROUND_FORMATER_ID);
+		stream->background_source = ms_factory_create_filter(stream->ms.factory, MS_STATIC_IMAGE_ID);
+		stream->background_player = ms_factory_create_filter(stream->ms.factory, MS_MKV_PLAYER_ID);
+	}
+
 	ms_connection_helper_start(&ch);
 	ms_connection_helper_link(&ch, stream->source, -1, 0);
 
+	/* First Decode if the source is encoded */
 	if (ms_filter_implements_interface(stream->source, MSFilterVideoEncoderInterface)) {
-		/* Need to decode first */
 		stream->ms.decoder = ms_factory_create_decoder(stream->ms.factory, stream->source->desc->enc_fmt);
 		if (stream->ms.decoder == NULL) {
-			/* big problem: we don't have a registered decoderfor this payload...*/
 			ms_error("video_preview_start: No decoder available for payload %s.", stream->source->desc->enc_fmt);
 			return;
 		}
@@ -2533,12 +2699,24 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 #endif
 	}
 
+	/* Background subgraph insertion between source and display */
+	if (stream->background_replacer != NULL) {
+		MSFilter *bg_in = ch.last.filter;
+		ms_filter_link(bg_in, 0, stream->background_tee, 0);
+		ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+		ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
+		ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
+		ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+		ch.last.filter = stream->background_replacer;
+		ch.last.pin = 0;
+	}
+
 	if (stream->tee) {
 		ms_connection_helper_link(&ch, stream->tee, 0, 0);
 		if (stream->output2) ms_filter_link(stream->tee, 1, stream->output2, 0);
 		ms_filter_link(stream->tee, 2, stream->local_jpegwriter, 0);
 	} else {
-		if (stream->output2) ms_filter_link(stream->pixconv, 0, stream->output2, 0);
+		if (stream->output2) ms_filter_link(ch.last.filter, 0, stream->output2, 0);
 	}
 
 	/* create the ticker */
@@ -2596,6 +2774,15 @@ static MSFilter *_video_preview_stop(VideoPreview *stream, bool_t keep_source) {
 	if (stream->qrcode) {
 		ms_connection_helper_unlink(&ch, stream->qrcode, 0, 0);
 	}
+
+	if (stream->background_replacer != NULL) {
+		ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
+		ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
+		ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+		ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+		ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+	}
+
 	if (stream->tee) {
 		ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
 		if (stream->output2) {
@@ -2646,6 +2833,15 @@ _video_preview_change_camera(VideoPreview *stream, MSWebCam *cam, MSFilter *new_
 		if (stream->qrcode) {
 			ms_connection_helper_unlink(&ch, stream->qrcode, 0, 0);
 		}
+
+		if (stream->background_replacer != NULL) {
+			ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
+			ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
+			ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+			ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+			ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+		}
+
 		if (stream->tee) {
 			ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
 			if (stream->output2) {
@@ -2690,6 +2886,18 @@ _video_preview_change_camera(VideoPreview *stream, MSWebCam *cam, MSFilter *new_
 		if (stream->qrcode) {
 			ms_connection_helper_link(&ch, stream->qrcode, 0, 0);
 		}
+
+		if (stream->background_replacer != NULL) {
+			MSFilter *bg_in = ch.last.filter;
+			ms_filter_link(bg_in, 0, stream->background_tee, 0);
+			ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+			ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
+			ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
+			ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+			ch.last.filter = stream->background_replacer;
+			ch.last.pin = 0;
+		}
+
 		if (stream->tee) {
 			ms_connection_helper_link(&ch, stream->tee, 0, 0);
 			if (stream->output2) {
@@ -2702,7 +2910,7 @@ _video_preview_change_camera(VideoPreview *stream, MSWebCam *cam, MSFilter *new_
 				ms_filter_link(stream->tee, 2, stream->local_jpegwriter, 0);
 			}
 		} else {
-			if (stream->output2) ms_filter_link(stream->pixconv, 0, stream->output2, 0);
+			if (stream->output2) ms_filter_link(ch.last.filter, 0, stream->output2, 0);
 		}
 
 		ms_ticker_attach(stream->ms.sessions.ticker, stream->source);

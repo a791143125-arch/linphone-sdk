@@ -778,6 +778,10 @@ void MS2VideoStream::render(const OfferAnswerContext &ctx, CallSession::State ta
 		video_stream_enable_retransmission_on_nack(mStream, TRUE);
 	}
 
+	/* Re-apply core-wide background settings (persisted, like the mic switch). */
+	if (getCCore()->video_background_path) video_stream_set_background_path(mStream, getCCore()->video_background_path);
+	video_stream_set_background_type(mStream, (MSBackgroundType)getCCore()->video_background_type);
+
 	if (!reusedPreview && source) {
 		/* Destroy not-reused source filter */
 		lWarning() << "Video preview (" << source << ") not reused: destroying it";

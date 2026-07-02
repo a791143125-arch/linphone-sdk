@@ -109,6 +109,7 @@ void mediastreamer2_tester_init(void (*ftester_printf)(int level, const char *fm
 	bc_tester_add_suite(&noise_suppression_test_suite);
 #ifdef VIDEO_ENABLED
 	bc_tester_add_suite(&video_stream_test_suite);
+	bc_tester_add_suite(&background_test_suite);
 	bc_tester_add_suite(&h26x_tools_test_suite);
 #ifdef QRCODE_ENABLED
 	bc_tester_add_suite(&qrcode_test_suite);

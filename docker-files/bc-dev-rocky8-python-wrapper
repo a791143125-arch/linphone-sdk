@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8-python-wrapper:20260401_add_systemd_devel
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8-python-wrapper:20260701_add_cmake_3.28
 ###############################################################################
 
 FROM rockylinux:8

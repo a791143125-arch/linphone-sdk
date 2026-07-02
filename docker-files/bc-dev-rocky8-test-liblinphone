@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8-test-liblinphone:20260226_soci_mysql_systemd_devel
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8-test-liblinphone:20260701_add_cmake_3.28
 ###############################################################################
 
 ARG FROM_IMAGE_TAG=20260226_soci_mysql_systemd_devel

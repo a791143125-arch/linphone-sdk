@@ -21,8 +21,8 @@
 #include "mediastreamer2/mediastream.h"
 #include "bctoolbox/defs.h"
 #include "bctoolbox/port.h"
-
 #include "common.h"
+#include "mediastreamer2/msbackgroundformater.h"
 #include "mediastreamer2/msequalizer.h"
 #include "mediastreamer2/msvolume.h"
 #include <math.h>
@@ -152,6 +152,9 @@ typedef struct _MediastreamDatas {
 	int ice_local_candidates_nb;
 	int ice_remote_candidates_nb;
 	char *video_display_filter;
+	char *background_type;
+	char *background_path;
+	int background_current_type;
 	FILE *logfile;
 	bool_t enable_speaker;
 
@@ -191,6 +194,8 @@ const char *usage =
     "[--payload <payload type number or payload name like 'audio/pmcu/8000'> ]\n"
     "[ --agc (enable automatic gain control) ]\n"
     "[ --bitrate <bits per seconds> ]\n"
+    "[ --background-type <none|same|blur|image> ]\n"
+    "[ --background-path <absolute path to jpeg background> ]\n"
     "[ --camera <camera id as listed at startup> ]\n"
     "[ --capture-card <name> ]\n"
     "[ --ec (enable echo canceller) ]\n"
@@ -361,6 +366,8 @@ MediastreamDatas *init_default_args(void) {
 	memset(args->ice_remote_candidates, 0, sizeof(args->ice_remote_candidates));
 	args->ice_local_candidates_nb = args->ice_remote_candidates_nb = 0;
 	args->video_display_filter = NULL;
+	args->background_type = NULL;
+	args->background_path = NULL;
 
 	args->enable_fec = FALSE;
 
@@ -651,12 +658,16 @@ bool_t parse_args(int argc, char **argv, MediastreamDatas *out) {
 			out->enable_rtcp = FALSE;
 		} else if (strcmp(argv[i], "--help") == 0) {
 			return FALSE;
-		} else if (strcmp(argv[i], "--video-display-filter") == 0) {
+		} else if (strcmp(argv[i], "--background-type") == 0) {
 			i++;
-			out->video_display_filter = argv[i];
+			out->background_type = argv[i];
 		} else if (strcmp(argv[i], "--log") == 0) {
 			i++;
 			out->logfile = fopen(argv[i], "a+");
+		} else if (strcmp(argv[i], "--background-path") == 0) {
+			i++;
+			out->background_path = argv[i];
+
 		} else if (strcmp(argv[i], "--freeze-on-error") == 0) {
 			out->freeze_on_error = TRUE;
 		} else if (strcmp(argv[i], "--speaker") == 0) {
@@ -1061,6 +1072,28 @@ void setup_media_streams(MediastreamDatas *args) {
 		                           args->enable_rtcp ? args->remoteport + 1 : -1, args->payload, &iodef);
 		args->session = args->video->ms.sessions.rtp_session;
 
+		if (args->video->background_replacer != NULL) {
+
+			if (args->background_path) {
+				video_stream_set_background_path(args->video, args->background_path);
+			}
+			{
+				MSBackgroundType bgtype = MSBackgroundSame;
+				if (args->background_type) {
+					if (strcmp(args->background_type, "blur") == 0) {
+						bgtype = MSBackgroundBlur;
+					} else if (strcmp(args->background_type, "image") == 0) {
+						bgtype = MSBackgroundImage;
+					} else if (strcmp(args->background_type, "video") == 0) {
+						bgtype = MSBackgroundVideo;
+					}
+				}
+
+				video_stream_set_background_type(args->video, bgtype);
+				args->background_current_type = bgtype;
+			}
+		}
+
 		ms_filter_call_method(args->video->output, MS_VIDEO_DISPLAY_ZOOM, zoom);
 
 		if (args->two_windows) {
@@ -1159,6 +1192,36 @@ static void mediastream_tool_iterate(MediastreamDatas *args) {
 					args->netsim.enabled = TRUE;
 					args->netsim.max_bandwidth = intarg;
 					rtp_session_enable_network_simulation(args->session, &args->netsim);
+				} else if (strstr(commands, "bg")) {
+#ifdef VIDEO_ENABLED
+					if (args->video && args->video->background_replacer != NULL) {
+						/* Cycle order : same -> blur -> image -> video -> same */
+						static const MSBackgroundType order[] = {MSBackgroundSame, MSBackgroundBlur, MSBackgroundImage,
+						                                         MSBackgroundVideo};
+						static const char *names[] = {"same", "image", "video", "blur"};
+						char name[32];
+						MSBackgroundType next;
+						if (sscanf(commands, "bg %31s", name) == 1) {
+							if (strcmp(name, "blur") == 0) next = MSBackgroundBlur;
+							else if (strcmp(name, "image") == 0) next = MSBackgroundImage;
+							else if (strcmp(name, "video") == 0) next = MSBackgroundVideo;
+							else next = MSBackgroundSame;
+						} else {
+							int i, cur = 0;
+							for (i = 0; i < 4; i++)
+								if (order[i] == (MSBackgroundType)args->background_current_type) {
+									cur = i;
+									break;
+								}
+							next = order[(cur + 1) % 4];
+						}
+						video_stream_set_background_type(args->video, next);
+						args->background_current_type = next;
+						ms_message("Background type -> %s\n", names[next]);
+					} else {
+						ms_warning("Background replacer not available.\n");
+					}
+#endif
 				} else if (strstr(commands, "quit")) {
 					cond = 0;
 				} else ms_warning("Cannot understand this.\n");

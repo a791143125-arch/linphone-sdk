@@ -226,7 +226,7 @@ typedef struct _LinphoneCoreVTable {
 	LinphoneCoreCbsReferReceivedCb refer_received; /**< Notifies when an out-of-call refer is received */
 	LinphoneCoreCbsCallGoClearAckSentCb call_goclear_ack_sent; /**< Notifies when a GoClear Ack is sent */
 	LinphoneCoreCbsCallMediaEncryptionStatusChangedCb
-	call_media_encryption_status_changed; /**< Notifies on change in the media encryption status of call streams */
+	    call_media_encryption_status_changed; /**< Notifies on change in the media encryption status of call streams */
 	LinphoneCoreCallEncryptionChangedCb
 	    call_encryption_changed; /**< Notifies when the encryption of call streams changes */
 	LinphoneCoreCbsCallSendMasterKeyChangedCb
@@ -9877,6 +9877,24 @@ linphone_core_chat_room_set_default_ephemeral_mode(LinphoneCore *core, LinphoneC
  **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneChatRoomEphemeralMode
 linphone_core_chat_room_get_default_ephemeral_mode(const LinphoneCore *core);
+
+/**
+ * Sets the background replacement mode for the locally captured/sent video.
+ * Persisted on the core and re-applied to every video stream that starts.
+ * @param core #LinphoneCore object @notnil
+ * @param type The background type (0=same, 1=image, 2=video, 3=blur, cf. MSBackgroundType)
+ * @ingroup group_media_parameters
+ **/
+LINPHONE_PUBLIC void linphone_core_set_video_background_type(LinphoneCore *core, int type);
+
+/**
+ * Sets the media file used as video background (.jpg/.jpeg image or .mkv video).
+ * Persisted on the core and re-applied to every video stream that starts.
+ * @param core #LinphoneCore object @notnil
+ * @param path Absolute path to the background media file @maybenil
+ * @ingroup group_media_parameters
+ **/
+LINPHONE_PUBLIC void linphone_core_set_video_background_path(LinphoneCore *core, const char *path);
 
 #ifdef __cplusplus
 }

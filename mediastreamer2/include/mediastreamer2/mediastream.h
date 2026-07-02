@@ -31,6 +31,7 @@
 #include <mediastreamer2/dtls_srtp.h>
 #include <mediastreamer2/ice.h>
 #include <mediastreamer2/ms_srtp.h>
+#include <mediastreamer2/msbackgroundformater.h>
 #include <mediastreamer2/msequalizer.h>
 #include <mediastreamer2/msfactory.h>
 #include <mediastreamer2/msfilter.h>
@@ -1338,16 +1339,25 @@ struct _VideoStream {
 	MSFilter *recorder_output; /*can be an ItcSink to send video to the audiostream's multimedia recorder, or directly a
 	                             MkvRecorder */
 
-	MSFilter *pixconv;      /* Do pixel reformat with MS_PIX_CONV_ID */
-	MSFilter *sizeconv;     /*Do size reformat with MS_SIZE_CONV_ID */
-	MSFilter *source;       /* Source filter like MSScreenSharing, MSItcSource or MSVoidSource */
-	MSFilter *tee;          /* linked with local_jpegwriter, itcsink and output2 */
-	MSFilter *tee2;         /* linked with jpegwriter and forward_sink */
-	MSFilter *tee3;         /* linked with recorder_output */
-	MSFilter *void_source;  /* linked with ms.rtpsend */
-	MSFilter *itcsink;      /* MS_ITC_SINK_ID linked to tee */
-	MSFilter *forward_sink; /* MS_ITC_SINK_ID linked to tee2 */
-	MSFilter *aggregator;   /* MS_VIDEO_AGGREGATOR_ID linked to all branches.recv */
+	MSFilter *pixconv;             /* Do pixel reformat with MS_PIX_CONV_ID */
+	MSFilter *sizeconv;            /*Do size reformat with MS_SIZE_CONV_ID */
+	MSFilter *source;              /* Source filter like MSScreenSharing, MSItcSource or MSVoidSource */
+	MSFilter *tee;                 /* linked with local_jpegwriter, itcsink and output2 */
+	MSFilter *tee2;                /* linked with jpegwriter and forward_sink */
+	MSFilter *tee3;                /* linked with recorder_output */
+	MSFilter *void_source;         /* linked with ms.rtpsend */
+	MSFilter *itcsink;             /* MS_ITC_SINK_ID linked to tee */
+	MSFilter *forward_sink;        /* MS_ITC_SINK_ID linked to tee2 */
+	MSFilter *aggregator;          /* MS_VIDEO_AGGREGATOR_ID linked to all branches.recv */
+	MSFilter *background_tee;      /* linked with background_formater and background_replacer */
+	MSFilter *background_formater; /* Prepare the background with different parameters */
+	MSFilter *background_replacer; /* Replace the background of the entry with the formater output */
+	MSFilter *background_source;   /* Static image or video decoder as an input for the background */
+	MSFilter *background_player;   /* MKV player -> 2nd formater input (video) */
+	MSFilter *background_decoder;  /* Decode the mkv file from the MKV player */
+	bool_t background_user_image;  /* TRUE if not the default image */
+	bool_t background_user_video;  /* TRUE if not the default video */
+
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;
 	MSVideoSize preview_vsize;
@@ -1593,6 +1603,10 @@ MS2_PUBLIC MSFilter *video_stream_change_camera_keep_previous_source(VideoStream
 running does nothing. The following functions allow to take into account new parameters by redrawing the sending graph*/
 MS2_PUBLIC void video_preview_stream_update_video_params(VideoStream *stream);
 MS2_PUBLIC void video_stream_update_video_params(VideoStream *stream);
+/*function to change dynamically the type of background (Same, Image, Blur, etc)*/
+MS2_PUBLIC void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type);
+/** Set an absolute path as a background (image or video)*/
+MS2_PUBLIC void video_stream_set_background_path(VideoStream *stream, const char *path);
 /*function to call periodically to handle various events */
 MS2_PUBLIC void video_stream_iterate(VideoStream *stream);
 

@@ -113,6 +113,8 @@ cmake_dependent_option(BUILD_ZLIB_SHARED_LIBS "Choose to build shared or static 
 cmake_dependent_option(BUILD_ZXINGCPP "Build zxing-cpp library source code from submodule instead of searching it in system libraries." ON "ENABLE_QRCODE" OFF)
 cmake_dependent_option(BUILD_ZXINGCPP_SHARED_LIBS "Choose to build shared or static zxing-cpp library." ${BUILD_SHARED_LIBS} "BUILD_ZXINGCPP" OFF)
 
+cmake_dependent_option(ENABLE_VIDEO_BACKGROUND "Enable video background replacement (segmentation)." ON "ENABLE_VIDEO" OFF)
+cmake_dependent_option(BUILD_ONNXRUNTIME "Build onnxruntime from submodule source." ON "ENABLE_VIDEO_BACKGROUND" OFF)
 
 ############################################################################
 # Define utility functions
@@ -1471,4 +1473,50 @@ if(BUILD_ZXINGCPP)
 		add_dependencies(sdk ZXing)
 	endfunction()
 	add_zxingcpp()
+endif()
+
+if(BUILD_ONNXRUNTIME)
+	function(add_onnxruntime)
+		set(ORT_LIB "${CMAKE_INSTALL_FULL_LIBDIR}/libonnxruntime.so")
+
+		set(ORT_EXTRA_ARGS "")
+		if(CMAKE_TOOLCHAIN_FILE)
+			list(APPEND ORT_EXTRA_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+		endif()
+		if(APPLE)
+			list(APPEND ORT_EXTRA_ARGS
+				"-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}"
+				"-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+				"-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
+		endif()
+
+		ExternalProject_Add(onnxruntime-ep
+			SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/onnxruntime/cmake"
+			CMAKE_ARGS
+				"-DCMAKE_BUILD_TYPE=Release"
+				"-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}"
+				"-DCMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}"
+				"-DCMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER}"
+				"-DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER}"
+				"-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+				"-Donnxruntime_BUILD_SHARED_LIB=ON"
+				"-Donnxruntime_BUILD_UNIT_TESTS=OFF"
+				"--compile-no-warning-as-error"
+				${ORT_EXTRA_ARGS}
+
+			LOG_CONFIGURE TRUE
+			LOG_BUILD TRUE
+			LOG_INSTALL TRUE
+			LOG_OUTPUT_ON_FAILURE TRUE
+			BUILD_BYPRODUCTS "${ORT_LIB}"
+		)
+		file(MAKE_DIRECTORY "${CMAKE_INSTALL_PREFIX}/include")
+		add_library(onnxruntime SHARED IMPORTED GLOBAL)
+		set_target_properties(onnxruntime PROPERTIES
+			IMPORTED_LOCATION "${ORT_LIB}"
+			INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
+		add_dependencies(onnxruntime onnxruntime-ep)
+		add_dependencies(sdk onnxruntime-ep)
+	endfunction()
+	add_onnxruntime()
 endif()
