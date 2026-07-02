@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8:20260701_add_cmake_3.28
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-rocky8:20260702_rocky8_py312_pystache
 ###############################################################################
 
 FROM rockylinux:8
@@ -58,7 +58,9 @@ WORKDIR /home/bc
 # This must be done as user 'bc' because python modules are installed in /usr/local/lib when pip is invoked
 # as root, and rpmbuild prevents python from searching its modules in this prefix. Installing with user 'bc' puts
 # the modules in /home/bc/.local/bin.
-RUN sudo dnf install -y python3.12-pip && pip3.12 install --user pystache six
+RUN python3 -m pip install --user pystache six
+RUN sudo dnf install -y python3.12-pip
+RUN sudo pip3.12 install pystache six
 
 ENV PATH=$PATH:$CMAKE3_HOME/bin:/home/bc/.local/bin
 
