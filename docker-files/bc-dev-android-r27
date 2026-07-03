@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-android-r27:20260703_add_python_3.11
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-android-r27:20260703b_add_python_3.11
 ###############################################################################
 
 FROM debian:11
