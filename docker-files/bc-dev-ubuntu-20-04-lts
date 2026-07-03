@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-20-04-lts:20260703_add_gcc_11
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-20-04-lts:20260703_add_python_gcc_bintutils
 ###############################################################################
 
 FROM ubuntu:20.04
@@ -95,6 +95,14 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100 && \
     apt-get clean
+
+# binutils >= 2.38 (focal ships 2.34, too old for AVX-VNNI vpdpbusds emitted by gcc-11)
+RUN apt-get update && apt-get install -y wget build-essential texinfo && \
+    cd /tmp && wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz && \
+    tar xf binutils-2.40.tar.xz && cd binutils-2.40 && \
+    ./configure --prefix=/usr/local --enable-gold --enable-ld=default && \
+    make -j"$(nproc)" && make install && \
+    cd / && rm -rf /tmp/binutils-2.40 /tmp/binutils-2.40.tar.xz
 
 
 # Install Python 3.11 (onnxruntime requires >= 3.10 for gen_def.py)
