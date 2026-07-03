@@ -23,7 +23,6 @@
 #include <chrono>
 namespace mediastreamer {
 
-
 class BackgroundReplacer {
 public:
 	BackgroundReplacer(MSFilter *f, bool bypass = true) {
@@ -63,7 +62,7 @@ public:
 	void process(MSFilter *f) {
 		mblk_t *m;
 		auto tmp_trait = std::chrono::high_resolution_clock::now();
-		
+
 		if (f->inputs[1]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
@@ -162,7 +161,7 @@ public:
 	}
 
 private:
-	// function designed to resize the given image to match the dimensions 
+	// function designed to resize the given image to match the dimensions
 	// and format (RGBA) of the filter
 	std::vector<float> preprocesser(const std::vector<uint8_t> &rgba, int srcW, int srcH) const {
 		std::vector<uint8_t> redim = redimRGBA(rgba, srcW, srcH, modelW_, modelH_);

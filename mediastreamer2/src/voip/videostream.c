@@ -18,7 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <X11/Xlib.h>
+
 #include <math.h>
 
 #include "bctoolbox/defs.h"
@@ -2412,7 +2412,7 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 	const char *ext = strrchr(path, '.');
 
 	if (ext && (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)) {
-		// JPEG 
+		// JPEG
 		ms_filter_call_method(stream->background_source, MS_STATIC_IMAGE_SET_IMAGE, (void *)path);
 		ms_filter_call_method(stream->background_source, MS_FILTER_SET_FPS, &stream->configured_fps);
 		ms_filter_call_method(stream->background_source, MS_FILTER_SET_VIDEO_SIZE, &stream->sent_vsize);

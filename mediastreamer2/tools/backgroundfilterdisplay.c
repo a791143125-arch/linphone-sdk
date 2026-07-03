@@ -8,7 +8,6 @@
 #include "mediastreamer2/mswebcam.h"
 #include <signal.h>
 
-
 static int active = 1;
 
 static void stop_handler(BCTBX_UNUSED(int signum)) {

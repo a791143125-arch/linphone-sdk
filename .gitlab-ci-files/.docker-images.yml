@@ -4,7 +4,7 @@
 # We need to redefine images use here because they are used as fallback cache key. The cache fallback key don't work with defined variables in jobs. It needs static values, that we use here with !references
 
 .android_r27_image_version:
-  image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-android-r27:20260701_add_cmake_3.28
+  image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-android-r27:20260703_add_python_3.11
 
 .archlinux_image_version:
   image: gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-archlinux:20260126_update_gcc_16
