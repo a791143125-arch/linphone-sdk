@@ -18,7 +18,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include <math.h>
 
 #include "bctoolbox/defs.h"
@@ -2387,18 +2386,18 @@ void video_stream_set_native_window_id(VideoStream *stream, void *id) {
 void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type) {
 	if (!stream || !stream->background_formater || !stream->background_replacer) return;
 
-	if (stream->background_user_video == False && (type == MSBackgroundVideo) && stream->background_decoder == NULL) {
+	if (stream->background_user_video == FALSE && (type == MSBackgroundVideo) && stream->background_decoder == NULL) {
 		const char *def = "/../backgrounds/default_background_video.mkv";
 		char *p = ms_strdup_printf("%s%s", ms_factory_get_image_resources_dir(stream->ms.factory), def);
 		video_stream_set_background_path(stream, p);
 		ms_free(p);
-		stream->background_user_video = False;
-	} else if (stream->background_user_image == False && (type == MSBackgroundImage)) {
+		stream->background_user_video = FALSE;
+	} else if (stream->background_user_image == FALSE && (type == MSBackgroundImage)) {
 		const char *def = "/../backgrounds/default_background_image.jpg";
 		char *p = ms_strdup_printf("%s%s", ms_factory_get_image_resources_dir(stream->ms.factory), def);
 		video_stream_set_background_path(stream, p);
 		ms_free(p);
-		stream->background_user_image = False;
+		stream->background_user_image = FALSE;
 	}
 	int t = (int)type;
 	int bypass = (type == MSBackgroundSame);
@@ -2453,7 +2452,7 @@ void video_stream_set_background_path(VideoStream *stream, const char *path) {
 		int loop = 0;
 		ms_filter_call_method(stream->background_player, MS_PLAYER_SET_LOOP, &loop);
 		ms_filter_call_method(stream->background_player, MS_PLAYER_START, NULL);
-		stream->background_user_video = True;
+		stream->background_user_video = TRUE;
 	}
 }
 

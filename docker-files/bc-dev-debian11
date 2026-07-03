@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:20260701_add_cmake_3.28
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-debian11:20260703_add_python_3.11
 ###############################################################################
 
 FROM debian:bullseye
@@ -66,6 +66,7 @@ RUN sudo apt-get update && sudo apt-get install -y wget build-essential libssl-d
     make -j"$(nproc)" && sudo make altinstall && \
     cd / && sudo rm -rf /tmp/Python-3.11.9 /tmp/Python-3.11.9.tgz
 
+RUN python3.11 -m pip install --user six pystache graphviz jsonschema jinja2
 
 ENV PATH=$PATH:$CMAKE3_HOME/bin/:/home/bc/.local/bin
 

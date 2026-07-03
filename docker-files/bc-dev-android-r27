@@ -51,6 +51,9 @@ RUN apt-get update && apt-get install -y wget build-essential libssl-dev zlib1g-
     cd / && rm -rf /tmp/Python-3.11.9 /tmp/Python-3.11.9.tgz
 
 
+RUN python3.11 -m pip install six pystache graphviz jsonschema jinja2
+
+
 # Install CMake (version from the debian repository is too old)
 ENV CMAKE3_HOME /opt/cmake3
 RUN mkdir $CMAKE3_HOME && \
