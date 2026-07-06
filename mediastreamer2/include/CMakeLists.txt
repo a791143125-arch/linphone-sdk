@@ -37,6 +37,7 @@ set(HEADER_FILES
 	mediastream.h
 	ms_srtp.h
 	msaudiomixer.h
+	msbackgroundformater.h
 	mschanadapter.h
 	mscodecutils.h
 	mscommon.h

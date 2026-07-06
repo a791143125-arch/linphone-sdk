@@ -1,5 +1,5 @@
 ###############################################################################
-# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-20-04-lts:20260703_add_python_gcc_bintutils
+# Dockerfile used to make gitlab.linphone.org:4567/bc/public/linphone-sdk/bc-dev-ubuntu-20-04-lts:20260703_add_python_gcc_binutils
 ###############################################################################
 
 FROM ubuntu:20.04
