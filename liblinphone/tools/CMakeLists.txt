@@ -72,7 +72,7 @@ target_link_libraries(liblinphone-test-ecc PRIVATE ${LINPHONE_LIBS_FOR_TOOLS} ${
 set_target_properties(liblinphone-test-ecc PROPERTIES LINKER_LANGUAGE CXX)
 
 if(NOT IOS)
-	install(TARGETS liblinphone-auto-answer liblinphone-sendmsg liblinphone-test-ecc liblinphone-background-test ${LINPHONE_XMLTOOLS}
+	install(TARGETS liblinphone-auto-answer liblinphone-sendmsg liblinphone-test-ecc ${LINPHONE_BACKGROUND_TOOL} ${LINPHONE_XMLTOOLS}
 		RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 		LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 		ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
