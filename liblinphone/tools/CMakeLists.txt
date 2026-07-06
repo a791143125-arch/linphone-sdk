@@ -33,7 +33,7 @@ target_link_libraries(liblinphone-auto-answer PRIVATE ${LINPHONE_LIBS_FOR_TOOLS}
 set_target_properties(liblinphone-auto-answer PROPERTIES LINKER_LANGUAGE CXX)
 
 find_package(X11)
-if(X11_FOUND)
+if(X11_FOUND AND NOT APPLE AND NOT ANDROID)
 	set(LP_BACKGROUND_TEST_SOURCE_FILES background_replacer.c)
 	bc_apply_compile_flags(LP_BACKGROUND_TEST_SOURCE_FILES STRICT_OPTIONS_CPP STRICT_OPTIONS_C)
 	add_executable(liblinphone-background-test ${USE_BUNDLE} ${LP_BACKGROUND_TEST_SOURCE_FILES})
