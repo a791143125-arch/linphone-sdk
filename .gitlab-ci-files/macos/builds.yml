@@ -121,6 +121,7 @@ macos-m1-multiarch-ninja:
 macos-m1-ninja-pqc-multiarch:
   variables:
     CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_EXAMPLE_PLUGIN=ON -DENABLE_UNIT_TESTS=ON -DENABLE_SCREENSHARING=OFF
+  tags: [ "macos-xcode15-flat" ] #xcode-15 needed for onnxruntime
   rules:
     - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $DOCKER_UPDATE == null && $SKIP_MACOS == null
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_MACOS == null
