@@ -53,7 +53,6 @@ public:
 
 	void process(MSFilter *f) {
 		mblk_t *m;
-		auto tmp_trait = std::chrono::high_resolution_clock::now();
 		// static image
 		if (f->inputs[1]) {
 			mblk_t *bg;
@@ -137,7 +136,6 @@ public:
 			freemsg(m);
 			ms_queue_put(f->outputs[0], out);
 		}
-		auto tmp_trait2 = std::chrono::high_resolution_clock::now();
 	}
 	void setMode(int m) {
 		mMode = (MSBackgroundType)m;

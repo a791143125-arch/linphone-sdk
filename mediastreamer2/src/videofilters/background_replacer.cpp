@@ -11,10 +11,10 @@
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
-#include <mutex>
-#include <thread>
 #include <filesystem>
 #include <iostream>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #ifdef HAVE_LIBYUV_H
@@ -33,7 +33,7 @@ public:
 
 		// One time model setup
 		char *path =
-		    ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
+		ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
 		mOpts.SetInterOpNumThreads(1);
 		mOpts.SetIntraOpNumThreads(1);
 		std::filesystem::path modelPath(path);
@@ -64,8 +64,7 @@ public:
 
 	void process(MSFilter *f) {
 		mblk_t *m;
-		auto tmp_trait = std::chrono::high_resolution_clock::now();
-
+		
 		if (f->inputs[1]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
@@ -108,7 +107,7 @@ public:
 						auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - mTimeLastResult).count();
 						alpha = mLastResult;
 						if (age > 200) {
-							
+
 							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // fond complet (sûr)
 						}
 					}
@@ -145,7 +144,6 @@ public:
 					                  pic.planes[2], pic.strides[2], W, H);
 				}
 
-				auto tmp_trait2 = std::chrono::high_resolution_clock::now();
 				
 			}
 			ms_queue_put(f->outputs[0], m);
@@ -233,7 +231,7 @@ private:
 				mHasNewImg = false;
 			}
 
-			auto tmp_infwork = std::chrono::high_resolution_clock::now();
+			
 			std::vector<float> input = preprocesser(img, w, h);
 			std::array<int64_t, 4> inShape = {1, 3, modelH_, modelW_};
 
@@ -282,9 +280,6 @@ private:
 				mHasResult = true;
 			}
 
-			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
-
-			
 		}
 	}
 
