@@ -1477,7 +1477,14 @@ endif()
 
 if(BUILD_ONNXRUNTIME)
 	function(add_onnxruntime)
-		set(ORT_LIB "${CMAKE_INSTALL_FULL_LIBDIR}/libonnxruntime.so")
+		if(WIN32)
+			set(ORT_IMPLIB "${CMAKE_INSTALL_FULL_LIBDIR}/onnxruntime.lib")
+			set(ORT_DLL "${CMAKE_INSTALL_FULL_BINDIR}/onnxruntime.dll")
+			set(ORT_BUILD_BYPRODUCTS "${ORT_IMPLIB}" "${ORT_DLL}")
+		else()
+			set(ORT_LIB "${CMAKE_INSTALL_FULL_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}onnxruntime${CMAKE_SHARED_LIBRARY_SUFFIX}")
+			set(ORT_BUILD_BYPRODUCTS "${ORT_LIB}")
+		endif()
 
 		set(ORT_EXTRA_ARGS "")
 		if(CMAKE_TOOLCHAIN_FILE)
@@ -1500,7 +1507,7 @@ if(BUILD_ONNXRUNTIME)
 			endif()
 		endif()
 
-		ExternalProject_Add(onnxruntime-ep
+				ExternalProject_Add(onnxruntime-ep
 			SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/onnxruntime/cmake"
 			PATCH_COMMAND perl -i -pe [[s/CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 13.1 AND NOT(APPLE)/CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 13.1 AND NOT(APPLE)/]] onnxruntime_mlas.cmake
 			CMAKE_ARGS
@@ -1519,15 +1526,23 @@ if(BUILD_ONNXRUNTIME)
 			LOG_BUILD TRUE
 			LOG_INSTALL TRUE
 			LOG_OUTPUT_ON_FAILURE TRUE
-			BUILD_BYPRODUCTS "${ORT_LIB}"
+			BUILD_BYPRODUCTS ${ORT_BUILD_BYPRODUCTS}
 		)
 		file(MAKE_DIRECTORY "${CMAKE_INSTALL_PREFIX}/include")
 		add_library(onnxruntime SHARED IMPORTED GLOBAL)
-		set_target_properties(onnxruntime PROPERTIES
-			IMPORTED_LOCATION "${ORT_LIB}"
-			INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
+		if(WIN32)
+			set_target_properties(onnxruntime PROPERTIES
+				IMPORTED_IMPLIB "${ORT_IMPLIB}"
+				IMPORTED_LOCATION "${ORT_DLL}"
+				INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
+		else()
+			set_target_properties(onnxruntime PROPERTIES
+				IMPORTED_LOCATION "${ORT_LIB}"
+				INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
+		endif()
 		add_dependencies(onnxruntime onnxruntime-ep)
 		add_dependencies(sdk onnxruntime-ep)
+
 	endfunction()
 	add_onnxruntime()
 endif()
