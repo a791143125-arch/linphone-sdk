@@ -1496,6 +1496,13 @@ if(BUILD_ONNXRUNTIME)
 				"-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
 				"-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
 		endif()
+		if(WIN32)
+			list(APPEND ORT_EXTRA_ARGS
+				"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL"
+				"-DONNX_USE_MSVC_STATIC_RUNTIME=OFF"
+				"-Dprotobuf_MSVC_STATIC_RUNTIME=OFF")
+		endif()
+
 
 		# onnxruntime needs clang >= 16 (structured binding capture); on older clang, build it with gcc
 		if(NOT ANDROID AND NOT IOS AND NOT APPLE AND
