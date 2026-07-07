@@ -368,16 +368,20 @@ static MSFilterMethod ms_background_replacer_methods[] = {
 extern "C" {
 
 MSFilterDesc ms_BackgroundReplacer_desc = {
-    .id = MS_BACKGROUND_REPLACER_ID,
-    .name = "MSBackgroundReplacer",
-    .text = "YUV420P background replacer",
-    .category = MS_FILTER_OTHER,
-    .ninputs = 2,
-    .noutputs = 1,
-    .init = ms_background_replacer_init,
-    .process = ms_background_replacer_process,
-    .uninit = ms_background_replacer_uninit,
-    .methods = ms_background_replacer_methods,
+    MS_BACKGROUND_REPLACER_ID,      /* id */
+    "MSBackgroundReplacer",         /* name */
+    "YUV420P background replacer",  /* text */
+    MS_FILTER_OTHER,                /* category */
+    nullptr,                        /* enc_fmt */
+    2,                              /* ninputs */
+    1,                              /* noutputs */
+    ms_background_replacer_init,    /* init */
+    nullptr,                        /* preprocess */
+    ms_background_replacer_process, /* process */
+    nullptr,                        /* postprocess */
+    ms_background_replacer_uninit,  /* uninit */
+    ms_background_replacer_methods, /* methods */
+    0                               /* flags */
 };
 }
 

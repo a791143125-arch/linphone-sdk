@@ -196,16 +196,20 @@ static MSFilterMethod ms_background_formater_methods[] = {
 extern "C" {
 
 MSFilterDesc ms_BackgroundFormater_desc = {
-    .id = MS_BACKGROUND_FORMATER_ID,
-    .name = "MSBackgroundFormater",
-    .text = "YUV420P background formater",
-    .category = MS_FILTER_OTHER,
-    .ninputs = 3,
-    .noutputs = 1,
-    .init = ms_background_formater_init,
-    .process = ms_background_formater_process,
-    .uninit = ms_background_formater_uninit,
-    .methods = ms_background_formater_methods,
+    MS_BACKGROUND_FORMATER_ID,      /* id */
+    "MSBackgroundFormater",         /* name */
+    "YUV420P background formater",  /* text */
+    MS_FILTER_OTHER,                /* category */
+    nullptr,                        /* enc_fmt */
+    3,                              /* ninputs */
+    1,                              /* noutputs */
+    ms_background_formater_init,    /* init */
+    nullptr,                        /* preprocess */
+    ms_background_formater_process, /* process */
+    nullptr,                        /* postprocess */
+    ms_background_formater_uninit,  /* uninit */
+    ms_background_formater_methods, /* methods */
+    0                               /* flags */
 };
 }
 
