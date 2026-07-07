@@ -62,7 +62,7 @@
   tags: [ "macos-min-xcode12.2-flat" ]
   variables:
     LINPHONESDK_MACOS_ARCHS: "arm64, x86_64"
-    CMAKE_OPTIONS: -DENABLE_SCREENSHARING=OFF
+    CMAKE_OPTIONS: -DENABLE_SCREENSHARING=ON
   extends: .macos-desktop
 
 #################################################
@@ -96,7 +96,7 @@ macos-m1-multiarch-makefile:
 
 macos-m1-multiarch-makefile-pqc:
   variables:
-    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_SCREENSHARING=OFF
+    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_SCREENSHARING=ON
   extends: macos-m1-multiarch-makefile
 
 #################################################
@@ -114,13 +114,13 @@ macos-ninja:
 macos-m1-multiarch-ninja:
   variables:
     CMAKE_GENERATOR: Ninja
-    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_LDAP=ON -DENABLE_SCREENSHARING=OFF
+    CMAKE_OPTIONS: -DENABLE_UNIT_TESTS=ON -DENABLE_LDAP=ON -DENABLE_SCREENSHARING=ON
     CMAKE_BUILD_TYPE: -DCMAKE_BUILD_TYPE=RelWithDebInfo
   extends: .macos-m1-multiarch-desktop
 
 macos-m1-ninja-pqc-multiarch:
   variables:
-    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_EXAMPLE_PLUGIN=ON -DENABLE_UNIT_TESTS=ON -DENABLE_SCREENSHARING=OFF
+    CMAKE_OPTIONS: -DENABLE_LDAP=ON -DENABLE_NON_FREE_FEATURES=ON -DENABLE_PQCRYPTO=ON -DENABLE_EXAMPLE_PLUGIN=ON -DENABLE_UNIT_TESTS=ON -DENABLE_SCREENSHARING=ON
   rules:
     - if: ($CI_PIPELINE_SOURCE == "merge_request_event") && $DOCKER_UPDATE == null && $SKIP_MACOS == null
     - if: $CI_PIPELINE_SOURCE == "schedule" && $DOCKER_UPDATE == null && $SKIP_MACOS == null
