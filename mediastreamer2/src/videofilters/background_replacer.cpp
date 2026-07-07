@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <mutex>
 #include <thread>
+#include <filesystem>
+#include <iostream>
 #include <vector>
 
 #ifdef HAVE_LIBYUV_H
@@ -34,7 +36,8 @@ public:
 		    ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
 		mOpts.SetInterOpNumThreads(1);
 		mOpts.SetIntraOpNumThreads(1);
-		mSession = Ort::Session(mEnv, path, mOpts);
+		std::filesystem::path modelPath(path);
+		mSession = Ort::Session(mEnv, modelPath.c_str(), mOpts);
 		ms_free(path);
 		mTimeLastResult = std::chrono::high_resolution_clock::now();
 
@@ -105,7 +108,7 @@ public:
 						auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - mTimeLastResult).count();
 						alpha = mLastResult;
 						if (age > 200) {
-							std::cout << "Too much time since last mask\n";
+							
 							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // fond complet (sûr)
 						}
 					}
@@ -143,10 +146,7 @@ public:
 				}
 
 				auto tmp_trait2 = std::chrono::high_resolution_clock::now();
-				if (verbosePerf)
-					std::cout << "Replacer processing time : "
-					          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_trait2 - tmp_trait).count()
-					          << "ms\n";
+				
 			}
 			ms_queue_put(f->outputs[0], m);
 		}
@@ -284,10 +284,7 @@ private:
 
 			auto tmp_infwork2 = std::chrono::high_resolution_clock::now();
 
-			if (verbosePerf)
-				std::cout << "New mask processed in "
-				          << std::chrono::duration_cast<std::chrono::milliseconds>(tmp_infwork2 - tmp_infwork).count()
-				          << "ms\n";
+			
 		}
 	}
 
@@ -312,7 +309,6 @@ private:
 	int mBgScaledW = 0, mBgScaledH = 0;
 	bool mBgDirty = false;
 	bool mBypass;
-	bool verbosePerf = false;
 
 	// ONNX Runtime states
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};
