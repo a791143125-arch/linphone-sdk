@@ -1502,6 +1502,12 @@ if(BUILD_ONNXRUNTIME)
 				"-DONNX_USE_MSVC_STATIC_RUNTIME=OFF"
 				"-Dprotobuf_MSVC_STATIC_RUNTIME=OFF")
 		endif()
+		if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+			list(APPEND ORT_EXTRA_ARGS
+				"-DCMAKE_C_FLAGS=/D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /sdl-"
+				"-DCMAKE_CXX_FLAGS=/D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /sdl-")
+		endif()
+
 
 
 		# onnxruntime needs clang >= 16 (structured binding capture); on older clang, build it with gcc
