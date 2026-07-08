@@ -33,7 +33,7 @@ public:
 
 		// One time model setup
 		char *path =
-		ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
+		    ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
 		mOpts.SetInterOpNumThreads(1);
 		mOpts.SetIntraOpNumThreads(1);
 		std::filesystem::path modelPath(path);
@@ -64,7 +64,7 @@ public:
 
 	void process(MSFilter *f) {
 		mblk_t *m;
-		
+
 		if (f->inputs[1]) {
 			mblk_t *bg;
 			while ((bg = ms_queue_get(f->inputs[1])) != nullptr) {
@@ -143,8 +143,6 @@ public:
 					                  pic.planes[0], pic.strides[0], pic.planes[1], pic.strides[1], // dst = en place
 					                  pic.planes[2], pic.strides[2], W, H);
 				}
-
-				
 			}
 			ms_queue_put(f->outputs[0], m);
 		}
@@ -231,7 +229,6 @@ private:
 				mHasNewImg = false;
 			}
 
-			
 			std::vector<float> input = preprocesser(img, w, h);
 			std::array<int64_t, 4> inShape = {1, 3, modelH_, modelW_};
 
@@ -279,7 +276,6 @@ private:
 				maskH_ = h;
 				mHasResult = true;
 			}
-
 		}
 	}
 
