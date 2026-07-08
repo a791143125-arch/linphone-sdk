@@ -1507,8 +1507,11 @@ if(BUILD_ONNXRUNTIME)
 				"-DCMAKE_C_FLAGS=/D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /sdl-"
 				"-DCMAKE_CXX_FLAGS=/D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /sdl-")
 		endif()
-
-
+		if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+    	if(CMAKE_TOOLCHAIN_FILE)
+        		list(APPEND ORT_EXTRA_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+    		endif()
+		endif()
 
 		# onnxruntime needs clang >= 16 (structured binding capture); on older clang, build it with gcc
 		if(NOT ANDROID AND NOT IOS AND NOT APPLE AND
