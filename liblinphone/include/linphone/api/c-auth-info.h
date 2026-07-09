@@ -154,6 +154,7 @@ LINPHONE_PUBLIC void linphone_auth_info_set_tls_key(LinphoneAuthInfo *auth_info,
  * This reference is served back to the callback in charge of the signing operation during a (D)TLS handshake
  * @param auth_info The #LinphoneAuthInfo object. @notnil
  * @param tls_key_ref The TLS key. @maybenil
+ * @donotwrap
  **/
 LINPHONE_PUBLIC void linphone_auth_info_set_ext_tls_key_ref(LinphoneAuthInfo *auth_info, const void *tls_key_ref);
 
@@ -258,6 +259,7 @@ LINPHONE_PUBLIC const char *linphone_auth_info_get_tls_key(const LinphoneAuthInf
  * Gets the ext TLS key ref.
  * @param auth_info The #LinphoneAuthInfo object. @notnil
  * @return The ext TLS key ref. May be an empty ref
+ * @donotwrap
  */
 LINPHONE_PUBLIC const bctbx_ext_signing_key_ref_t *
 linphone_auth_info_get_ext_tls_key_ref(const LinphoneAuthInfo *auth_info);

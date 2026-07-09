@@ -1139,7 +1139,7 @@ static void mbedtls_debug_bridge(BCTBX_UNUSED(void *ctx), int level, const char 
 static void activate_logging_diagnostics(mbedtls_ssl_config *ssl_conf) {
 	// Verbosity levels range from 1 (Errors Only) up to 4 (Extremely Verbose Hex Dumps)
 	mbedtls_debug_set_threshold(1);
-	mbedtls_ssl_conf_dbg(ssl_conf, mbedtls_debug_bridge, nullptr);
+	mbedtls_ssl_conf_dbg(ssl_conf, mbedtls_debug_bridge, NULL);
 }
 
 bctbx_ssl_config_t *bctbx_ssl_config_new(void) {

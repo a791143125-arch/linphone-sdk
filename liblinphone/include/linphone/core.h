@@ -383,6 +383,7 @@ LINPHONE_PUBLIC LinphoneCoreCbs *linphone_core_get_current_callbacks(const Linph
  * @param cbs A #LinphoneCoreCbs. @notnil
  * @param ext_sign_cb The #LinphoneCoreCbsTlsExtSignCb callback to call. @notnil
  * @ingroup group_misc
+ * @donotwrap
  **/
 LINPHONE_PUBLIC void linphone_core_cbs_set_tls_ext_signature(LinphoneCoreCbs *cbs,
                                                              LinphoneCoreCbsTlsExtSignCb ext_sign_cb);
@@ -393,6 +394,7 @@ LINPHONE_PUBLIC void linphone_core_cbs_set_tls_ext_signature(LinphoneCoreCbs *cb
  * @param cbs A #LinphoneCoreCbs. @notnil
  * @return The callback.
  * @ingroup group_misc
+ * @donotwrap
  **/
 LINPHONE_PUBLIC LinphoneCoreCbsTlsExtSignCb linphone_core_cbs_get_tls_ext_signature(LinphoneCoreCbs *cbs);
 
