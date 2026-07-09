@@ -108,6 +108,7 @@ private:
 	string getNativeLibraryDir();
 
 	jobject mJavaHelper = nullptr;
+	LinphoneCoreCbs *mTlsExtSignCbs = nullptr;
 	jobject mSystemContext = nullptr;
 	jobject mPreviewVideoWindow = nullptr;
 	jobject mVideoWindow = nullptr;
@@ -167,6 +168,56 @@ static const char *GetStringUTFChars(JNIEnv *env, jstring string) {
 
 static void ReleaseStringUTFChars(JNIEnv *env, jstring string, const char *cstring) {
 	if (string) env->ReleaseStringUTFChars(string, cstring);
+}
+
+static jclass sKeystoreSignerClass = nullptr;
+static jmethodID sKeystoreSignerSignId = nullptr;
+
+static void linphone_android_tls_ext_sign_cb(BCTBX_UNUSED(LinphoneCore *core),
+                                             const void *key_ref,
+                                             LinphoneKeySignAlgo sign_algo,
+                                             LinphoneHashAlgo hash_algo,
+                                             const uint8_t *hash,
+                                             size_t hash_size,
+                                             size_t signature_buffer_size,
+                                             uint8_t *signature,
+                                             size_t *signature_size,
+                                             int *ret) {
+	*ret = -1;
+	if (sKeystoreSignerClass == nullptr || sKeystoreSignerSignId == nullptr || key_ref == nullptr) {
+		lError() << "[Android Platform Helper] TLS external signing requested but key store bridge is not ready.";
+		return;
+	}
+
+	JNIEnv *env = ms_get_jni_env();
+	if (env == nullptr) return;
+
+	jstring jAlias = env->NewStringUTF((const char *)key_ref);
+	jbyteArray jHash = env->NewByteArray((jsize)hash_size);
+	if (jAlias && jHash) {
+		env->SetByteArrayRegion(jHash, 0, (jsize)hash_size, (const jbyte *)hash);
+		jbyteArray jSig = (jbyteArray)env->CallStaticObjectMethod(sKeystoreSignerClass, sKeystoreSignerSignId, jAlias,
+		                                                          (jint)sign_algo, (jint)hash_algo, jHash);
+		if (env->ExceptionCheck()) {
+			env->ExceptionClear();
+			lError() << "[Android Platform Helper] Key store signing threw an exception.";
+		} else if (jSig == nullptr) {
+			lError() << "[Android Platform Helper] Key store signing returned no data.";
+		} else {
+			jsize len = env->GetArrayLength(jSig);
+			if ((size_t)len > signature_buffer_size) {
+				lError() << "[Android Platform Helper] Key store signature too large [" << (int)len << " > "
+				         << (int)signature_buffer_size << "].";
+			} else {
+				env->GetByteArrayRegion(jSig, 0, len, (jbyte *)signature);
+				*signature_size = (size_t)len;
+				*ret = 0;
+			}
+		}
+		if (jSig) env->DeleteLocalRef(jSig);
+	}
+	if (jHash) env->DeleteLocalRef(jHash);
+	if (jAlias) env->DeleteLocalRef(jAlias);
 }
 
 jmethodID AndroidPlatformHelpers::getMethodId(JNIEnv *env, jclass klass, const char *method, const char *signature) {
@@ -251,6 +302,19 @@ AndroidPlatformHelpers::AndroidPlatformHelpers(std::shared_ptr<LinphonePrivate::
 
 	mDestroyPlatformHelperId = getMethodId(env, klass, "destroy", "()V");
 
+	jclass keystoreSignerClass = env->FindClass("org/linphone/core/tools/security/KeystoreSigner");
+	if (keystoreSignerClass != nullptr) {
+		sKeystoreSignerClass = (jclass)env->NewGlobalRef(keystoreSignerClass);
+		sKeystoreSignerSignId = env->GetStaticMethodID(sKeystoreSignerClass, "sign", "(Ljava/lang/String;II[B)[B");
+		mTlsExtSignCbs = linphone_factory_create_core_cbs(linphone_factory_get());
+		linphone_core_cbs_set_tls_ext_signature(mTlsExtSignCbs, linphone_android_tls_ext_sign_cb);
+		linphone_core_add_callbacks(cCore, mTlsExtSignCbs);
+		lInfo() << "[Android Platform Helper] TLS external signing (key store) bridge registered.";
+	} else {
+		env->ExceptionClear();
+		lWarning() << "[Android Platform Helper] KeystoreSigner class not found, TLS key store signing disabled.";
+	}
+
 	env->CallVoidMethod(mJavaHelper, mInitPlatformHelper);
 
 	linphone_factory_set_top_resources_dir(linphone_factory_get(), getDataPath().append("share").c_str());
@@ -272,8 +336,18 @@ AndroidPlatformHelpers::AndroidPlatformHelpers(std::shared_ptr<LinphonePrivate::
 }
 
 AndroidPlatformHelpers::~AndroidPlatformHelpers() {
+	if (mTlsExtSignCbs) {
+		linphone_core_remove_callbacks(getCore()->getCCore(), mTlsExtSignCbs);
+		linphone_core_cbs_unref(mTlsExtSignCbs);
+		mTlsExtSignCbs = nullptr;
+	}
 	if (mJavaHelper) {
 		JNIEnv *env = ms_get_jni_env();
+		if (sKeystoreSignerClass) {
+			env->DeleteGlobalRef(sKeystoreSignerClass);
+			sKeystoreSignerClass = nullptr;
+			sKeystoreSignerSignId = nullptr;
+		}
 		env->CallVoidMethod(mJavaHelper, mDestroyPlatformHelperId);
 		belle_sip_wake_lock_uninit(env);
 		env->DeleteGlobalRef(mJavaHelper);
@@ -923,6 +997,15 @@ extern "C" JNIEXPORT void JNICALL Java_org_linphone_core_tools_AndroidPlatformHe
     BCTBX_UNUSED(JNIEnv *env), BCTBX_UNUSED(jobject thiz), jlong ptr) {
 	LinphoneCore *core = static_cast<LinphoneCore *>((void *)ptr);
 	L_GET_CPP_PTR_FROM_C_OBJECT(core)->healNetworkConnections();
+}
+
+extern "C" JNIEXPORT void JNICALL Java_org_linphone_core_tools_security_KeystoreSigner_nativeSetAuthInfoKeyRef(
+    JNIEnv *env, BCTBX_UNUSED(jclass clazz), jlong authInfoPtr, jstring alias) {
+	LinphoneAuthInfo *authInfo = (LinphoneAuthInfo *)authInfoPtr;
+	if (authInfo == nullptr) return;
+	const char *aliasC = GetStringUTFChars(env, alias);
+	linphone_auth_info_set_ext_tls_key_ref(authInfo, (const void *)aliasC);
+	ReleaseStringUTFChars(env, alias, aliasC);
 }
 
 LINPHONE_END_NAMESPACE
