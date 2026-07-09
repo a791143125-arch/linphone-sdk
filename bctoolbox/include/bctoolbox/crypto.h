@@ -93,6 +93,7 @@ bctoolbox will fail to compile if these values are not in sync with the decaf on
 
 /* key related */
 #define BCTBX_ERROR_UNABLE_TO_PARSE_KEY -0x70010000
+#define BCTBX_ERROR_UNABLE_TO_APPLY_REQUESTED_PADDING -0x70010001
 
 /* Certificate related */
 #define BCTBX_ERROR_INVALID_CERTIFICATE -0x70020000
@@ -342,13 +343,35 @@ BCTBX_PUBLIC int32_t bctbx_signing_key_parse(bctbx_signing_key_t *key,
 /**
  * @brief Parse signing key from a file
  *
- * @param[in/out]	key				An already initialised signing key context
+ * @param[in/out]	key			An already initialised signing key context
  * @param[in]		path			filename to read the key from
  * @param[in]		password		Password for decryption(may be NULL)
  *
  * @return 0 on success
  */
 BCTBX_PUBLIC int32_t bctbx_signing_key_parse_file(bctbx_signing_key_t *key, const char *path, const char *password);
+
+/**
+ * @brief sign a buffer with the given key applying paddind according to the given type
+ *
+ * @param[in/out]	key		The signing key context holding the key
+ * @param[in]		sign_algo	what kind of padding to use for this signature
+ * @param[in]		hash_algo	hash algorithm to use
+ * @param[in]		hash		buffer to be signed
+ * @param[in]		hash_len	previous buffer size
+ * @param[out]		sig		buffer to store the ouput
+ * @param[in]		sig_max		current size of the output buffer
+ * @param[out]		sig_len		size of written data
+ * @return 0 on success
+ */
+BCTBX_PUBLIC int32_t bctbx_signing_key_sign(bctbx_signing_key_t *key,
+                                            bctbx_key_sign_type_t sign_algo,
+                                            bctbx_md_type_t hash_algo,
+                                            const uint8_t *hash,
+                                            size_t hash_len,
+                                            uint8_t *sig,
+                                            size_t sig_max,
+                                            size_t *sig_len);
 
 /*****************************************************************************/
 /***** External Signing key reference                                    *****/

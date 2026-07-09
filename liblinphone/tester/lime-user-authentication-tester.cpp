@@ -37,7 +37,7 @@ using namespace Linphone::Tester;
 // static std::array<certProvider, 4> availCertProv{
 //    {CertProviderConfigSip, CertProviderConfigAuthInfoBuffer, CertProviderConfigAuthInfoBufferExtKeyRef,
 //    CertProviderConfigAuthInfoPath}};
-static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoPath}};
+static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoBufferExtKeyRef}};
 
 static void TLS_mandatory_two_users_curve(const LinphoneTesterLimeAlgo curveId) {
 	LinphoneCoreManager *lcm = linphone_core_manager_create(NULL);
@@ -103,8 +103,16 @@ static void create_user_sip_client_cert_chain(const LinphoneTesterLimeAlgo curve
 		            BCTBX_UNUSED(size_t hash_size), BCTBX_UNUSED(size_t signature_buffer_size),
 		            BCTBX_UNUSED(uint8_t *signature_ptr), BCTBX_UNUSED(size_t *signature_size_out), int *ret_out) {
 			    auto key = Linphone::Tester::KeyStore::getInstance().getKey((const char *)key_ref);
-			    lError() << "TODO: Sign the hash with key " << key.substr(0, 64);
-			    *ret_out = -1;
+			    lError() << "JOHAN Sign the hash with key " << key.substr(0, 64);
+			    if (Linphone::Tester::KeyStore::getInstance().sign((const char *)key_ref, sign_algo, hash_algo,
+			                                                       hash_ptr, hash_size, signature_buffer_size,
+			                                                       signature_ptr, signature_size_out)) {
+				    lError() << "JOHAN linphone_core_cbs_set_tls_ext_signature returns 0";
+				    *ret_out = 0;
+			    } else {
+				    lError() << "JOHAN linphone_core_cbs_set_tls_ext_signature returns -1";
+				    *ret_out = -1;
+			    }
 		    });
 
 		linphone_core_add_callbacks(lcm->lc, cbs);

@@ -196,6 +196,56 @@ int32_t bctbx_signing_key_parse_file(bctbx_signing_key_t *key, const char *path,
 	return 0;
 }
 
+int32_t bctbx_signing_key_sign(bctbx_signing_key_t *key,
+                               bctbx_key_sign_type_t sign_algo,
+                               bctbx_md_type_t hash_algo,
+                               const uint8_t *hash,
+                               size_t hash_len,
+                               uint8_t *sig,
+                               size_t sig_max,
+                               size_t *sig_len) {
+	if (!key) return BCTBX_ERROR_INVALID_INPUT_DATA;
+
+	/* consistency check */
+	mbedtls_pk_type_t key_type = mbedtls_pk_get_type(&(key->ctx));
+	if (sign_algo == BCTBX_KEYSIGN_ECDSA && key_type != MBEDTLS_PK_ECKEY && key_type != MBEDTLS_PK_ECDSA) {
+		return BCTBX_ERROR_UNABLE_TO_APPLY_REQUESTED_PADDING;
+	}
+	if ((sign_algo == BCTBX_KEYSIGN_RSA_PSS || sign_algo == BCTBX_KEYSIGN_RSA_PKCS1_V15) &&
+	    key_type != MBEDTLS_PK_RSA) {
+		return BCTBX_ERROR_UNABLE_TO_APPLY_REQUESTED_PADDING;
+	}
+
+	mbedtls_md_type_t mbed_md;
+	switch (hash_algo) {
+		case BCTBX_MD_SHA384:
+			mbed_md = MBEDTLS_MD_SHA384;
+			break;
+		case BCTBX_MD_SHA512:
+			mbed_md = MBEDTLS_MD_SHA512;
+			break;
+		case BCTBX_MD_SHA256:
+			mbed_md = MBEDTLS_MD_SHA256;
+			break;
+		default:
+			bctbx_error("bctbx_signing_key_sign unsupported hash algo %d", hash_algo);
+			return BCTBX_ERROR_INVALID_INPUT_DATA;
+	}
+
+	/* Padding is for RSA only */
+	if (key_type == MBEDTLS_PK_RSA) {
+		mbedtls_rsa_context *rsa = mbedtls_pk_rsa(key->ctx);
+		if (sign_algo == BCTBX_KEYSIGN_RSA_PSS) {
+			mbedtls_rsa_set_padding(rsa, MBEDTLS_RSA_PKCS_V21, mbed_md);
+		} else {
+			mbedtls_rsa_set_padding(rsa, MBEDTLS_RSA_PKCS_V15, mbed_md);
+		}
+	}
+
+	return mbedtls_pk_sign(&(key->ctx), mbed_md, hash, hash_len, sig, sig_max, sig_len, mbedtls_ctr_drbg_random,
+	                       &key->ctr_drbg);
+}
+
 /*** Certificate ***/
 char *bctbx_x509_certificates_chain_get_pem(const bctbx_x509_certificate_t *cert) {
 	char *pem_certificate = NULL;

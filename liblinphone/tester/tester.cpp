@@ -350,5 +350,75 @@ void KeyStore::deleteKey(const std::string &ref) {
 	mKeys.erase(ref);
 }
 
+bool KeyStore::sign(const std::string &keyRef,
+                    LinphoneKeySignAlgo sign_algo,
+                    LinphoneHashAlgo hash_algo,
+                    const uint8_t *hash_ptr,
+                    size_t hash_size,
+                    size_t signature_buffer_size,
+                    uint8_t *signature_ptr,
+                    size_t *signature_size_out) {
+	auto it = mKeys.find(keyRef);
+	if (it == mKeys.end()) {
+		lError() << "[Tester Keystore] Error: Key reference not found: " << keyRef;
+		return false;
+	}
+	const std::string &pem_private_key = it->second;
+
+	// Mapping direct Linphone -> bcToolbox MD
+	bctbx_md_type_t bctbx_md = BCTBX_MD_UNDEFINED;
+	switch (hash_algo) {
+		case LinphoneHashSha384:
+			bctbx_md = BCTBX_MD_SHA384;
+			break;
+		case LinphoneHashSha512:
+			bctbx_md = BCTBX_MD_SHA512;
+			break;
+		case LinphoneHashSha256:
+			bctbx_md = BCTBX_MD_SHA256;
+			break;
+		default:
+			lError() << "[Tester Keystore] Error: Unknown hash algo " << hash_algo;
+			return false;
+	}
+
+	bctbx_key_sign_type_t bctbx_key_sign = BCTBX_KEYSIGN_UNDEFINED;
+	switch (sign_algo) {
+		case LinphoneKeySignRsaPss:
+			bctbx_key_sign = BCTBX_KEYSIGN_RSA_PSS;
+			break;
+		case LinphoneKeySignRsaPkcs1v15:
+			bctbx_key_sign = BCTBX_KEYSIGN_RSA_PKCS1_V15;
+			break;
+		case LinphoneKeySignEcdsa:
+			bctbx_key_sign = BCTBX_KEYSIGN_ECDSA;
+			break;
+		default:
+			lError() << "[Tester Keystore] Error: Unknown key sign algo " << sign_algo;
+			return false;
+	}
+
+	bctbx_signing_key_t *pkey = bctbx_signing_key_new();
+	int ret = bctbx_signing_key_parse(pkey, pem_private_key.c_str(), pem_private_key.length() + 1, nullptr, 0);
+	if (ret != 0) {
+		lError() << "[Tester Keystore] Error: Failed to parse PEM key, code: " << ret << std::endl;
+		bctbx_signing_key_free(pkey);
+		return false;
+	}
+
+	ret = bctbx_signing_key_sign(pkey, bctbx_key_sign, bctbx_md, hash_ptr, hash_size, signature_ptr,
+	                             signature_buffer_size, signature_size_out);
+
+	bctbx_signing_key_free(pkey);
+
+	if (ret != 0) {
+		lError() << "[Tester Keystore] Error: Signing failed: " << ret;
+		return false;
+	}
+
+	lInfo() << "[Tester Keystore] Signed successfully using key ref " << keyRef << ". Max size was "
+	        << signature_buffer_size << " Size: " << *signature_size_out << " bytes.";
+	return true;
+}
 } // namespace Tester
 } // namespace Linphone

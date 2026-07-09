@@ -321,6 +321,15 @@ public:
 	std::string setKey(const std::string &key); // register a key, returns a random key reference token
 	std::string getKey(const std::string &ref); // key lookup from reference
 	void deleteKey(const std::string &ref);     // delete key from register
+	bool sign(const std::string &keyRef,
+	          LinphoneKeySignAlgo sign_algo,
+	          LinphoneHashAlgo hash_algo,
+	          const uint8_t *hash_ptr,
+	          size_t hash_size,
+	          size_t signature_buffer_size,
+	          uint8_t *signature_ptr,
+	          size_t *signature_size_out);
+
 private:
 	KeyStore() = default;
 	~KeyStore() = default;
