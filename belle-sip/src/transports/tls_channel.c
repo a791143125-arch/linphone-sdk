@@ -891,7 +891,7 @@ static int belle_sip_tls_channel_init_bctbx_ssl(belle_sip_tls_channel_t *obj) {
 		}
 		/* now if we do have one set it in the ssl config */
 		if (obj->client_cert_chain && obj->client_cert_key) {
-			char tmp[512] = {0};
+			char tmp[1024] = {0};
 
 			bctbx_x509_certificate_get_info_string(tmp, sizeof(tmp) - 1, "", obj->client_cert_chain->cert);
 			belle_sip_message("Channel [%p]  found client  certificate:\n%s", obj, tmp);

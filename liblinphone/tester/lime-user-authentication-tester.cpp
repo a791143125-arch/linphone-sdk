@@ -37,7 +37,7 @@ using namespace Linphone::Tester;
 // static std::array<certProvider, 4> availCertProv{
 //    {CertProviderConfigSip, CertProviderConfigAuthInfoBuffer, CertProviderConfigAuthInfoBufferExtKeyRef,
 //    CertProviderConfigAuthInfoPath}};
-static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoBufferExtKeyRef}};
+static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoPath}};
 
 static void TLS_mandatory_two_users_curve(const LinphoneTesterLimeAlgo curveId) {
 	LinphoneCoreManager *lcm = linphone_core_manager_create(NULL);
@@ -157,6 +157,26 @@ static void identity_in_altName_one_DNS_entry(void) {
 static void identity_in_subject_CN(void) {
 	const std::string cert_path{"certificates/client/user2_CN_cert.pem"};
 	const std::string key_path{"certificates/client/user2_CN_key.pem"};
+	for (const auto &certProv : availCertProv) {
+		create_user_sip_client_cert_chain(C25519, tls_mandatory, certProv, cert_path, key_path, false, "user_2");
+		create_user_sip_client_cert_chain(C448, tls_mandatory, certProv, cert_path, key_path, false, "user_2");
+		if (liblinphone_tester_is_lime_PQ_available()) {
+			create_user_sip_client_cert_chain(C25519K512, tls_mandatory, certProv, cert_path, key_path, false,
+			                                  "user_2");
+			create_user_sip_client_cert_chain(C25519MLK512, tls_mandatory, certProv, cert_path, key_path, false,
+			                                  "user_2");
+			create_user_sip_client_cert_chain(C448MLK1024, tls_mandatory, certProv, cert_path, key_path, false,
+			                                  "user_2");
+		}
+	}
+}
+
+/**
+ * Create a user, successfully identify with the correct certificate holding the sip:uri in subject CN
+ */
+static void use_ECDSA_certificate(void) {
+	const std::string cert_path{"certificates/client/user2_ECDSA_cert.pem"};
+	const std::string key_path{"certificates/client/user2_ECDSA_key.pem"};
 	for (const auto &certProv : availCertProv) {
 		create_user_sip_client_cert_chain(C25519, tls_mandatory, certProv, cert_path, key_path, false, "user_2");
 		create_user_sip_client_cert_chain(C448, tls_mandatory, certProv, cert_path, key_path, false, "user_2");
@@ -433,6 +453,7 @@ static void invalid_lime_server_in_account() {
 test_t lime_server_auth_tests[] = {
     TEST_TWO_TAGS("Invalid LIME server in account parameters", invalid_lime_server_in_account, "LimeX3DH", "CRYPTO"),
     TEST_TWO_TAGS("sip:uri in altname DNS", identity_in_altName_one_DNS_entry, "LimeX3DH", "CRYPTO"),
+    TEST_TWO_TAGS("sip:uri in altname DNS certificate using ECDSA", use_ECDSA_certificate, "LimeX3DH", "CRYPTO"),
     TEST_TWO_TAGS("sip:uri in subject CN", identity_in_subject_CN, "LimeX3DH", "CRYPTO"),
     TEST_TWO_TAGS(
         "sip:uri in altname DNS with multiple entries", identity_in_altName_multiple_DNS_entry, "LimeX3DH", "CRYPTO"),
