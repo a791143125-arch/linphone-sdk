@@ -938,6 +938,7 @@ typedef void (*LinphoneFriendCbsPresenceReceivedCb)(LinphoneFriend *linphone_fri
  * @param signature	the output buffer to write the signature
  * @param signature_size		actual size of data written in the buffer
  * @param ret		return value: 0 on success
+ * @donotwrap
  */
 typedef void (*LinphoneCoreCbsTlsExtSignCb)(LinphoneCore *core,
                                             const void *key_ref,
