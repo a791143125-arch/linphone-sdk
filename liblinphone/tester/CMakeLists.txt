@@ -120,6 +120,8 @@ set(CERTIFICATE_CLIENT_FILES
 	certificates/client/user2_key.pem
 	certificates/client/user2_ECDSA_cert.pem
 	certificates/client/user2_ECDSA_key.pem
+	certificates/client/user2_ECDSA_521_cert.pem
+	certificates/client/user2_ECDSA_521_key.pem
 	certificates/client/user2_CN_cert.pem
 	certificates/client/user2_CN_key.pem
 	certificates/client/user2_revoked_cert.pem

@@ -34,10 +34,10 @@
 using namespace Linphone::Tester;
 
 // Helper to loop on all certificate providing methods availables
-// static std::array<certProvider, 4> availCertProv{
-//    {CertProviderConfigSip, CertProviderConfigAuthInfoBuffer, CertProviderConfigAuthInfoBufferExtKeyRef,
-//    CertProviderConfigAuthInfoPath}};
-static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoBufferExtKeyRef}};
+static std::array<certProvider, 4> availCertProv{{CertProviderConfigSip, CertProviderConfigAuthInfoBuffer,
+                                                  CertProviderConfigAuthInfoBufferExtKeyRef,
+                                                  CertProviderConfigAuthInfoPath}};
+// static std::array<certProvider, 1> availCertProv{{CertProviderConfigAuthInfoBufferExtKeyRef}};
 
 static void TLS_mandatory_two_users_curve(const LinphoneTesterLimeAlgo curveId) {
 	LinphoneCoreManager *lcm = linphone_core_manager_create(NULL);
@@ -107,10 +107,8 @@ static void create_user_sip_client_cert_chain(const LinphoneTesterLimeAlgo curve
 			    if (Linphone::Tester::KeyStore::getInstance().sign((const char *)key_ref, sign_algo, hash_algo,
 			                                                       hash_ptr, hash_size, signature_buffer_size,
 			                                                       signature_ptr, signature_size_out)) {
-				    lError() << "JOHAN linphone_core_cbs_set_tls_ext_signature returns 0";
 				    *ret_out = 0;
 			    } else {
-				    lError() << "JOHAN linphone_core_cbs_set_tls_ext_signature returns -1";
 				    *ret_out = -1;
 			    }
 		    });
@@ -182,9 +180,7 @@ static void identity_in_subject_CN(void) {
 /**
  * Create a user, successfully identify with the correct certificate holding the sip:uri in subject CN
  */
-static void use_ECDSA_certificate(void) {
-	const std::string cert_path{"certificates/client/user2_ECDSA_cert.pem"};
-	const std::string key_path{"certificates/client/user2_ECDSA_key.pem"};
+static void use_ECDSA_certificate(std::string cert_path, std::string key_path) {
 	for (const auto &certProv : availCertProv) {
 		create_user_sip_client_cert_chain(C25519, tls_mandatory, certProv, cert_path, key_path, false, "user_2");
 		create_user_sip_client_cert_chain(C448, tls_mandatory, certProv, cert_path, key_path, false, "user_2");
@@ -197,6 +193,12 @@ static void use_ECDSA_certificate(void) {
 			                                  "user_2");
 		}
 	}
+}
+
+static void use_ECDSA_certificate(void) {
+	use_ECDSA_certificate("certificates/client/user2_ECDSA_cert.pem", "certificates/client/user2_ECDSA_key.pem");
+	use_ECDSA_certificate("certificates/client/user2_ECDSA_521_cert.pem",
+	                      "certificates/client/user2_ECDSA_521_key.pem");
 }
 
 /**

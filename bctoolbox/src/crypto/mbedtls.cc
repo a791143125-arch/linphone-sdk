@@ -26,6 +26,7 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/hkdf.h>
 #include <mbedtls/md.h>
+#include <mbedtls/psa_util.h>
 #include <mbedtls/ssl.h>
 #include <psa/crypto.h>
 #include <psa/crypto_se_driver.h>
@@ -168,20 +169,39 @@ psa_status_t bctbx_psa_sign_cb(BCTBX_UNUSED(psa_drv_se_context_t *drv_ctx),
 			ext_key_ref = reinterpret_cast<const void *>(ssl_config->ext_key_ref->value.value().c_str());
 #endif
 		}
-		return (ssl_config->callback_ext_signing_function(ssl_config->callback_ext_signing_data, ext_key_ref,
-		                                                  key_sign_alg, hash_alg, hash, hash_len, sig_max, sig,
-		                                                  sig_len) == 0)
-		           ? PSA_SUCCESS
-		           : PSA_ERROR_INVALID_ARGUMENT;
+
+		auto ret =
+		    ssl_config->callback_ext_signing_function(ssl_config->callback_ext_signing_data, ext_key_ref, key_sign_alg,
+		                                              hash_alg, hash, hash_len, sig_max, sig, sig_len);
+		if (ret != 0) {
+			return PSA_ERROR_INVALID_ARGUMENT;
+		}
+
+		// signing succesfull - ECDSA returns a DER formatted buffer, we need to convert it to raw R||S signature
+		if (key_sign_alg == BCTBX_KEYSIGN_ECDSA) {
+			uint8_t raw_sig[132]; // max size should be for P-521 which leads to a 132 bytes signatures
+			size_t raw_sig_len = 0;
+
+			// Convert DER to raw R || S
+			int conv_ret = mbedtls_ecdsa_der_to_raw(ssl_config->ext_key_size, sig, *sig_len, raw_sig, sizeof(raw_sig),
+			                                        &raw_sig_len);
+			if (conv_ret == 0) {
+				memcpy(sig, raw_sig, raw_sig_len);
+				bctbx_message("[PSA] Successfully converted ECDSA signature from DER (%zu bytes) to RAW (%zu bytes)",
+				              *sig_len, raw_sig_len);
+				*sig_len = raw_sig_len;
+			} else {
+				bctbx_error("[PSA] Failed to convert ECDSA signature from ASN.1 DER, error: -0x%04X", -conv_ret);
+				return PSA_ERROR_CORRUPTION_DETECTED;
+			}
+		}
+
+		return PSA_SUCCESS;
 	}
 
 	return PSA_ERROR_INVALID_ARGUMENT;
-
-	// Both key_ref and user_ctx available here, no globals
-	// return your_sign_dispatch(s->key_ref, s->user_ctx,
-	//                        hash, hash_len, alg,
-	//                      sig, sig_max, sig_len);
 }
+
 psa_drv_se_key_management_t bctbx_psa_key_mgmt = {
     NULL, bctbx_psa_validate_key_cb, bctbx_psa_import_key_cb, NULL, NULL, NULL, NULL};
 psa_drv_se_asymmetric_t bctbx_psa_signing = {bctbx_psa_sign_cb, NULL, NULL, NULL};

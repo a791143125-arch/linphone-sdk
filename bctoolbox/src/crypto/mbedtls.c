@@ -1207,7 +1207,7 @@ bctbx_ssl_config_t *bctbx_ssl_config_new(void) {
 	ssl_config->callback_cli_cert_data = NULL;
 	ssl_config->ciphersuites = NULL;
 	ssl_config->ext_key_ref = NULL;
-	ssl_config->ext_key_psa_id = MBEDTLS_SVC_KEY_ID_INIT;
+	ssl_config->ext_key_size = 0;
 	ssl_config->callback_ext_signing_function = NULL;
 	ssl_config->callback_ext_signing_data = NULL;
 	mbedtls_pk_init(&(ssl_config->ext_key));
@@ -1520,6 +1520,7 @@ int32_t bctbx_ssl_config_set_own_cert(bctbx_ssl_config_t *ssl_config,
 				bctbx_error("PSA Public type not RSA nor ECC");
 				return BCTBX_ERROR_INVALID_CERTIFICATE;
 			}
+			ssl_config->ext_key_size = key_bits;
 
 			psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
 			psa_set_key_lifetime(&attr, PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_VOLATILE,
@@ -1536,15 +1537,15 @@ int32_t bctbx_ssl_config_set_own_cert(bctbx_ssl_config_t *ssl_config,
 			psa_set_key_slot_number(&attr, (psa_key_slot_number_t)(uintptr_t)ssl_config);
 
 			uint8_t dummy_payload = 0xFF;
-			psa_status_t psa_status =
-			    psa_import_key(&attr, &dummy_payload, sizeof(dummy_payload), &(ssl_config->ext_key_psa_id));
+			mbedtls_svc_key_id_t ext_key_psa_id;
+			psa_status_t psa_status = psa_import_key(&attr, &dummy_payload, sizeof(dummy_payload), &ext_key_psa_id);
 			if (psa_status != PSA_SUCCESS) {
 				// Most likely: PSA_ERROR_NOT_SUPPORTED (driver not found)
 				//           or PSA_ERROR_BAD_STATE (psa_crypto_init not called yet / driver registered too late)
 				return BCTBX_ERROR_INVALID_CERTIFICATE;
 			}
 
-			ret = mbedtls_pk_setup_opaque(&(ssl_config->ext_key), ssl_config->ext_key_psa_id);
+			ret = mbedtls_pk_setup_opaque(&(ssl_config->ext_key), ext_key_psa_id);
 			if (ret != 0) {
 				return BCTBX_ERROR_INVALID_CERTIFICATE;
 			}
