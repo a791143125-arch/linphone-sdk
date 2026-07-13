@@ -202,6 +202,7 @@ task copyAssets(type: Sync) {
     include '**/*.wav'
     include '**/*.jpg'
     include '**/*_grammar.belr'
+    include '**/*.onnx'
 
     //rename '(.*)', '$1'.toLowerCase()
     eachFile {

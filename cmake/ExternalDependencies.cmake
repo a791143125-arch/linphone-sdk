@@ -1509,7 +1509,12 @@ if(BUILD_ONNXRUNTIME)
 				"-DCMAKE_C_FLAGS=/D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /sdl-"
 				"-DCMAKE_CXX_FLAGS=/D_CRT_SECURE_NO_WARNINGS /D_WINSOCK_DEPRECATED_NO_WARNINGS /sdl-")
 		endif()
-		
+		if(ANDROID)
+			list(APPEND ORT_EXTRA_ARGS
+				"-Donnxruntime_USE_NNAPI_BUILTIN=ON"
+				"-Donnxruntime_USE_XNNPACK=ON")   # Quick android CPU inference processor
+		endif()
+
 		# onnxruntime needs clang >= 16 (structured binding capture); on older clang, build it with gcc
 		if(NOT ANDROID AND NOT IOS AND NOT APPLE AND
 		CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16)

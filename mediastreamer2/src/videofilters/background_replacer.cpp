@@ -16,11 +16,14 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-
+#ifdef __ANDROID__
+	#include <android/api-level.h>
+	#include <onnxruntime/core/providers/nnapi/nnapi_provider_factory.h>
+#endif
 #ifdef HAVE_LIBYUV_H
-#include "libyuv/convert_argb.h"
-#include "libyuv/planar_functions.h"
-#include "libyuv/scale.h"
+	#include "libyuv/convert_argb.h"
+	#include "libyuv/planar_functions.h"
+	#include "libyuv/scale.h"
 #endif
 #include <chrono>
 namespace mediastreamer {
@@ -37,6 +40,20 @@ public:
 		mOpts.SetInterOpNumThreads(1);
 		mOpts.SetIntraOpNumThreads(1);
 		std::filesystem::path modelPath(path);
+		#ifdef __ANDROID__
+				uint32_t nnapi_flags = NNAPI_FLAG_USE_FP16;
+				if (android_get_device_api_level() >= 29) {
+					nnapi_flags |= NNAPI_FLAG_CPU_DISABLED;
+				}
+				OrtStatus *st = OrtSessionOptionsAppendExecutionProvider_Nnapi(mOpts, nnapi_flags);
+				if (st != nullptr) {
+					ms_warning("[BackgroundReplacer] NNAPI KO, repli CPU/XNNPACK : %s",
+							Ort::GetApi().GetErrorMessage(st));
+					Ort::GetApi().ReleaseStatus(st);
+				} else {
+					ms_message("[BackgroundReplacer] NNAPI activé");
+				}
+		#endif
 		mSession = Ort::Session(mEnv, modelPath.c_str(), mOpts);
 		ms_free(path);
 		mTimeLastResult = std::chrono::high_resolution_clock::now();
@@ -100,15 +117,16 @@ public:
 
 				// CONSUMER : get the last alpha available
 				std::vector<uint8_t> alpha;
+				int aW = 0, aH = 0;
 				{
 					std::lock_guard<std::mutex> lk(mMutex);
 					if (mHasResult) {
 						auto now = std::chrono::high_resolution_clock::now();
 						auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - mTimeLastResult).count();
 						alpha = mLastResult;
+						aW = maskW_; aH = maskH_;
 						if (age > 200) {
-
-							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // fond complet (sûr)
+							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // no foreground
 						}
 					}
 				}
@@ -116,7 +134,14 @@ public:
 				// Reconstuction of final image with blend
 				if (!alpha.empty()) {
 					const int W = pic.w, H = pic.h;
-
+					
+					if ((size_t)aW * aH == alpha.size() && (aW != W || aH != H)) {
+						std::vector<uint8_t> scaled((size_t)W * H);
+						libyuv::ScalePlane(alpha.data(), aW, aW, aH,
+						                   scaled.data(), W, W, H, libyuv::kFilterBilinear);
+						alpha = std::move(scaled);
+					}
+					
 					if (mHasBg && (mBgDirty || mBgScaledW != W || mBgScaledH != H)) {
 						mBgY.resize((size_t)W * H);
 						mBgU.resize((size_t)(W / 2) * (H / 2));
