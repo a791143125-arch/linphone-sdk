@@ -2794,9 +2794,24 @@ void group_chat_room_with_client_removed_while_stopped_base(const bool_t use_rem
 		BC_ASSERT_TRUE(CoreManagerAssert({focus, marie, michelle, berthe, berthe2}).wait([msg] {
 			return (linphone_chat_message_get_state(msg) == LinphoneChatMessageStateNotDelivered);
 		}));
-		BC_ASSERT_TRUE(wait_for_list(coresList, &michelle.getStats().number_of_LinphoneChatRoomMessageEarlyFailure,
-		                             initialMichelleStats.number_of_LinphoneChatRoomMessageEarlyFailure + 1,
-		                             liblinphone_tester_sip_timeout));
+		if (use_remote_event_list_handler && !encrypted) {
+			// Michelle's chat room is still in state Created because a group chat room is left untouched when one of
+			// its messages is rejected. The message is therefore actually sent and the server answers 403 Forbidden as
+			// Michelle is no longer a participant, hence it cannot fail early.
+			BC_ASSERT_TRUE(wait_for_list(coresList, &michelle.getStats().number_of_LinphoneMessageNotDelivered,
+			                             initialMichelleStats.number_of_LinphoneMessageNotDelivered + 1,
+			                             liblinphone_tester_sip_timeout));
+			BC_ASSERT_FALSE(wait_for_list(coresList, &michelle.getStats().number_of_LinphoneChatRoomMessageEarlyFailure,
+			                              initialMichelleStats.number_of_LinphoneChatRoomMessageEarlyFailure + 1,
+			                              3000));
+		} else {
+			// Either the chat room is not in state Created or, in an encrypted chat room, the encryption engine
+			// cannot retrieve the list of participant devices because the subscription errored out. In both cases
+			// the message fails before being sent to the server.
+			BC_ASSERT_TRUE(wait_for_list(coresList, &michelle.getStats().number_of_LinphoneChatRoomMessageEarlyFailure,
+			                             initialMichelleStats.number_of_LinphoneChatRoomMessageEarlyFailure + 1,
+			                             liblinphone_tester_sip_timeout));
+		}
 
 		linphone_chat_message_unref(msg);
 		msg = NULL;
