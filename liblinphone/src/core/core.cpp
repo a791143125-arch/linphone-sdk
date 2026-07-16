@@ -2610,7 +2610,7 @@ std::shared_ptr<Conference> Core::searchConference(const std::shared_ptr<Confere
 		    }
 		*/
 
-		if (localAddress && !conferenceServerEnabled()) {
+		if (localAddress) {
 			auto localAddressWithoutGruu = localAddress->getUriWithoutGruu();
 			auto localAddressWithoutGruuString = localAddressWithoutGruu.toStringUriOnlyOrdered(false);
 			/* TODO with C++20

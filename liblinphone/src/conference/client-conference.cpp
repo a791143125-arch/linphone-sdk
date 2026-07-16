@@ -2078,11 +2078,7 @@ void ClientConference::notifyLouderSpeaker(uint32_t ssrc) {
 
 std::shared_ptr<ClientConferenceEventHandler> ClientConference::getEventHandler() const {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	auto handler = getCore()->getPrivate()->clientListEventHandler->findHandler(getConferenceId());
-	if (!handler) {
-		handler = mEventHandler;
-	}
-	return handler;
+	return mEventHandler;
 #else
 	return nullptr;
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
@@ -2091,9 +2087,8 @@ std::shared_ptr<ClientConferenceEventHandler> ClientConference::getEventHandler(
 bool ClientConference::isSubscriptionUnderWay() const {
 	bool underWay = false;
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	auto handler = getEventHandler();
-	if (handler) {
-		underWay = handler->getInitialSubscriptionUnderWayFlag();
+	if (mEventHandler) {
+		underWay = mEventHandler->getInitialSubscriptionUnderWayFlag();
 	}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 	return underWay;
@@ -2114,9 +2109,8 @@ void ClientConference::onSubscriptionUnderwayDone() {
 #endif // _MSC_VER
 void ClientConference::multipartNotifyReceived(const std::shared_ptr<Event> &notifyLev, const Content &content) {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	auto handler = getEventHandler();
-	if (handler) {
-		handler->multipartNotifyReceived(notifyLev, content);
+	if (mEventHandler) {
+		mEventHandler->multipartNotifyReceived(notifyLev, content);
 		return;
 	}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
@@ -2142,9 +2136,8 @@ void ClientConference::notifyReceived(const std::shared_ptr<Event> &notifyLev, c
 		}
 	} else {
 #ifdef HAVE_XERCESC
-		auto handler = getEventHandler();
-		if (handler) {
-			handler->notifyReceived(notifyLev, content);
+		if (mEventHandler) {
+			mEventHandler->notifyReceived(notifyLev, content);
 			return;
 		}
 #endif // HAVE_XERCESC

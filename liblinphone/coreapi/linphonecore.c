@@ -3017,8 +3017,8 @@ static void linphone_core_internal_notify_received(LinphoneCore *lc,
 				clientConference->notifyReceived(ev, content);
 			}
 		} else {
-			lError() << "Unable to handle NOTIFY message attached to " << *ev << " because no conference with address " << *resourceAddr
-			         << " has been found";
+			lError() << "Unable to handle NOTIFY message attached to " << *ev << " because no conference with address "
+			         << *resourceAddr << " has been found";
 		}
 #else
 		lWarning() << "Unable to handle NOTIFY because advanced IM such as group chat is disabled!";
@@ -3104,8 +3104,8 @@ static void _linphone_core_conference_subscription_state_changed(LinphoneCore *l
 		if (conference) static_pointer_cast<ServerConference>(conference)->subscriptionStateChanged(evSub, state);
 		else {
 			lWarning() << "Unable to handle subscripton state changed to "
-			           << linphone_subscription_state_to_string(state) << " because no conference with id "
-			           << conferenceId << " has been found";
+			           << linphone_subscription_state_to_string(state) << " because no conference with address "
+			           << *conferenceAddress << " has been found";
 		}
 	}
 #else  // !defined(HAVE_ADVANCED_IM) || !defined(HAVE_XERCESC)

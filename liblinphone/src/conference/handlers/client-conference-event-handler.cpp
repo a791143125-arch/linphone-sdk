@@ -68,7 +68,11 @@ ClientConferenceEventHandler::ClientConferenceEventHandler(const std::shared_ptr
 // -----------------------------------------------------------------------------
 
 void ClientConferenceEventHandler::setManagedByListEventHandler(bool managed) {
-	managedByListEventHandler = managed;
+	mManagedByListEventHandler = managed;
+}
+
+bool ClientConferenceEventHandler::getManagedByListEventHandler() const {
+	return mManagedByListEventHandler;
 }
 
 void ClientConferenceEventHandler::setInitialSubscriptionUnderWayFlag(bool on) {
@@ -138,12 +142,12 @@ ClientConferenceEventHandler::conferenceInfoNotifyReceived(const string &xmlBody
 	try {
 		bool isFullState = (confInfo->getState() == StateType::full);
 		const auto conference = getConference();
-		if (waitingFullState && !isFullState) {
+		if (mWaitingFullState && !isFullState) {
 			// No need to do any processing if the client is waiting a full state
 			lError() << "Unable to process received NOTIFY because " << *conference << " is waiting a full state";
 			return ClientConferenceEventHandlerBase::NotifyParsingResult::Error;
 		} else {
-			waitingFullState = false;
+			mWaitingFullState = false;
 		}
 
 		const auto &core = getCore();
@@ -211,9 +215,9 @@ ClientConferenceEventHandler::conferenceInfoNotifyReceived(const string &xmlBody
 		// The client is synchronizing when it requested a full state as there was a discrepancy between its last notify
 		// ID and the one from the server or the server sent a full state to catch up a big number of missed events
 		const auto currentNotifyVersion = getLastNotify();
-		bool synchronizing = fullStateRequested || (isFullState && (currentNotifyVersion != 0));
-		if (isFullState && fullStateRequested) {
-			fullStateRequested = false;
+		bool synchronizing = mFullStateRequested || (isFullState && (currentNotifyVersion != 0));
+		if (isFullState && mFullStateRequested) {
+			mFullStateRequested = false;
 		}
 
 		// 1. Compute event time.
@@ -860,8 +864,8 @@ bool ClientConferenceEventHandler::requestFullState() {
 	lInfo() << "Requesting full state for " << *conference;
 	unsubscribe();
 	conference->resetLastNotify();
-	fullStateRequested = subscribe(getConferenceId());
-	if (!fullStateRequested) {
+	mFullStateRequested = subscribe(getConferenceId());
+	if (!mFullStateRequested) {
 		const auto &chatRoom = conference->getChatRoom();
 		if (chatRoom) {
 			if (auto db = getCore()->getDatabase()) {
@@ -869,7 +873,7 @@ bool ClientConferenceEventHandler::requestFullState() {
 			}
 		}
 	}
-	return fullStateRequested;
+	return mFullStateRequested;
 }
 
 // -----------------------------------------------------------------------------
@@ -888,7 +892,7 @@ bool ClientConferenceEventHandler::needToSubscribe() const {
 		conferenceStateOk = (conferenceState == ConferenceInterface::State::CreationPending) ||
 		                    (conferenceState == ConferenceInterface::State::Created);
 	}
-	return !alreadySubscribed() && !managedByListEventHandler && conferenceStateOk;
+	return !alreadySubscribed() && !mManagedByListEventHandler && conferenceStateOk;
 }
 
 void ClientConferenceEventHandler::subscribeStateChangedCb(LinphoneEvent *lev, LinphoneSubscriptionState state) {
@@ -917,7 +921,7 @@ bool ClientConferenceEventHandler::subscribe() {
 		return false; // Conference has not been set
 	}
 
-	if (managedByListEventHandler) {
+	if (mManagedByListEventHandler) {
 		lDebug() << "ClientConferenceEventHandler [" << this << "] is unable to subscribe to " << *conference
 		         << " because it is managed by the list event handler";
 		return false; // Handler managed by the list event handler
@@ -1006,7 +1010,7 @@ bool ClientConferenceEventHandler::subscribe() {
 // -----------------------------------------------------------------------------
 
 void ClientConferenceEventHandler::unsubscribePrivate() {
-	if (mEvent && !managedByListEventHandler) {
+	if (mEvent && !mManagedByListEventHandler) {
 		/* The following tricky code is to break a cycle. Indeed linphone_event_terminate() will change the event's
 		 * state, which will be notified to the core, that will call us immediately in invalidateSubscription(),
 		 * which resets 'mEvent' while we still have to unref it.*/
@@ -1040,7 +1044,7 @@ void ClientConferenceEventHandler::onAccountRegistrationStateChanged(std::shared
 	auto conference = getConference();
 	bool isChatOnly = conference && conference->isChatOnly();
 	if (localAddress && address->weakEqual(*localAddress) && (state == LinphoneRegistrationOk) &&
-	    !alreadySubscribed() && !managedByListEventHandler && isChatOnly) {
+	    !alreadySubscribed() && !mManagedByListEventHandler && isChatOnly) {
 		subscribe(conferenceId);
 	}
 }
@@ -1072,7 +1076,7 @@ void ClientConferenceEventHandler::invalidateSubscription() {
 
 LinphoneSubscriptionState ClientConferenceEventHandler::getSubscriptionState() const {
 	auto state = LinphoneSubscriptionNone;
-	if (managedByListEventHandler) {
+	if (mManagedByListEventHandler) {
 		state = getCore()->getPrivate()->clientListEventHandler->getSubscriptionState(
 		    getConferenceId().getLocalAddress(), getConferenceId().getPeerAddress());
 	} else {
@@ -1088,7 +1092,7 @@ bool ClientConferenceEventHandler::subscribe(BCTBX_UNUSED(const ConferenceId &co
 	// Do not send individual SUBSCRIBE messages if the event handler is managed by the list event handler
 	auto ret = subscribe();
 	if (ret) {
-		waitingFullState = (getLastNotify() == 0);
+		mWaitingFullState = (getLastNotify() == 0);
 	}
 	return ret;
 }
@@ -1188,4 +1192,7 @@ void ClientConferenceEventHandler::setEvent(const std::shared_ptr<EventSubscribe
 	mEvent = eventSubscribe;
 }
 
+bool ClientConferenceEventHandler::operator<(const ClientConferenceEventHandler &handler) const {
+	return getConference() < handler.getConference();
+}
 LINPHONE_END_NAMESPACE

@@ -6026,6 +6026,10 @@ void legacy_chat_room_migration_base(ChatRoomMigrationParams const &params) {
 	}
 }
 
+// Test that behaviour of a migration occurring when a core is offline. Upon startup, it will subscribe to the chatroom
+// with the orginal address only to get a notification that the address changed. It will still be able to receive and
+// associate messages to the right chatroom even when they are sent after migration because the From address is the
+// original address and the new address is advertised only in the X-Alt-From header
 void legacy_chat_room_migration_client_offline_base(ChatRoomMigrationClientOfflineParams const &params) {
 
 	bool encrypted = params.encrypted;
