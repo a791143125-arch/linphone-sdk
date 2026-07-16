@@ -1511,7 +1511,6 @@ if(BUILD_ONNXRUNTIME)
 		endif()
 		if(ANDROID)
 			list(APPEND ORT_EXTRA_ARGS
-				"-Donnxruntime_USE_NNAPI_BUILTIN=ON"
 				"-Donnxruntime_USE_XNNPACK=ON")   # Quick android CPU inference processor
 		endif()
 

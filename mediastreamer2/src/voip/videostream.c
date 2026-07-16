@@ -1589,7 +1589,7 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 				ms_filter_call_method(stream->ms.encoder, MS_FILTER_ADD_FMTP, pt->send_fmtp);
 			}
 			ms_filter_call_method(stream->ms.encoder, MS_VIDEO_ENCODER_ENABLE_AVPF, &avpf_enabled);
-			if (stream->use_preview_window) {
+			if (stream->use_preview_window || stream->background_replacer != NULL) {
 				if (stream->rendercb == NULL) {
 					stream->output2 = ms_factory_create_filter_from_name(stream->ms.factory, stream->display_name);
 					if (stream->output2) ms_filter_add_notify_callback(stream->output2, display_cb, stream, FALSE);
@@ -2403,7 +2403,36 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 	int bypass = (type == MSBackgroundSame);
 	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
 	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
+
+	//cap the resolution for android to prevent the automatic upscaling of resolution on low performance device
+#ifdef __ANDROID__
+	{
+		MSVideoSize cap = MS_VIDEO_SIZE_VGA; 
+		if (type != MSBackgroundSame) {
+			if (!stream->background_vsize_capped) {
+				stream->background_saved_max_vsize = stream->max_sent_vsize;
+				stream->background_vsize_capped = TRUE;
+			}
+			if (stream->background_saved_max_vsize.width > 0 && stream->background_saved_max_vsize.height > 0 &&
+			    stream->background_saved_max_vsize.width * stream->background_saved_max_vsize.height <=
+			        cap.width * cap.height) {
+				stream->max_sent_vsize = stream->background_saved_max_vsize; /* déjà plus bas : ne pas augmenter */
+			} else {
+				stream->max_sent_vsize = cap;
+			}
+			if (stream->sent_vsize.width * stream->sent_vsize.height >
+			    stream->max_sent_vsize.width * stream->max_sent_vsize.height) {
+				video_stream_set_sent_video_size(stream, stream->max_sent_vsize); /* applique tout de suite */
+			}
+		} else if (stream->background_vsize_capped) {
+			stream->max_sent_vsize = stream->background_saved_max_vsize; /* restaure le plafond d'origine */
+			stream->background_vsize_capped = FALSE;
+		}
+		video_stream_update_video_params(stream);
+	}
+#endif
 }
+
 
 void video_stream_set_background_path(VideoStream *stream, const char *path) {
 	if (!stream || !path || !stream->background_replacer) return;
@@ -2469,7 +2498,7 @@ void video_stream_set_native_preview_window_id(VideoStream *stream, void *id) {
 #endif
 		// Useful for Mobile where Capture API need a View to display the preview.
 		// Be careful when implementing Capture/Display Filters to avoid conflicts with ID.
-		if (stream->source) {
+		if (stream->source && stream->output2 == NULL) {
 			ms_filter_call_method(stream->source, MS_VIDEO_DISPLAY_SET_NATIVE_WINDOW_ID, &id);
 		}
 	}

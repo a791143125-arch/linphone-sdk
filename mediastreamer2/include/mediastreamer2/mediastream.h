@@ -1357,6 +1357,8 @@ struct _VideoStream {
 	MSFilter *background_decoder;  /* Decode the mkv file from the MKV player */
 	bool_t background_user_image;  /* TRUE if not the default image */
 	bool_t background_user_video;  /* TRUE if not the default video */
+	MSVideoSize background_saved_max_vsize; /* cap max_sent_vsize saved (Android) */
+	bool_t background_vsize_capped;         /* TRUE if the resolution is capped for the background */
 
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;

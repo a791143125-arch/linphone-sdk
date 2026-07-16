@@ -457,10 +457,8 @@ static void android_camera2_capture_close_camera(AndroidCamera2Context *d) {
 
 static void android_camera2_check_configuration_ok(AndroidCamera2Context *d) {
 	if (d->nativeWindowId == 0) {
-		ms_error("[Camera2 Capture] TextureView wasn't set (was core.setNativePreviewWindowId() called?)");
-		return;
-	}
-	if (d->surface == nullptr) {
+		ms_message("[Camera2 Capture] No preview window set, capturing without on-screen preview target");
+	} else if (d->surface == nullptr) {
 		ms_error("[Camera2 Capture] Failed to get a valid object to display camera preview from native window id [%p]", d->nativeWindowId);
 		return;
 	}
@@ -550,26 +548,27 @@ static void android_camera2_capture_start(AndroidCamera2Context *d) {
 		}
 	}
 
-	camera_status = ACameraOutputTarget_create(d->nativeWindow, &d->cameraPreviewOutputTarget);
-	if (camera_status != ACAMERA_OK) {
-		ms_error("[Camera2 Capture] Failed to create output target, error is %s", android_camera2_status_to_string(camera_status));
-	}
+	if (d->nativeWindow){
+		camera_status = ACameraOutputTarget_create(d->nativeWindow, &d->cameraPreviewOutputTarget);
+		if (camera_status != ACAMERA_OK) {
+			ms_error("[Camera2 Capture] Failed to create output target, error is %s", android_camera2_status_to_string(camera_status));
+		}
 
-	camera_status = ACaptureRequest_addTarget(d->capturePreviewRequest, d->cameraPreviewOutputTarget);
-	if (camera_status != ACAMERA_OK) {
-		ms_error("[Camera2 Capture] Failed to add output target to capture request, error is %s", android_camera2_status_to_string(camera_status));
-	}
+		camera_status = ACaptureRequest_addTarget(d->capturePreviewRequest, d->cameraPreviewOutputTarget);
+		if (camera_status != ACAMERA_OK) {
+			ms_error("[Camera2 Capture] Failed to add output target to capture request, error is %s", android_camera2_status_to_string(camera_status));
+		}
 
-	camera_status = ACaptureSessionOutput_create(d->nativeWindow, &d->sessionPreviewOutput);
-	if (camera_status != ACAMERA_OK) {
-		ms_error("[Camera2 Capture] Failed to create capture session output, error is %s", android_camera2_status_to_string(camera_status));
-	}
+		camera_status = ACaptureSessionOutput_create(d->nativeWindow, &d->sessionPreviewOutput);
+		if (camera_status != ACAMERA_OK) {
+			ms_error("[Camera2 Capture] Failed to create capture session output, error is %s", android_camera2_status_to_string(camera_status));
+		}
 
-	camera_status = ACaptureSessionOutputContainer_add(d->captureSessionOutputContainer, d->sessionPreviewOutput);
-	if (camera_status != ACAMERA_OK) {
-		ms_error("[Camera2 Capture] Failed to add capture session output to container, error is %s", android_camera2_status_to_string(camera_status));
+		camera_status = ACaptureSessionOutputContainer_add(d->captureSessionOutputContainer, d->sessionPreviewOutput);
+		if (camera_status != ACAMERA_OK) {
+			ms_error("[Camera2 Capture] Failed to add capture session output to container, error is %s", android_camera2_status_to_string(camera_status));
+		}
 	}
-
 	media_status_t status = AImageReader_new(d->captureSize.width, d->captureSize.height, d->captureFormat, 2, &d->imageReader);
 	if (status != AMEDIA_OK) {
 		ms_error("[Camera2 Capture] Failed to create image reader, error is %i", status);

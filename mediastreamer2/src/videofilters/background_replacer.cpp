@@ -16,55 +16,43 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-#ifdef __ANDROID__
-	#include <android/api-level.h>
-	#include <onnxruntime/core/providers/nnapi/nnapi_provider_factory.h>
-#endif
 #ifdef HAVE_LIBYUV_H
-	#include "libyuv/convert_argb.h"
-	#include "libyuv/planar_functions.h"
-	#include "libyuv/scale.h"
+#include "libyuv/convert_argb.h"
+#include "libyuv/planar_functions.h"
+#include "libyuv/scale.h"
 #endif
 #include <chrono>
 namespace mediastreamer {
 
 class BackgroundReplacer {
 public:
-	BackgroundReplacer(MSFilter *f, bool bypass = true) {
-
+		BackgroundReplacer(MSFilter *f, bool bypass = true) {
 		mBypass = bypass;
-
-		// One time model setup
-		char *path =
-		    ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
-		mOpts.SetInterOpNumThreads(1);
-		mOpts.SetIntraOpNumThreads(1);
-		std::filesystem::path modelPath(path);
-		#ifdef __ANDROID__
-				uint32_t nnapi_flags = NNAPI_FLAG_USE_FP16;
-				if (android_get_device_api_level() >= 29) {
-					nnapi_flags |= NNAPI_FLAG_CPU_DISABLED;
-				}
-				OrtStatus *st = OrtSessionOptionsAppendExecutionProvider_Nnapi(mOpts, nnapi_flags);
-				if (st != nullptr) {
-					ms_warning("[BackgroundReplacer] NNAPI KO, repli CPU/XNNPACK : %s",
-							Ort::GetApi().GetErrorMessage(st));
-					Ort::GetApi().ReleaseStatus(st);
-				} else {
-					ms_message("[BackgroundReplacer] NNAPI activé");
-				}
-		#endif
-		mSession = Ort::Session(mEnv, modelPath.c_str(), mOpts);
+		char *path = ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
+		try {
+			std::filesystem::path modelPath(path);
+						Ort::SessionOptions opts;
+			opts.SetInterOpNumThreads(1);
+			#ifdef __ANDROID__
+			opts.SetIntraOpNumThreads(1);
+			opts.AddConfigEntry("session.intra_op.allow_spinning", "0");
+			opts.AppendExecutionProvider("XNNPACK", {{"intra_op_num_threads", "2"}});
+			#else
+			opts.SetIntraOpNumThreads(2);
+			#endif
+			mSession = Ort::Session(mEnv, modelPath.c_str(), opts);
+			mTimeLastResult = std::chrono::high_resolution_clock::now();
+			Ort::AllocatorWithDefaultOptions alloc;
+			mInName  = mSession.GetInputNameAllocated(0, alloc).get();
+			mOutName = mSession.GetOutputNameAllocated(0, alloc).get();
+			mWorker  = std::thread(&BackgroundReplacer::inference_computer, this);
+		} catch (const std::exception &e) {
+			ms_error("[BackgroundReplacer] init ORT KO: %s -> bypass", e.what());
+			mBypass = true;
+		}
 		ms_free(path);
-		mTimeLastResult = std::chrono::high_resolution_clock::now();
-
-		// Input/Output name
-		Ort::AllocatorWithDefaultOptions alloc;
-		mInName = mSession.GetInputNameAllocated(0, alloc).get();
-		mOutName = mSession.GetOutputNameAllocated(0, alloc).get();
-
-		mWorker = std::thread(&BackgroundReplacer::inference_computer, this);
 	}
+
 
 	~BackgroundReplacer() {
 		{
@@ -124,7 +112,8 @@ public:
 						auto now = std::chrono::high_resolution_clock::now();
 						auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - mTimeLastResult).count();
 						alpha = mLastResult;
-						aW = maskW_; aH = maskH_;
+						aW = maskW_;
+						aH = maskH_;
 						if (age > 200) {
 							std::fill(alpha.begin(), alpha.end(), (uint8_t)255); // no foreground
 						}
@@ -134,14 +123,13 @@ public:
 				// Reconstuction of final image with blend
 				if (!alpha.empty()) {
 					const int W = pic.w, H = pic.h;
-					
+
 					if ((size_t)aW * aH == alpha.size() && (aW != W || aH != H)) {
 						std::vector<uint8_t> scaled((size_t)W * H);
-						libyuv::ScalePlane(alpha.data(), aW, aW, aH,
-						                   scaled.data(), W, W, H, libyuv::kFilterBilinear);
+						libyuv::ScalePlane(alpha.data(), aW, aW, aH, scaled.data(), W, W, H, libyuv::kFilterBilinear);
 						alpha = std::move(scaled);
 					}
-					
+
 					if (mHasBg && (mBgDirty || mBgScaledW != W || mBgScaledH != H)) {
 						mBgY.resize((size_t)W * H);
 						mBgU.resize((size_t)(W / 2) * (H / 2));
@@ -328,7 +316,6 @@ private:
 
 	// ONNX Runtime states
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};
-	Ort::SessionOptions mOpts;
 	Ort::Session mSession{nullptr};
 	Ort::AllocatorWithDefaultOptions mAlloc;
 	std::string mInName, mOutName;

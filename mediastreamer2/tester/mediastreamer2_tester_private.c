@@ -21,6 +21,7 @@
 #include "mediastreamer2_tester_private.h"
 #include "bctoolbox/tester.h"
 #include "bctoolbox/vfs.h"
+#include "bctoolbox/port.h"
 
 #include "mediastreamer2/dtmfgen.h"
 #include "mediastreamer2/msfileplayer.h"
@@ -66,6 +67,14 @@ MSFactory *ms_tester_factory_new(void) {
 	MSFactory *factory = ms_factory_new();
 
 	if (ms_tester_plugin_location != NULL) ms_factory_set_plugins_dir(factory, ms_tester_plugin_location);
+
+	{
+		char *res_parent = bctbx_dirname(bc_tester_get_resource_dir_prefix());
+		char *image_dir = ms_strdup_printf("%s/images", res_parent);
+		ms_factory_set_image_resources_dir(factory, image_dir);
+		ms_free(image_dir);
+		bctbx_free(res_parent);
+	}
 
 	ms_factory_init_voip(factory);
 	ms_factory_init_plugins(factory);
