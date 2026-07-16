@@ -26,12 +26,26 @@ namespace mediastreamer {
 
 class BackgroundReplacer {
 public:
-		BackgroundReplacer(MSFilter *f, bool bypass = true) {
-		mBypass = bypass;
-		char *path = ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(f->factory));
+
+	BackgroundReplacer(MSFilter *f, bool bypass = true) : mFilter(f) {
+    	mBypass = bypass;
+    	if (!mBypass) ensureModelLoaded();
+	}
+
+	void setBypass(int v) {
+		bool b = (v != 0);
+		if (!b) ensureModelLoaded();
+		mBypass = b;
+	}
+
+void ensureModelLoaded() {
+		if (mModelLoaded) return;
+		mModelLoaded = true;
+		char *path =
+		    ms_strdup_printf("%s/../background_model/model.onnx", ms_factory_get_image_resources_dir(mFilter->factory));
 		try {
 			std::filesystem::path modelPath(path);
-						Ort::SessionOptions opts;
+			Ort::SessionOptions opts;
 			opts.SetInterOpNumThreads(1);
 			#ifdef __ANDROID__
 			opts.SetIntraOpNumThreads(1);
@@ -43,16 +57,15 @@ public:
 			mSession = Ort::Session(mEnv, modelPath.c_str(), opts);
 			mTimeLastResult = std::chrono::high_resolution_clock::now();
 			Ort::AllocatorWithDefaultOptions alloc;
-			mInName  = mSession.GetInputNameAllocated(0, alloc).get();
+			mInName = mSession.GetInputNameAllocated(0, alloc).get();
 			mOutName = mSession.GetOutputNameAllocated(0, alloc).get();
-			mWorker  = std::thread(&BackgroundReplacer::inference_computer, this);
+			mWorker = std::thread(&BackgroundReplacer::inference_computer, this);
 		} catch (const std::exception &e) {
 			ms_error("[BackgroundReplacer] init ORT KO: %s -> bypass", e.what());
 			mBypass = true;
 		}
 		ms_free(path);
 	}
-
 
 	~BackgroundReplacer() {
 		{
@@ -165,9 +178,6 @@ public:
 		return mBypass;
 	}
 
-	void setBypass(bool bypass) {
-		mBypass = bypass;
-	}
 
 private:
 	// function designed to resize the given image to match the dimensions
@@ -313,6 +323,8 @@ private:
 	int mBgScaledW = 0, mBgScaledH = 0;
 	bool mBgDirty = false;
 	bool mBypass;
+	bool mModelLoaded = false;
+	MSFilter *mFilter = nullptr;
 
 	// ONNX Runtime states
 	Ort::Env mEnv{ORT_LOGGING_LEVEL_WARNING, "pphumanseg"};

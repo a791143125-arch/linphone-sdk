@@ -19,9 +19,9 @@
  */
 
 #include "mediastreamer2_tester_private.h"
+#include "bctoolbox/port.h"
 #include "bctoolbox/tester.h"
 #include "bctoolbox/vfs.h"
-#include "bctoolbox/port.h"
 
 #include "mediastreamer2/dtmfgen.h"
 #include "mediastreamer2/msfileplayer.h"

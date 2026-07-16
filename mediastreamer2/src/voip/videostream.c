@@ -2404,10 +2404,10 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
 	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
 
-	//cap the resolution for android to prevent the automatic upscaling of resolution on low performance device
+	// cap the resolution for android to prevent the automatic upscaling of resolution on low performance device
 #ifdef __ANDROID__
 	{
-		MSVideoSize cap = MS_VIDEO_SIZE_VGA; 
+		MSVideoSize cap = MS_VIDEO_SIZE_VGA;
 		if (type != MSBackgroundSame) {
 			if (!stream->background_vsize_capped) {
 				stream->background_saved_max_vsize = stream->max_sent_vsize;
@@ -2432,7 +2432,6 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 	}
 #endif
 }
-
 
 void video_stream_set_background_path(VideoStream *stream, const char *path) {
 	if (!stream || !path || !stream->background_replacer) return;

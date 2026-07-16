@@ -49,6 +49,8 @@ public:
 
 	~BackgroundFormater() {
 		if (mBgFrame) freemsg(mBgFrame);
+		if (mBgFrameImage) freemsg(mBgFrameImage);
+		if (mBgFrameVideo) freemsg(mBgFrameVideo);
 	}
 
 	void process(MSFilter *f) {

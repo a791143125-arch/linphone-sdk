@@ -1339,24 +1339,24 @@ struct _VideoStream {
 	MSFilter *recorder_output; /*can be an ItcSink to send video to the audiostream's multimedia recorder, or directly a
 	                             MkvRecorder */
 
-	MSFilter *pixconv;             /* Do pixel reformat with MS_PIX_CONV_ID */
-	MSFilter *sizeconv;            /*Do size reformat with MS_SIZE_CONV_ID */
-	MSFilter *source;              /* Source filter like MSScreenSharing, MSItcSource or MSVoidSource */
-	MSFilter *tee;                 /* linked with local_jpegwriter, itcsink and output2 */
-	MSFilter *tee2;                /* linked with jpegwriter and forward_sink */
-	MSFilter *tee3;                /* linked with recorder_output */
-	MSFilter *void_source;         /* linked with ms.rtpsend */
-	MSFilter *itcsink;             /* MS_ITC_SINK_ID linked to tee */
-	MSFilter *forward_sink;        /* MS_ITC_SINK_ID linked to tee2 */
-	MSFilter *aggregator;          /* MS_VIDEO_AGGREGATOR_ID linked to all branches.recv */
-	MSFilter *background_tee;      /* linked with background_formater and background_replacer */
-	MSFilter *background_formater; /* Prepare the background with different parameters */
-	MSFilter *background_replacer; /* Replace the background of the entry with the formater output */
-	MSFilter *background_source;   /* Static image or video decoder as an input for the background */
-	MSFilter *background_player;   /* MKV player -> 2nd formater input (video) */
-	MSFilter *background_decoder;  /* Decode the mkv file from the MKV player */
-	bool_t background_user_image;  /* TRUE if not the default image */
-	bool_t background_user_video;  /* TRUE if not the default video */
+	MSFilter *pixconv;                      /* Do pixel reformat with MS_PIX_CONV_ID */
+	MSFilter *sizeconv;                     /*Do size reformat with MS_SIZE_CONV_ID */
+	MSFilter *source;                       /* Source filter like MSScreenSharing, MSItcSource or MSVoidSource */
+	MSFilter *tee;                          /* linked with local_jpegwriter, itcsink and output2 */
+	MSFilter *tee2;                         /* linked with jpegwriter and forward_sink */
+	MSFilter *tee3;                         /* linked with recorder_output */
+	MSFilter *void_source;                  /* linked with ms.rtpsend */
+	MSFilter *itcsink;                      /* MS_ITC_SINK_ID linked to tee */
+	MSFilter *forward_sink;                 /* MS_ITC_SINK_ID linked to tee2 */
+	MSFilter *aggregator;                   /* MS_VIDEO_AGGREGATOR_ID linked to all branches.recv */
+	MSFilter *background_tee;               /* linked with background_formater and background_replacer */
+	MSFilter *background_formater;          /* Prepare the background with different parameters */
+	MSFilter *background_replacer;          /* Replace the background of the entry with the formater output */
+	MSFilter *background_source;            /* Static image or video decoder as an input for the background */
+	MSFilter *background_player;            /* MKV player -> 2nd formater input (video) */
+	MSFilter *background_decoder;           /* Decode the mkv file from the MKV player */
+	bool_t background_user_image;           /* TRUE if not the default image */
+	bool_t background_user_video;           /* TRUE if not the default video */
 	MSVideoSize background_saved_max_vsize; /* cap max_sent_vsize saved (Android) */
 	bool_t background_vsize_capped;         /* TRUE if the resolution is capped for the background */
 
