@@ -24,6 +24,7 @@
 #include "conference/client-conference.h"
 #include "conference/conference.h"
 #include "conference/encryption/client-ekt-manager.h"
+#include "conference/participant-info.h"
 #include "conference/participant.h"
 #include "linphone/api/c-call-log.h"
 #include "linphone/api/c-conference-info.h"
@@ -116,8 +117,8 @@ static bool have_common_audio_payload(LinphoneCoreManager *mgr1, LinphoneCoreMan
 	return found;
 }
 
-static bool are_participants_camera_streams_requested(LinphoneCoreManager *mgr, LinphoneConference *conference) {
-	int max_thumbnails = linphone_core_get_conference_max_thumbnails(mgr->lc);
+static bool are_participants_camera_streams_requested(LinphoneCore *lc, LinphoneConference *conference) {
+	int max_thumbnails = linphone_core_get_conference_max_thumbnails(lc);
 	int nb_thumbnails = 0;
 	bctbx_list_t *devices = linphone_conference_get_participant_device_list(conference);
 	for (bctbx_list_t *itd = devices; itd; itd = bctbx_list_next(itd)) {
@@ -1007,66 +1008,106 @@ void check_call_establishment(std::initializer_list<std::reference_wrapper<CoreM
 	bctbx_list_free(coresList);
 	ms_free(conference_address_str);
 }
+/******* Video stream count  **********************************
+ *
+ *	Local Video layout is Active Speaker:
+ *		1) Main Stream:
+ *			- Have a video payload
+ *			- Is not screen sharing OR camera is activated
+ *			- Have a video direction
+ *		2) Thumbnail in Stream:
+ *			- Is Speaker
+ *			- VideoDirection has Send flag *
+ *	Local Video layout is Grid:
+ *		1) Main Stream + Thumbnail:
+ *			- Role is not Listening
+ *			- Current camera enabled
+ *			- VideoDirection has Send flag
+ *
+ *	Count Participant streams:
+ *		- Role is not Listening
+ *		- Local VideoDirection has Send flag
+ *		- Current camera enabled
+ *			-OR-
+ *		- Main call is conference server:
+ *		- Current VideoDirection has Recv flag
+ *
+ */
+size_t compute_no_video_streams(const std::list<std::shared_ptr<Call>> &calls,
+                                const std::list<std::shared_ptr<ParticipantInfo>> &participants,
+                                const std::shared_ptr<Call> &currentCall) {
+	size_t nbVideoStreams = 0;
+	auto currentCallParams = currentCall->getCurrentParams();
+	if (currentCallParams->videoEnabled()) {
+		bool currentCameraEnabled = currentCallParams->cameraEnabled();
+		auto currentCore = currentCall->getCore();
+		auto currentAddress = currentCore->getIdentityAddress();
+		auto itCurrentParticipant = std::find_if(participants.begin(), participants.end(),
+		                                         [currentAddress](const std::shared_ptr<ParticipantInfo> &participant) {
+			                                         return participant->getAddress()->weakEqual(currentAddress);
+		                                         });
+		auto currentRole = (itCurrentParticipant == participants.end() ? Participant::Role::Unknown
+		                                                               : (*itCurrentParticipant)->getRole());
+		auto currentVideoDirection = currentCallParams->getVideoDirection();
+		auto currentConference = currentCall->getConference();
+		bool_t haveParticipantStreams =
+		    (currentConference
+		         ? are_participants_camera_streams_requested(
+		               currentCore->getCCore(), static_cast<LinphoneConference *>(currentConference->getCPtr()))
+		         : TRUE);
+		auto currentPayload = currentCallParams->getUsedVideoPayloadType();
+		auto localVideoLayout = currentCall->getParams()->getConferenceVideoLayout();
+		bool isConferenceServer = currentCore->conferenceServerEnabled();
 
-size_t compute_no_video_streams(bool_t enable_video, LinphoneCall *call, LinphoneConference *conference) {
-	size_t nb_video_streams = 0;
-	bool_t is_in_conference = linphone_call_is_in_conference(call);
+		// 1) Main Stream
+		if (currentPayload && localVideoLayout == ConferenceLayout::ActiveSpeaker &&
+		    // Special case for screen sharing: add thumbnail stream only if camera is activated
+		    (!currentCallParams->screenSharingEnabled() || currentCameraEnabled) &&
+		    (currentVideoDirection != LinphoneMediaDirectionInactive))
+			++nbVideoStreams;
+		if (localVideoLayout == ConferenceLayout::ActiveSpeaker) {
+			if (currentRole == Participant::Role::Speaker && (currentVideoDirection & LinphoneMediaDirectionSendOnly))
+				++nbVideoStreams; // Thumbnail
+		} else {                  // Grid
+			if (currentRole != Participant::Role::Listener && currentCameraEnabled &&
+			    (currentVideoDirection & LinphoneMediaDirectionSendOnly))
+				nbVideoStreams += 2; // Main Stream + Thumbnail
+		}
+		// 2) Participant streams
+		if (!haveParticipantStreams) return nbVideoStreams;
+		for (auto call = calls.begin(); call != calls.end(); ++call) {
+			if (*call == currentCall) continue;
+			auto core = (*call)->getCore();
+			auto address = core->getIdentityAddress();
+			auto itParticipant = std::find_if(participants.begin(), participants.end(),
+			                                  [address](const std::shared_ptr<ParticipantInfo> participant) {
+				                                  return participant->getAddress()->weakEqual(address);
+			                                  });
+			auto localParams = (*call)->getParams();
 
-	const LinphoneCallParams *call_params =
-	    is_in_conference ? linphone_call_get_remote_params(call) : linphone_call_get_params(call);
-	bool_t call_video_enabled = linphone_call_params_video_enabled(call_params);
-	LinphoneMediaDirection call_video_dir = linphone_call_params_get_video_direction(call_params);
-	bool_t camera_enabled = linphone_call_params_camera_enabled(call_params);
-	if (enable_video && call_video_enabled && (call_video_dir != LinphoneMediaDirectionInactive)) {
-		bctbx_list_t *devices = linphone_conference_get_participant_device_list(conference);
-		for (bctbx_list_t *itd = devices; itd; itd = bctbx_list_next(itd)) {
-			LinphoneParticipantDevice *device = (LinphoneParticipantDevice *)bctbx_list_get_data(itd);
-			bool_t video_available =
-			    linphone_participant_device_get_stream_availability(device, LinphoneStreamTypeVideo);
-			bool_t thumbnail_available = linphone_participant_device_get_thumbnail_stream_availability(device);
-			LinphoneMediaDirection dir =
-			    linphone_participant_device_get_stream_capability(device, LinphoneStreamTypeVideo);
-			const LinphoneAddress *remote_address = linphone_call_get_remote_address(call);
-			const LinphoneAddress *device_address = linphone_participant_device_get_address(device);
-			bool_t is_me = is_in_conference ? linphone_address_weak_equal(device_address, remote_address)
-			                                : (ParticipantDevice::toCpp(device)->getSession() != nullptr);
-			LinphoneConferenceLayout call_video_layout = linphone_call_params_get_conference_video_layout(call_params);
-			bool_t is_active_speaker = (call_video_layout == LinphoneConferenceLayoutActiveSpeaker);
-			bool_t is_grid = (call_video_layout == LinphoneConferenceLayoutGrid);
-
-			const SalMediaDescription *call_desc =
-			    is_in_conference ? _linphone_call_get_remote_desc(call) : _linphone_call_get_local_desc(call);
-			bool screen_sharing_requested = (call_desc->findIdxStreamWithContent("slides") != -1);
-
-			// Stream with content main/slides/speaker
-			// The SDP has a main stream if
-			// - it is available and the camera is on
-			// - in active speaker layout, its direction is recvonly
-			if (is_me &&
-			    ((video_available && (is_active_speaker || (is_grid && camera_enabled))) ||
-			     (is_active_speaker && !screen_sharing_requested && (dir == LinphoneMediaDirectionRecvOnly)))) {
-				nb_video_streams++;
-			}
-
-			if (thumbnail_available) {
-				if (is_me) {
-					// Stream with content thumbnail
-					if (camera_enabled) {
-						nb_video_streams++;
-					}
-				} else {
-					nb_video_streams++;
-				}
+			auto participantRole =
+			    (itParticipant == participants.end() ? Participant::Role::Unknown : (*itParticipant)->getRole());
+			auto participantCurrentParams = (*call)->getCurrentParams();
+			if (((participantRole != Participant::Role::Listener) &&
+			     (localParams->getVideoDirection() & LinphoneMediaDirectionSendOnly) &&
+			     participantCurrentParams->cameraEnabled()) ||
+			    (isConferenceServer &&
+			     (participantCurrentParams->getVideoDirection() & LinphoneMediaDirectionRecvOnly))) {
+				++nbVideoStreams;
 			}
 		}
-		if (devices) {
-			bctbx_list_free_with_data(devices, (bctbx_list_free_func)linphone_participant_device_unref);
-		}
-	} else {
-		nb_video_streams = 0;
 	}
+	return nbVideoStreams;
+}
 
-	return nb_video_streams;
+std::list<std::shared_ptr<Call>> getCallsFromConferenceAddress(std::list<LinphoneCoreManager *> coreManagers,
+                                                               const std::shared_ptr<const Address> &confAddr) {
+	std::list<std::shared_ptr<Call>> calls;
+	for (auto mgr : coreManagers) {
+		auto participantCall = mgr->lc->cppPtr->getCallByRemoteAddress(confAddr);
+		if (participantCall) calls.push_back(participantCall);
+	}
+	return calls;
 }
 
 size_t compute_no_audio_streams(BCTBX_UNUSED(LinphoneCall *call), BCTBX_UNUSED(LinphoneConference *conference)) {
@@ -1240,8 +1281,8 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
                                  BCTBX_UNUSED(LinphoneConferenceSecurityLevel security_level)) {
 	std::map<LinphoneCoreManager *, bool_t> camera_enabled_map;
 	for (auto mgr : conferenceMgrs) {
+		LinphoneCall *participant_call = linphone_core_get_call_by_remote_address2(mgr->lc, confAddr);
 		if (mgr != focus) {
-			LinphoneCall *participant_call = linphone_core_get_call_by_remote_address2(mgr->lc, confAddr);
 			BC_ASSERT_PTR_NOT_NULL(participant_call);
 			if (participant_call) {
 				const LinphoneCallParams *local_params = linphone_call_get_params(participant_call);
@@ -1250,6 +1291,8 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 		}
 	}
 
+	auto participantCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+	auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(members);
 	for (auto mgr : conferenceMgrs) {
 		ms_message("Waiting for manager %s to reach a stable state", linphone_core_get_identity(mgr->lc));
 		// wait a bit longer to detect side effect if any
@@ -1267,7 +1310,8 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 		                                                            &participant_check, &device_check, &call_check,
 		                                                            &audio_direction_check, &security_check,
 		                                                            &participant_is_me_check,
-		                                                            &participant_device_is_me_check] {
+		                                                            &participant_device_is_me_check, &participantCalls,
+		                                                            &participantInfos] {
 			video_check = false;
 			participant_check = false;
 			device_check = false;
@@ -1278,7 +1322,6 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 			participant_device_is_me_check = true;
 			size_t nb_text_streams = 0;
 			std::list<LinphoneCall *> calls;
-
 			LinphoneConference *conference = linphone_core_search_conference_2(mgr->lc, confAddr);
 			if (conference && mgr != focus) {
 				security_check = check_conference_security(conference);
@@ -1316,7 +1359,8 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 						size_t nb_video_streams = 0;
 						if (!!linphone_config_get_int(linphone_core_get_config(mgr->lc), "misc",
 						                              "add_device_stream_label_to_sdp", 1)) {
-							nb_video_streams = compute_no_video_streams(enable_video, call, conference);
+							nb_video_streams = compute_no_video_streams(participantCalls, participantInfos,
+							                                            Call::getSharedFromThis(call));
 						} else {
 							const LinphoneCallParams *call_params = linphone_call_get_params(call);
 							LinphoneConferenceLayout call_video_layout =
@@ -1345,7 +1389,9 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 						LinphoneCall *focus_call = get_peer_call(focus, call);
 						call_check &= (focus_call != nullptr);
 						for (auto call2 : {call, focus_call}) {
+							if (!call_check) break; // No need to test more if check failed.
 							const SalMediaDescription *call_result_desc = _linphone_call_get_result_desc(call2);
+
 							call_check &= ((call_result_desc->nbActiveStreamsOfType(SalAudio) == nb_audio_streams) &&
 							               (call_result_desc->nbActiveStreamsOfType(SalVideo) == nb_video_streams) &&
 							               (call_result_desc->nbActiveStreamsOfType(SalText) == nb_text_streams));
@@ -1363,7 +1409,7 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 				device_check = (devices_nb > 0);
 				LinphoneCall *call = NULL;
 				if (enable_video) {
-					bool expected_thumbnails_requested = are_participants_camera_streams_requested(mgr, conference);
+					bool expected_thumbnails_requested = are_participants_camera_streams_requested(mgr->lc, conference);
 					video_check &= (expected_thumbnails_requested == thumbnails_requested);
 				}
 				for (bctbx_list_t *itd = devices; itd; itd = bctbx_list_next(itd)) {
@@ -1567,6 +1613,13 @@ void wait_for_conference_streams(std::initializer_list<std::reference_wrapper<Co
 		BC_ASSERT_TRUE(security_check);
 		BC_ASSERT_TRUE(participant_is_me_check);
 		BC_ASSERT_TRUE(participant_device_is_me_check);
+		if (!call_check) { // Print expected stream count on error
+			LinphoneCall *call = linphone_core_get_call_by_remote_address2(mgr->lc, confAddr);
+			size_t nb_video_streams =
+			    compute_no_video_streams(participantCalls, participantInfos, Call::getSharedFromThis(call));
+			BC_ASSERT_EQUAL(Call::toCpp(call)->getMediaStreamsNb(LinphoneStreamTypeVideo), nb_video_streams, size_t,
+			                "%zu");
+		}
 	}
 #ifdef HAVE_ADVANCED_IM
 	std::list<LinphoneCoreManager *> membersMgr;
@@ -2491,7 +2544,7 @@ void create_conference_base(time_t start_time,
 		    fill_member_list(members, participantList, marie.getCMgr(), participants_info);
 		wait_for_conference_streams({focus, marie, pauline, laure, michelle, berthe}, conferenceMgrs, focus.getCMgr(),
 		                            memberList, confAddr, enable_video, security_level);
-
+		auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(memberList);
 		update_sequence_number(&participants_info, {}, 0, -1);
 		for (auto mgr : members) {
 			const int duration2 = (duration < 0) ? 0 : duration;
@@ -2520,6 +2573,8 @@ void create_conference_base(time_t start_time,
 		// Test inexistent chat room identifier
 		BC_ASSERT_PTR_NULL(linphone_core_search_conference_by_identifier(
 		    marie.getLc(), "sip:toto@sip.conference.org##sip:me@sip.local.org"));
+
+		auto participantCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
 
 		for (auto mgr : conferenceMgrs) {
 			ms_message("Checking %s's conference and call parameters for conference %s",
@@ -2666,7 +2721,8 @@ void create_conference_base(time_t start_time,
 					BC_ASSERT_PTR_NOT_NULL(participant_call);
 					if (participant_call) {
 						no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-						no_active_streams_video = compute_no_video_streams(enabled, participant_call, pconference);
+						no_active_streams_video = compute_no_video_streams(participantCalls, participantInfos,
+						                                                   Call::getSharedFromThis(participant_call));
 						video_negotiated = enabled && (no_active_streams_video > 0);
 						if (!enable_ice) {
 							_linphone_call_check_max_nb_streams(participant_call, no_streams_audio, no_streams_video,
@@ -2878,7 +2934,8 @@ void create_conference_base(time_t start_time,
 						BC_ASSERT_PTR_NOT_NULL(participant_call);
 						if (participant_call) {
 							no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-							no_active_streams_video = compute_no_video_streams(enabled, participant_call, pconference);
+							no_active_streams_video = compute_no_video_streams(
+							    participantCalls, participantInfos, Call::getSharedFromThis(participant_call));
 							_linphone_call_check_max_nb_streams(participant_call, no_streams_audio, no_streams_video,
 							                                    no_streams_text);
 							_linphone_call_check_nb_active_streams(participant_call, no_streams_audio,
@@ -3122,7 +3179,7 @@ void create_conference_base(time_t start_time,
 						                laure_stat2.number_of_participant_devices_present, int, "%0d");
 
 						bool pauline_expected_thumbnails_requested =
-						    are_participants_camera_streams_requested(pauline.getCMgr(), paulineConference);
+						    are_participants_camera_streams_requested(pauline.getCMgr()->lc, paulineConference);
 						for (auto mgr : conferenceMgrs) {
 							const LinphoneAddress *local_address = (mgr == focus.getCMgr()) ? confAddr : mgr->identity;
 							LinphoneConference *pconference =
@@ -3744,10 +3801,10 @@ void create_conference_base(time_t start_time,
 					                             liblinphone_tester_sip_timeout));
 				}
 
-				std::map<LinphoneCoreManager *, LinphoneParticipantInfo *> memberList =
+				std::map<LinphoneCoreManager *, LinphoneParticipantInfo *> memberList2 =
 				    fill_member_list(members, participantList, marie.getCMgr(), participants_info);
 				wait_for_conference_streams({focus, marie, pauline, laure, michelle, berthe}, conferenceMgrs,
-				                            focus.getCMgr(), memberList, confAddr, enable_video, security_level);
+				                            focus.getCMgr(), memberList2, confAddr, enable_video, security_level);
 
 				for (auto mgr : members) {
 					const int duration2 = (duration < 0) ? 0 : duration;
@@ -3888,12 +3945,15 @@ void create_conference_base(time_t start_time,
 				BC_ASSERT_EQUAL(laure.getStats().number_of_participant_devices_present,
 				                laure_stat2.number_of_participant_devices_present, int, "%0d");
 			}
-
 			LinphoneParticipantDeviceState michelle_device_expected_state =
 			    (participant_list_type == LinphoneConferenceParticipantListTypeClosed)
 			        ? LinphoneParticipantDeviceStateRequestingToJoin
 			        : LinphoneParticipantDeviceStatePresent;
 			size_t no_devices = static_cast<size_t>(no_local_participants + extra_participants);
+
+			auto allCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+			participantInfos = mapSharedFromThisValues<ParticipantInfo>(participantList);
+
 			for (auto mgr : conferenceMgrs) {
 				ms_message("Checking %s's conference and call parameters for conference %s after %s enters it",
 				           linphone_core_get_identity(mgr->lc), conference_address_str,
@@ -3954,16 +4014,18 @@ void create_conference_base(time_t start_time,
 						size_t no_active_streams_video = 0;
 						size_t no_streams_text = 0;
 						if (participant_call) {
-							const LinphoneCallParams *call_cparams = linphone_call_get_current_params(participant_call);
-							const bool_t enabled = linphone_call_params_video_enabled(call_cparams);
 							no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-							no_active_streams_video = compute_no_video_streams(enabled, participant_call, pconference);
 							no_streams_video = (all_speakers) ? 6 : 4;
 
+							no_active_streams_video = compute_no_video_streams(
+							    allCalls, participantInfos, Call::getSharedFromThis(participant_call));
 							_linphone_call_check_max_nb_streams(participant_call, no_streams_audio, no_streams_video,
 							                                    no_streams_text);
-							_linphone_call_check_nb_active_streams(participant_call, no_streams_audio,
-							                                       no_active_streams_video, no_streams_text);
+							if (!_linphone_call_check_nb_active_streams(participant_call, no_streams_audio,
+							                                            no_active_streams_video, no_streams_text)) {
+								no_active_streams_video = compute_no_video_streams(
+								    allCalls, participantInfos, Call::getSharedFromThis(participant_call));
+							}
 						}
 
 						LinphoneCall *focus_call =
@@ -4124,7 +4186,6 @@ void create_conference_base(time_t start_time,
 			    fill_member_list(members, participantList, marie.getCMgr(), participants_info);
 			wait_for_conference_streams({focus, marie, pauline, laure, michelle, berthe}, conferenceMgrs,
 			                            focus.getCMgr(), memberList, confAddr, enable_video, security_level);
-
 			LinphoneConference *conference = linphone_core_search_conference(laure.getLc(), NULL, puri, confAddr, NULL);
 			if (enable_chat) {
 				BC_ASSERT_PTR_NOT_NULL(conference);
@@ -4300,7 +4361,8 @@ void create_conference_base(time_t start_time,
 					BC_ASSERT_EQUAL(michelle.getStats().number_of_participant_devices_present,
 					                michelle_stat2.number_of_participant_devices_present, int, "%0d");
 				}
-
+				auto allCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+				participantInfos = mapSharedFromThisValues<ParticipantInfo>(participantList);
 				for (auto mgr : conferenceMgrs) {
 					const LinphoneAddress *local_address = (mgr == focus.getCMgr()) ? confAddr : mgr->identity;
 					LinphoneConference *pconference =
@@ -4339,14 +4401,14 @@ void create_conference_base(time_t start_time,
 							size_t no_active_streams_video = 0;
 							size_t no_streams_text = 0;
 							if (participant_call) {
-								const LinphoneCallParams *call_cparams =
-								    linphone_call_get_current_params(participant_call);
-								const bool_t enabled = linphone_call_params_video_enabled(call_cparams);
+								// const LinphoneCallParams *call_cparams =
+								// linphone_call_get_current_params(participant_call);
+								// const bool_t enabled = linphone_call_params_video_enabled(call_cparams);
 								no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-								no_active_streams_video =
-								    compute_no_video_streams(enabled, participant_call, pconference);
 								no_streams_video = 5;
 								no_max_streams_audio = 1;
+								no_active_streams_video = compute_no_video_streams(
+								    allCalls, participantInfos, Call::getSharedFromThis(participant_call));
 
 								_linphone_call_check_max_nb_streams(participant_call, no_max_streams_audio,
 								                                    no_streams_video, no_streams_text);
@@ -6699,7 +6761,8 @@ void create_conference_with_late_participant_addition_base(time_t start_time,
 		CoreManagerAssert({focus, marie, pauline, laure, michelle, berthe}).waitUntil(chrono::seconds(15), [] {
 			return false;
 		});
-
+		auto allCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+		auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(memberList);
 		for (auto mgr : conferenceMgrs) {
 			LinphoneConference *pconference = linphone_core_search_conference_2(mgr->lc, confAddr);
 			BC_ASSERT_PTR_NOT_NULL(pconference);
@@ -6734,7 +6797,8 @@ void create_conference_with_late_participant_addition_base(time_t start_time,
 					BC_ASSERT_PTR_NOT_NULL(participant_call);
 					if (participant_call) {
 						no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-						no_streams_video = compute_no_video_streams(enabled, participant_call, pconference);
+						no_streams_video = compute_no_video_streams(allCalls, participantInfos,
+						                                            Call::getSharedFromThis(participant_call));
 						_linphone_call_check_max_nb_streams(participant_call, no_streams_audio, no_max_streams_video,
 						                                    no_streams_text);
 						_linphone_call_check_nb_active_streams(participant_call, no_streams_audio, no_streams_video,
@@ -12144,6 +12208,8 @@ void create_conference_dial_out_base(LinphoneConferenceLayout layout,
 			CoreManagerAssert({focus, marie, pauline, laure, michelle, berthe}).waitUntil(chrono::seconds(15), [] {
 				return false;
 			});
+			auto allCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+			auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(memberList);
 
 			for (auto mgr : conferenceMgrs) {
 				LinphoneAddress *uri = linphone_address_new(linphone_core_get_identity(mgr->lc));
@@ -12268,7 +12334,8 @@ void create_conference_dial_out_base(LinphoneConferenceLayout layout,
 							no_streams_audio = compute_no_audio_streams(participant_call, pconference);
 							// Even if video is not enabled, the server will offer it and clients reject the video
 							// stream if they do not want to send or receive it.
-							no_streams_video = compute_no_video_streams(enable_video, participant_call, pconference);
+							no_streams_video = compute_no_video_streams(allCalls, participantInfos,
+							                                            Call::getSharedFromThis(participant_call));
 							_linphone_call_check_max_nb_streams(participant_call, no_max_streams_audio,
 							                                    no_max_streams_video, no_streams_text);
 							_linphone_call_check_nb_active_streams(participant_call, no_streams_audio, no_streams_video,
@@ -12916,7 +12983,8 @@ void create_conference_with_audio_only_participants_base(LinphoneConferenceSecur
 
 		// wait a bit longer to detect side effect if any
 		CoreManagerAssert({focus, marie, pauline, laure}).waitUntil(chrono::seconds(2), [] { return false; });
-
+		auto allCalls = getCallsFromConferenceAddress(conferenceMgrs, Address::getSharedFromThis(confAddr));
+		auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(memberList2);
 		for (auto mgr : conferenceMgrs) {
 			LinphoneConference *pconference = linphone_core_search_conference_2(mgr->lc, confAddr);
 			BC_ASSERT_PTR_NOT_NULL(pconference);
@@ -13043,10 +13111,8 @@ void create_conference_with_audio_only_participants_base(LinphoneConferenceSecur
 							BC_ASSERT_PTR_NOT_NULL(participant_call);
 							if (participant_call) {
 								no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-								no_active_streams_video =
-								    static_cast<int>(compute_no_video_streams(enable, participant_call, pconference));
-								_linphone_call_check_nb_active_streams(participant_call, no_streams_audio,
-								                                       no_active_streams_video, no_streams_text);
+								no_active_streams_video = static_cast<int>(compute_no_video_streams(
+								    allCalls, participantInfos, Call::getSharedFromThis(participant_call)));
 							}
 							LinphoneCall *focus_call =
 							    linphone_core_get_call_by_remote_address2(focus.getLc(), mgr->identity);
@@ -13408,6 +13474,9 @@ void create_simple_conference_dial_out_with_some_calls_declined_base(LinphoneRea
 			return false;
 		});
 
+		auto allCalls = getCallsFromConferenceAddress(conference_members, Address::getSharedFromThis(confAddr));
+		auto participantInfos = mapSharedFromThisValues<ParticipantInfo>(memberList);
+
 		for (auto mgr : conference_members) {
 			LinphoneAddress *uri = linphone_address_new(linphone_core_get_identity(mgr->lc));
 			LinphoneConference *pconference = linphone_core_search_conference_2(mgr->lc, confAddr);
@@ -13448,7 +13517,8 @@ void create_simple_conference_dial_out_with_some_calls_declined_base(LinphoneRea
 					BC_ASSERT_PTR_NOT_NULL(participant_call);
 					if (participant_call) {
 						no_streams_audio = compute_no_audio_streams(participant_call, pconference);
-						no_streams_video = compute_no_video_streams(enabled, participant_call, pconference);
+						no_streams_video = compute_no_video_streams(allCalls, participantInfos,
+						                                            Call::getSharedFromThis(participant_call));
 						_linphone_call_check_max_nb_streams(participant_call, no_max_streams_audio,
 						                                    no_max_streams_video, no_streams_text);
 						_linphone_call_check_nb_active_streams(participant_call, no_streams_audio, no_streams_video,
