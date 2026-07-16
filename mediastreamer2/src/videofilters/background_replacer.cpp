@@ -28,8 +28,8 @@ class BackgroundReplacer {
 public:
 
 	BackgroundReplacer(MSFilter *f, bool bypass = true) : mFilter(f) {
-    	mBypass = bypass;
-    	if (!mBypass) ensureModelLoaded();
+		mBypass = bypass;
+		if (!mBypass) ensureModelLoaded();
 	}
 
 	void setBypass(int v) {
@@ -38,7 +38,7 @@ public:
 		mBypass = b;
 	}
 
-void ensureModelLoaded() {
+	void ensureModelLoaded() {
 		if (mModelLoaded) return;
 		mModelLoaded = true;
 		char *path =
@@ -47,13 +47,13 @@ void ensureModelLoaded() {
 			std::filesystem::path modelPath(path);
 			Ort::SessionOptions opts;
 			opts.SetInterOpNumThreads(1);
-			#ifdef __ANDROID__
+#ifdef __ANDROID__
 			opts.SetIntraOpNumThreads(1);
 			opts.AddConfigEntry("session.intra_op.allow_spinning", "0");
 			opts.AppendExecutionProvider("XNNPACK", {{"intra_op_num_threads", "2"}});
-			#else
+#else
 			opts.SetIntraOpNumThreads(2);
-			#endif
+#endif
 			mSession = Ort::Session(mEnv, modelPath.c_str(), opts);
 			mTimeLastResult = std::chrono::high_resolution_clock::now();
 			Ort::AllocatorWithDefaultOptions alloc;
@@ -177,8 +177,6 @@ void ensureModelLoaded() {
 	bool getBypass() {
 		return mBypass;
 	}
-
-
 private:
 	// function designed to resize the given image to match the dimensions
 	// and format (RGBA) of the filter
