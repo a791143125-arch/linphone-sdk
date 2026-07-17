@@ -236,7 +236,7 @@ private:
 	void inference_computer() {
 
 		while (mRunning) {
-			
+
 			std::vector<uint8_t> img;
 			int w, h;
 
@@ -256,7 +256,7 @@ private:
 			// Model setup for the frame
 			Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 			Ort::Value inT =
-				Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
+			    Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
 
 			// Inference processing
 			const char *insN[] = {mInName.c_str()};
@@ -297,7 +297,6 @@ private:
 				maskH_ = h;
 				mHasResult = true;
 			}
-			
 		}
 	}
 

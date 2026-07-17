@@ -1627,9 +1627,6 @@ static int video_stream_start_with_source_and_output(VideoStream *stream,
 				}
 				ms_filter_link(bg_in, 0, stream->background_tee, 0);
 				ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
-				ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
-				ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
-				ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
 				ms_filter_link(stream->background_replacer, 0, stream->tee, 0);
 			}
 			ch.last.filter = stream->tee;
@@ -2243,17 +2240,19 @@ static MSFilter *_video_stream_stop(VideoStream *stream, bool_t keep_source) {
 					ms_connection_helper_unlink(&ch, stream->pixconv, 0, 0);
 				}
 				if (stream->background_replacer != NULL) {
-					if (stream->background_replacer) {
-						if (stream->sizeconv) {
-							ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
-						}
-						ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
-						ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
+					if (stream->sizeconv) {
+						ms_connection_helper_unlink(&ch, stream->sizeconv, 0, 0);
+					}
+					ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
+					ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
+					if (stream->background_branch_active) {
 						ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
 						ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
 						ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+						stream->background_branch_active = FALSE;
 					}
 				}
+
 
 				if (stream->itcsink) {
 					ms_filter_unlink(stream->tee, 3, stream->itcsink, 0);
@@ -2383,6 +2382,35 @@ void video_stream_set_native_window_id(VideoStream *stream, void *id) {
 	}
 }
 
+static void video_stream_enable_background_branch(VideoStream *stream, bool_t enable) {
+	if (!stream->background_replacer || !stream->background_formater || !stream->background_tee ||
+	    !stream->background_source)
+		return;
+	if (stream->background_branch_active == enable) return;
+
+	MSTicker *ticker = stream->source ? ms_filter_get_ticker(stream->source) : NULL;
+	if (ticker) {
+		ms_ticker_detach(ticker, stream->source);
+		if (stream->background_decoder) ms_ticker_detach(ticker, stream->background_player);
+	}
+
+	if (enable) {
+		ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
+		ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
+		ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
+	} else {
+		ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+		ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+		ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+	}
+	stream->background_branch_active = enable;
+
+	if (ticker) {
+		ms_ticker_attach(ticker, stream->source);
+		if (stream->background_decoder) ms_ticker_attach(ticker, stream->background_player);
+	}
+}
+
 void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type) {
 	if (!stream || !stream->background_formater || !stream->background_replacer) return;
 
@@ -2401,8 +2429,11 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 	}
 	int t = (int)type;
 	int bypass = (type == MSBackgroundSame);
+	if (!bypass) video_stream_enable_background_branch(stream, TRUE);
 	ms_filter_call_method(stream->background_formater, MS_BACKGROUND_FORMATER_SET_TYPE, &t);
 	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
+	if (bypass) video_stream_enable_background_branch(stream, FALSE);
+
 
 	// cap the resolution for android to prevent the automatic upscaling of resolution on low performance device
 #ifdef __ANDROID__

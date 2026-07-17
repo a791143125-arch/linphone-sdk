@@ -123,7 +123,7 @@ public:
 				continue;
 			}
 
-			if (mMode != MSBackgroundSame){
+			if (mMode != MSBackgroundSame) {
 				MSPicture src, dst;
 				ms_yuv_buf_init_from_mblk(&src, m);
 				mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
