@@ -112,6 +112,7 @@ class LINPHONE_PUBLIC Core : public Object {
 #endif // HAVE_ADVANCED_IM
 	friend class ServerConference;
 	friend class MainDb;
+	friend class MainDbPrivate;
 	friend class MainDbEventKey;
 	friend class MS2Stream;
 	friend class MediaSessionPrivate;
@@ -211,6 +212,17 @@ public:
 	std::list<std::shared_ptr<AbstractChatRoom>> &getChatRooms() const;
 	const bctbx_list_t *getChatRoomsCList() const;
 
+	std::shared_ptr<AbstractChatRoom>
+	searchBasicChatRoom(const std::shared_ptr<ConferenceParams> &params,
+	                    const std::shared_ptr<const Address> &localAddress,
+	                    const std::shared_ptr<const Address> &remoteAddress,
+	                    const std::list<std::shared_ptr<Address>> &participants) const;
+	std::shared_ptr<AbstractChatRoom> searchChatRoom(const std::string identifier) const;
+	std::shared_ptr<AbstractChatRoom> searchChatRoom(const std::shared_ptr<ConferenceParams> &params,
+	                                                 const std::shared_ptr<const Address> &localAddr,
+	                                                 const std::shared_ptr<const Address> &remoteAddr,
+	                                                 const std::list<std::shared_ptr<Address>> &participants) const;
+
 	std::shared_ptr<AbstractChatRoom> findChatRoom(const ConferenceId &conferenceId, bool logIfNotFound = true) const;
 	std::list<std::shared_ptr<AbstractChatRoom>> findChatRooms(const std::shared_ptr<Address> &peerAddress) const;
 
@@ -271,6 +283,10 @@ public:
 	void setFileContentsDirectories(const std::list<std::string> &directories);
 	const ListHolder<std::string> &getFileContentsDirectories() const;
 
+	void unifyChatRoomAddresses();
+	void enableChatRoomAddressUnification(bool enable);
+	bool chatRoomAddressUnificationEnabled() const;
+
 	// ---------------------------------------------------------------------------
 	// Conference.
 	// ---------------------------------------------------------------------------
@@ -286,14 +302,12 @@ public:
 	void invalidateAccountInConferencesAndChatRooms(const std::shared_ptr<Account> &account);
 	std::shared_ptr<Conference> findConference(const std::shared_ptr<const CallSession> &session,
 	                                           bool logIfNotFound = true) const;
-	std::shared_ptr<Conference> findConference(const ConferenceId &conferenceId, bool logIfNotFound = true) const;
 	void deleteConference(const std::shared_ptr<const Conference> &conference);
 	void deleteConference(const ConferenceId &conferenceId);
 	std::shared_ptr<Conference> searchConference(const std::shared_ptr<ConferenceParams> &params,
 	                                             const std::shared_ptr<const Address> &localAddress,
 	                                             const std::shared_ptr<const Address> &remoteAddress,
-	                                             const std::list<std::shared_ptr<Address>> &participants,
-	                                             bool logIfNotFound = true) const;
+	                                             const std::list<std::shared_ptr<Address>> &participants) const;
 	std::shared_ptr<Conference> searchConference(const std::shared_ptr<const Address> &conferenceAddress) const;
 	std::shared_ptr<Conference> searchConference(const std::string &identifier) const;
 
@@ -561,6 +575,7 @@ private:
 	Core();
 	void updateChatRoomList() const;
 
+	bool mPerformChatRoomAddressUnification = false;
 	bool mIsConferenceServer = false;
 	bool mGruuInConferenceAddress = false;
 	bool mDeleteEmptyChatrooms = true;

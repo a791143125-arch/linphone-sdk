@@ -367,10 +367,11 @@ bool CorePrivate::isShutdownDone() {
 }
 
 void CorePrivate::deleteConferenceInfo(const std::shared_ptr<Address> &conferenceAddress) {
+	L_Q();
 #ifdef HAVE_DB_STORAGE
 	mainDb->deleteConferenceInfo(conferenceAddress);
 #endif // HAVE_DB_STORAGE
-	auto chatRoom = searchChatRoom(nullptr, nullptr, conferenceAddress, {});
+	auto chatRoom = q->searchChatRoom(nullptr, nullptr, conferenceAddress, {});
 	if (chatRoom) {
 		chatRoom->deleteFromDb();
 	}
@@ -2487,21 +2488,6 @@ std::shared_ptr<Conference> Core::findConference(const std::shared_ptr<const Cal
 	return nullptr;
 }
 
-std::shared_ptr<Conference> Core::findConference(const ConferenceId &conferenceId, bool logIfNotFound) const {
-	L_D();
-	try {
-		auto conference = d->mConferenceById.at(conferenceId);
-		lInfo() << "Found " << *conference << " in RAM with conference ID " << conferenceId << ".";
-		return conference;
-	} catch (const out_of_range &) {
-		bool isStartup = (linphone_core_get_global_state(getCCore()) == LinphoneGlobalStartup);
-		if (logIfNotFound && !isStartup) {
-			lInfo() << "Unable to find conference with conference ID " << conferenceId << " in RAM.";
-		}
-	}
-	return nullptr;
-}
-
 void Core::insertConference(const shared_ptr<Conference> conference) {
 	L_D();
 
@@ -2516,15 +2502,8 @@ void Core::insertConference(const shared_ptr<Conference> conference) {
 	bool isStartup = (linphone_core_get_global_state(getCCore()) == LinphoneGlobalStartup);
 	std::shared_ptr<Conference> conf;
 	if (!isStartup) {
-		if (conference->getCurrentParams()->chatEnabled()) {
-			// Handling of chat room exhume
-			const auto &chatRoom = findChatRoom(conferenceId, false);
-			if (chatRoom) {
-				conf = chatRoom->getConference();
-			}
-		} else {
-			conf = findConference(conferenceId, false);
-		}
+		conf = searchConference(nullptr, conferenceId.getLocalAddress(), conferenceId.getPeerAddress(), {});
+
 		// When starting the LinphoneCore, it may happen to have 2 audio video conferences or chat room that have the
 		// same conference ID apart from the GRUU which is not taken into the account for the comparison. In such a
 		// scenario, it is allowed to replace the pointer towards the audio video conference in the core map. Method
@@ -2572,47 +2551,84 @@ void Core::deleteConference(const shared_ptr<const Conference> &conference) {
 std::shared_ptr<Conference> Core::searchConference(const std::shared_ptr<ConferenceParams> &params,
                                                    const std::shared_ptr<const Address> &localAddress,
                                                    const std::shared_ptr<const Address> &remoteAddress,
-                                                   const std::list<std::shared_ptr<Address>> &participants,
-                                                   bool logIfNotFound) const {
+                                                   const std::list<std::shared_ptr<Address>> &participants) const {
 	L_D();
 	decltype(d->mConferenceById) resultConferences;
 
 	if (remoteAddress && localAddress) {
 		ConferenceId conferenceId(remoteAddress, localAddress, createConferenceIdParams());
-		auto foundConference = findConference(conferenceId, logIfNotFound);
-		if (foundConference) {
-			resultConferences.insert(std::make_pair(conferenceId, foundConference));
+		auto it = d->mConferenceById.find(conferenceId);
+
+		if (it != d->mConferenceById.end()) {
+			auto conference = it->second;
+			lInfo() << "Found " << *conference << " in RAM with conference ID " << conferenceId << ".";
+			resultConferences.insert(std::make_pair(conferenceId, conference));
 		}
-	} else if (remoteAddress) {
-		auto remoteAddressWithoutGruu = remoteAddress->getUriWithoutGruu();
-		/* TODO with C++20
-		resultConferences = d->mConferenceById | std::views::filter([&remoteAddressWithoutGruu](auto &conference) {
-		    return remoteAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
-		conference->getConferenceId().getPeerAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false);
-		});
+	}
+
+	if (resultConferences.empty()) {
+		if (remoteAddress) {
+			auto remoteAddressWithoutGruu = remoteAddress->getUriWithoutGruu();
+			auto remoteAddressWithoutGruuString = remoteAddressWithoutGruu.toStringUriOnlyOrdered(false);
+			/* TODO with C++20
+			resultConferences = d->mConferenceById | std::views::filter([&remoteAddressWithoutGruu](auto &conference) {
+			    return remoteAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
+			conference->getConferenceId().getPeerAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false);
+			});
+			*/
+			for (const auto &[id, conference] : d->mConferenceById) {
+				if (remoteAddressWithoutGruuString ==
+				    conference->getConferenceId().getPeerAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false)) {
+					resultConferences.insert(std::make_pair(id, conference));
+				} else if (auto alternativeConferenceAddress = conference->getAlternativeConferenceAddress();
+				           alternativeConferenceAddress &&
+				           (remoteAddressWithoutGruuString ==
+				            alternativeConferenceAddress->getUriWithoutGruu().toStringUriOnlyOrdered(false))) {
+					resultConferences.insert(std::make_pair(id, conference));
+				}
+			}
+		} else {
+			resultConferences = d->mConferenceById;
+		}
+
+		/*
+		    if (localAddress) {
+		        auto localAddressWithoutGruu = localAddress->getUriWithoutGruu();
+		        auto localAddressWithoutGruuString = localAddressWithoutGruu.toStringUriOnlyOrdered(false);
+		        / TODO with C++20
+		        resultConferences = d->mConferenceById | std::views::filter([&localAddressWithoutGruu](auto &conference)
+		   { return localAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
+		        conference->getConferenceId().getLocalAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false);
+		        });
+		        /
+		        for (const auto &[id, conference] : resultConferences) {
+		            if (localAddressWithoutGruuString ==
+		                conference->getConferenceId().getLocalAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false))
+		   { resultConferences.insert(std::make_pair(id, conference));
+		            }
+		        }
+		    }
 		*/
-		for (const auto &[id, conference] : d->mConferenceById) {
-			if (remoteAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
-			    conference->getConferenceId().getPeerAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false)) {
-				resultConferences.insert(std::make_pair(id, conference));
+
+		if (localAddress) {
+			auto localAddressWithoutGruu = localAddress->getUriWithoutGruu();
+			auto localAddressWithoutGruuString = localAddressWithoutGruu.toStringUriOnlyOrdered(false);
+			/* TODO with C++20
+			resultConferences = d->mConferenceById | std::views::filter([&localAddressWithoutGruu](auto &conference) {
+			    return localAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
+			conference->getConferenceId().getLocalAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false);
+			});
+			*/
+			for (auto it = resultConferences.begin(); it != resultConferences.end();) {
+				if (localAddressWithoutGruuString ==
+				    it->second->getConferenceId().getLocalAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(
+				        false)) {
+					++it;
+				} else {
+					it = resultConferences.erase(it);
+				}
 			}
 		}
-	} else if (localAddress) {
-		auto localAddressWithoutGruu = localAddress->getUriWithoutGruu();
-		/* TODO with C++20
-		resultConferences = d->mConferenceById | std::views::filter([&localAddressWithoutGruu](auto &conference) {
-		    return localAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
-		conference->getConferenceId().getLocalAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false);
-		});
-		*/
-		for (const auto &[id, conference] : d->mConferenceById) {
-			if (localAddressWithoutGruu.toStringUriOnlyOrdered(false) ==
-			    conference->getConferenceId().getLocalAddress()->getUriWithoutGruu().toStringUriOnlyOrdered(false)) {
-				resultConferences.insert(std::make_pair(id, conference));
-			}
-		}
-	} else {
-		resultConferences = d->mConferenceById;
 	}
 
 	std::shared_ptr<Conference> conference;
@@ -3337,8 +3353,8 @@ void Core::removeDependentAccount(const std::shared_ptr<Account> &account) {
 	auto &accounts = mAccounts.mList;
 	for (const auto &accountInList : accounts) {
 		if ((accountInList != account) && (accountInList->getDependency() == account)) {
-			lInfo() << "Updating dependent account " << *accountInList
-			        << " caused by removal of 'master' account idkey[" << accountIdKey << "]";
+			lInfo() << "Updating dependent " << *accountInList << " caused by removal of 'master' account idkey["
+			        << accountIdKey << "]";
 			accountInList->setDependency(NULL);
 			account->setNeedToRegister(account->getAccountParams()->getRegisterEnabled());
 			accountInList->update();

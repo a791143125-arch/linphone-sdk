@@ -226,7 +226,7 @@ typedef struct _LinphoneCoreVTable {
 	LinphoneCoreCbsReferReceivedCb refer_received; /**< Notifies when an out-of-call refer is received */
 	LinphoneCoreCbsCallGoClearAckSentCb call_goclear_ack_sent; /**< Notifies when a GoClear Ack is sent */
 	LinphoneCoreCbsCallMediaEncryptionStatusChangedCb
-	call_media_encryption_status_changed; /**< Notifies on change in the media encryption status of call streams */
+	    call_media_encryption_status_changed; /**< Notifies on change in the media encryption status of call streams */
 	LinphoneCoreCallEncryptionChangedCb
 	    call_encryption_changed; /**< Notifies when the encryption of call streams changes */
 	LinphoneCoreCbsCallSendMasterKeyChangedCb
@@ -1924,7 +1924,7 @@ LINPHONE_PUBLIC const char *linphone_core_get_primary_contact(LinphoneCore *core
 
 /**
  * Gets the default identity SIP address.
- * This is an helper function.
+ * This is a helper function.
  * If no default proxy is set, this will return the primary contact (see linphone_core_get_primary_contact()).
  * If a default proxy is set
  * it returns the registered identity on the proxy.
@@ -7527,15 +7527,18 @@ LINPHONE_PUBLIC bool_t linphone_core_conference_ics_in_message_body_enabled(cons
  * Sets the maximum number of thumbnails requested in the SDP during a conference call
  * @param core the #LinphoneCore. @notnil
  * @param max the maximum number of thumbnails requested in the SDP during a conference call
+ * @warning If a higher number of participants are sending the camera than the requested maximum value, the client will
+ * not request any participant's camera stream.
  * @ingroup group_conference
  **/
 LINPHONE_PUBLIC void linphone_core_set_conference_max_thumbnails(LinphoneCore *core, int max);
 
 /**
  * Gets the maximum number of thumbnails requested in the SDP during a conference call
- *linphone_account_get_call_logs().
  * @param core the #LinphoneCore. @notnil
  * @return the maximum number of thumbnails requested in the SDP during a conference call
+ * @warning If a higher number of participants are sending the camera than the requested maximum value, the client will
+ * not request any participant's camera stream.
  * @ingroup group_conference
  **/
 LINPHONE_PUBLIC int linphone_core_get_conference_max_thumbnails(const LinphoneCore *core);
@@ -7629,6 +7632,16 @@ LINPHONE_PUBLIC void linphone_core_set_imdn_resend_period(LinphoneCore *core, lo
  * @ingroup group_chatroom
  **/
 LINPHONE_PUBLIC long linphone_core_get_imdn_resend_period(const LinphoneCore *core);
+
+/**
+ * Make all chatrooms addressable with an address following the pattern <conference-focus>;conf-id=<random_string>
+ * Chatrooms remain addressable using the old address.
+ * @param core the #LinphoneCore. @notnil
+ * @ingroup group_chatroom
+ * @warning This method can only be called by conference servers
+ * @note No migration is performed for chatrooms whose address already following the migration pattern.
+ **/
+LINPHONE_PUBLIC void linphone_core_unify_chat_rooms_address(LinphoneCore *core);
 
 /**
  * Set the conference expire period. It is the number of seconds after the end time or the last participant joined -

@@ -76,6 +76,11 @@ public:
 	static const std::string kIsFocusParameter;
 	static const std::string kTextParameter;
 	static const std::string kAnonymousKeyword;
+	static const std::string kAlternativeUriPurpose;
+
+	// Alternative address header names
+	static const std::string kXAlternativeAddressClientHeaderName;
+	static const std::string kXAlternativeAddressServerHeaderName;
 
 	static bool isTerminationState(ConferenceInterface::State state);
 	static Address createParticipantAddressForResourceList(const ConferenceInfo::participant_list_t::value_type &p);
@@ -142,7 +147,7 @@ public:
 	                                     const std::shared_ptr<Address> &deviceAddress);
 	virtual int removeParticipantDevice(const std::shared_ptr<CallSession> &session);
 	int removeParticipant(const std::shared_ptr<Call> &call);
-	virtual int removeParticipant(const std::shared_ptr<CallSession> &session, const bool preserveSession);
+	virtual int removeParticipant(const std::shared_ptr<CallSession> &session, bool preserveSession);
 	virtual int removeParticipant(const std::shared_ptr<Address> &addr) = 0;
 	bool removeParticipant(const std::shared_ptr<Participant> &participant) override;
 	bool removeParticipants(const std::list<std::shared_ptr<Participant>> &participants) override;
@@ -167,8 +172,12 @@ public:
 		return mConfParams;
 	}
 
+	std::shared_ptr<Address> getAssignedConferenceAddress() const;
+	std::shared_ptr<Address> getAlternativeConferenceAddress() const;
+	void setAlternativeConferenceAddress(const std::shared_ptr<Address> &conferenceAddress);
 	virtual std::shared_ptr<Address> getConferenceAddress() const override;
 	void setConferenceAddress(const std::shared_ptr<Address> &conferenceAddress);
+	void forceConferenceAddress(const std::shared_ptr<Address> &conferenceAddress);
 
 	void setSubject(const std::string &subject);
 	void setUtf8Subject(const std::string &subject) override;
@@ -196,68 +205,65 @@ public:
 	virtual void setLocalParticipantStreamCapability(const LinphoneMediaDirection &direction,
 	                                                 const LinphoneStreamType type) = 0;
 
-	virtual std::shared_ptr<ConferenceParticipantEvent> notifyParticipantAdded(
-	    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant);
-	virtual std::shared_ptr<ConferenceParticipantEvent> notifyParticipantRemoved(
-	    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant);
 	virtual std::shared_ptr<ConferenceParticipantEvent>
-	notifyParticipantSetRole(time_t creationTime,
-	                         const bool isFullState,
-	                         const std::shared_ptr<Participant> &participant,
-	                         Participant::Role role);
+	notifyParticipantAdded(time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant);
+	virtual std::shared_ptr<ConferenceParticipantEvent>
+	notifyParticipantRemoved(time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant);
+	virtual std::shared_ptr<ConferenceParticipantEvent> notifyParticipantSetRole(
+	    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant, Participant::Role role);
 	virtual std::shared_ptr<ConferenceParticipantEvent> notifyParticipantSetAdmin(
-	    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant, bool isAdmin);
+	    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant, bool isAdmin);
 	virtual std::shared_ptr<ConferenceSubjectEvent>
-	notifySubjectChanged(time_t creationTime, const bool isFullState, const std::string subject);
-	virtual std::shared_ptr<ConferenceAvailableMediaEvent>
-	notifyAvailableMediaChanged(time_t creationTime,
-	                            const bool isFullState,
-	                            const std::map<ConferenceMediaCapabilities, bool> mediaCapabilities);
+	notifySubjectChanged(time_t creationTime, bool isFullState, const std::string subject);
+	virtual std::shared_ptr<ConferenceAvailableMediaEvent> notifyAvailableMediaChanged(
+	    time_t creationTime, bool isFullState, const std::map<ConferenceMediaCapabilities, bool> mediaCapabilities);
 	virtual std::shared_ptr<ConferenceEphemeralMessageEvent>
-	notifyEphemeralModeChanged(time_t creationTime, const bool isFullState, const EventLog::Type type);
+	notifyEphemeralModeChanged(time_t creationTime, bool isFullState, const EventLog::Type type);
 	virtual std::shared_ptr<ConferenceEphemeralMessageEvent>
-	notifyEphemeralMessageEnabled(time_t creationTime, const bool isFullState, const bool enable);
+	notifyEphemeralMessageEnabled(time_t creationTime, bool isFullState, bool enable);
 	virtual std::shared_ptr<ConferenceEphemeralMessageEvent> notifyEphemeralLifetimeChanged(time_t creationTime,
-	                                                                                        const bool isFullState,
+	                                                                                        bool isFullState,
 	                                                                                        const long lifetime,
 	                                                                                        const long notReadLifetime);
 	virtual std::shared_ptr<ConferenceNotifiedEvent> notifyAllowedParticipantListChanged(time_t creationTime,
-	                                                                                     const bool isFullState);
+	                                                                                     bool isFullState);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceAdded(time_t creationTime,
-	                             const bool isFullState,
+	                             bool isFullState,
 	                             const std::shared_ptr<Participant> &participant,
 	                             const std::shared_ptr<ParticipantDevice> &participantDevice);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceRemoved(time_t creationTime,
-	                               const bool isFullState,
+	                               bool isFullState,
 	                               const std::shared_ptr<Participant> &participant,
 	                               const std::shared_ptr<ParticipantDevice> &participantDevice);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceMediaCapabilityChanged(time_t creationTime,
-	                                              const bool isFullState,
+	                                              bool isFullState,
 	                                              const std::shared_ptr<Participant> &participant,
 	                                              const std::shared_ptr<ParticipantDevice> &participantDevice);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceMediaAvailabilityChanged(time_t creationTime,
-	                                                const bool isFullState,
+	                                                bool isFullState,
 	                                                const std::shared_ptr<Participant> &participant,
 	                                                const std::shared_ptr<ParticipantDevice> &participantDevice);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceStateChanged(time_t creationTime,
-	                                    const bool isFullState,
+	                                    bool isFullState,
 	                                    const std::shared_ptr<Participant> &participant,
 	                                    const std::shared_ptr<ParticipantDevice> &participantDevice);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceScreenSharingChanged(time_t creationTime,
-	                                            const bool isFullState,
+	                                            bool isFullState,
 	                                            const std::shared_ptr<Participant> &participant,
 	                                            const std::shared_ptr<ParticipantDevice> &participantDevice);
 	virtual std::shared_ptr<ConferenceParticipantDeviceEvent>
 	notifyParticipantDeviceJoiningRequest(time_t creationTime,
-	                                      const bool isFullState,
+	                                      bool isFullState,
 	                                      const std::shared_ptr<Participant> &participant,
 	                                      const std::shared_ptr<ParticipantDevice> &participantDevice);
+	virtual std::shared_ptr<ConferenceAlternativeAddressEvent>
+	notifyAlternativeAddressChanged(time_t creationTime, bool isFullState, const std::shared_ptr<Address> &address);
 
 	void notifySpeakingDevice(uint32_t ssrc, bool isSpeaking);
 	void notifyMutedDevice(uint32_t ssrc, bool muted);
@@ -379,6 +385,8 @@ public:
 	inline long getCreationDurationMs() const {
 		return mCreationDurationMs;
 	}
+
+	virtual void unifyConferenceAddress();
 
 protected:
 	explicit Conference(const std::shared_ptr<Core> &core,

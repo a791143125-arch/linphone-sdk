@@ -480,7 +480,7 @@ std::pair<bool, std::shared_ptr<Address>> ServerConference::configure(SalCallOp 
 		}
 	}
 
-	const bool createdConference = (info && info->isValidUri());
+	bool createdConference = (info && info->isValidUri());
 	ConferenceParams::SecurityLevel securityLevel = ConferenceParams::SecurityLevel::None;
 	if (createdConference && info) {
 		securityLevel = info->getSecurityLevel();
@@ -583,8 +583,9 @@ std::pair<bool, std::shared_ptr<Address>> ServerConference::configure(SalCallOp 
 		}
 		if (account) {
 			if (auto contactAddress = account->getContactAddress()) {
-				if (contactAddress->hasUriParam("gr")) {
-					conferenceAddress->setUriParam("gr", contactAddress->getUriParamValue("gr"));
+				if (contactAddress->hasUriParam(Address::kGrParameter)) {
+					conferenceAddress->setUriParam(Address::kGrParameter,
+					                               contactAddress->getUriParamValue(Address::kGrParameter));
 				}
 			}
 		}
@@ -667,7 +668,7 @@ void ServerConference::confirmJoining(BCTBX_UNUSED(SalCallOp *op)) {
 
 	auto conferenceAddress = getConferenceAddress();
 	std::shared_ptr<Address> contactAddr = Address::create(op->getRemoteContact());
-	if (contactAddr->getUriParamValue("gr").empty()) {
+	if (contactAddr->getUriParamValue(Address::kGrParameter).empty()) {
 		lError() << *this << ": Declining INVITE because the contact does not have a 'gr' uri parameter ["
 		         << *contactAddr << "]";
 		op->decline(SalReasonDeclined, "");
@@ -772,8 +773,8 @@ void ServerConference::confirmJoining(BCTBX_UNUSED(SalCallOp *op)) {
 			contactAddress = account->getContactAddress();
 		}
 		std::shared_ptr<Address> addr = getConferenceAddress()->clone()->toSharedPtr();
-		if (contactAddress && contactAddress->hasUriParam("gr")) {
-			addr->setUriParam("gr", contactAddress->getUriParamValue("gr"));
+		if (contactAddress && contactAddress->hasUriParam(Address::kGrParameter)) {
+			addr->setUriParam(Address::kGrParameter, contactAddress->getUriParamValue(Address::kGrParameter));
 		}
 		addr->setParam(Conference::kIsFocusParameter);
 		// to force is focus to be added
@@ -1082,7 +1083,7 @@ void ServerConference::finalizeCreation() {
 		if (db && (linphone_core_get_global_state(getCore()->getCCore()) == LinphoneGlobalOn)) {
 			info = db.value().get().getConferenceInfoFromURI(getConferenceAddress());
 		}
-		const bool createdConference = (info && info->isValidUri());
+		bool createdConference = (info && info->isValidUri());
 		if (createdConference) {
 			lInfo() << *this
 			        << " has already been created therefore no need to carry out the redirection to its address";
@@ -1231,49 +1232,49 @@ void ServerConference::subscriptionStateChanged(shared_ptr<EventSubscribe> event
 #endif // _MSC_VER
 
 shared_ptr<ConferenceParticipantEvent> ServerConference::notifyParticipantAdded(
-    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant) {
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyParticipantAdded(creationTime, isFullState, participant);
 }
 
 shared_ptr<ConferenceParticipantEvent> ServerConference::notifyParticipantRemoved(
-    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant) {
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyParticipantRemoved(creationTime, isFullState, participant);
 }
 
 shared_ptr<ConferenceParticipantEvent> ServerConference::notifyParticipantSetAdmin(
-    time_t creationTime, const bool isFullState, const std::shared_ptr<Participant> &participant, bool isAdmin) {
+    time_t creationTime, bool isFullState, const std::shared_ptr<Participant> &participant, bool isAdmin) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyParticipantSetAdmin(creationTime, isFullState, participant, isAdmin);
 }
 
 shared_ptr<ConferenceSubjectEvent>
-ServerConference::notifySubjectChanged(time_t creationTime, const bool isFullState, const std::string subject) {
+ServerConference::notifySubjectChanged(time_t creationTime, bool isFullState, const std::string subject) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifySubjectChanged(creationTime, isFullState, subject);
 }
 
 shared_ptr<ConferenceEphemeralMessageEvent>
-ServerConference::notifyEphemeralModeChanged(time_t creationTime, const bool isFullState, const EventLog::Type type) {
+ServerConference::notifyEphemeralModeChanged(time_t creationTime, bool isFullState, const EventLog::Type type) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyEphemeralModeChanged(creationTime, isFullState, type);
 }
 
 shared_ptr<ConferenceEphemeralMessageEvent>
-ServerConference::notifyEphemeralMessageEnabled(time_t creationTime, const bool isFullState, const bool enable) {
+ServerConference::notifyEphemeralMessageEnabled(time_t creationTime, bool isFullState, bool enable) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyEphemeralMessageEnabled(creationTime, isFullState, enable);
 }
 
 shared_ptr<ConferenceEphemeralMessageEvent> ServerConference::notifyEphemeralLifetimeChanged(
-    time_t creationTime, const bool isFullState, const long lifetime, const long notReadLifetime) {
+    time_t creationTime, bool isFullState, const long lifetime, const long notReadLifetime) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyEphemeralLifetimeChanged(creationTime, isFullState, lifetime, notReadLifetime);
@@ -1281,7 +1282,7 @@ shared_ptr<ConferenceEphemeralMessageEvent> ServerConference::notifyEphemeralLif
 
 shared_ptr<ConferenceParticipantDeviceEvent> ServerConference::notifyParticipantDeviceScreenSharingChanged(
     time_t creationTime,
-    const bool isFullState,
+    bool isFullState,
     const std::shared_ptr<Participant> &participant,
     const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
@@ -1292,7 +1293,7 @@ shared_ptr<ConferenceParticipantDeviceEvent> ServerConference::notifyParticipant
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 ServerConference::notifyParticipantDeviceJoiningRequest(time_t creationTime,
-                                                        const bool isFullState,
+                                                        bool isFullState,
                                                         const std::shared_ptr<Participant> &participant,
                                                         const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
@@ -1302,7 +1303,7 @@ ServerConference::notifyParticipantDeviceJoiningRequest(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 ServerConference::notifyParticipantDeviceAdded(time_t creationTime,
-                                               const bool isFullState,
+                                               bool isFullState,
                                                const std::shared_ptr<Participant> &participant,
                                                const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
@@ -1312,7 +1313,7 @@ ServerConference::notifyParticipantDeviceAdded(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 ServerConference::notifyParticipantDeviceRemoved(time_t creationTime,
-                                                 const bool isFullState,
+                                                 bool isFullState,
                                                  const std::shared_ptr<Participant> &participant,
                                                  const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
@@ -1322,7 +1323,7 @@ ServerConference::notifyParticipantDeviceRemoved(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent>
 ServerConference::notifyParticipantDeviceStateChanged(time_t creationTime,
-                                                      const bool isFullState,
+                                                      bool isFullState,
                                                       const std::shared_ptr<Participant> &participant,
                                                       const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
@@ -1362,7 +1363,7 @@ ServerConference::notifyParticipantDeviceStateChanged(time_t creationTime,
 
 shared_ptr<ConferenceParticipantDeviceEvent> ServerConference::notifyParticipantDeviceMediaCapabilityChanged(
     time_t creationTime,
-    const bool isFullState,
+    bool isFullState,
     const std::shared_ptr<Participant> &participant,
     const std::shared_ptr<ParticipantDevice> &participantDevice) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
@@ -1378,17 +1379,30 @@ shared_ptr<ConferenceParticipantDeviceEvent> ServerConference::notifyParticipant
 }
 
 shared_ptr<ConferenceAvailableMediaEvent> ServerConference::notifyAvailableMediaChanged(
-    time_t creationTime, const bool isFullState, const std::map<ConferenceMediaCapabilities, bool> mediaCapabilities) {
+    time_t creationTime, bool isFullState, const std::map<ConferenceMediaCapabilities, bool> mediaCapabilities) {
 	// Increment last notify before notifying participants so that the delta can be calculated correctly
 	incrementLastNotify();
 	return Conference::notifyAvailableMediaChanged(creationTime, isFullState, mediaCapabilities);
+}
+
+shared_ptr<ConferenceAlternativeAddressEvent> ServerConference::notifyAlternativeAddressChanged(
+    time_t creationTime, bool isFullState, const std::shared_ptr<Address> &address) {
+	// Increment last notify before notifying participants so that the delta can be calculated correctly
+	incrementLastNotify();
+	auto event = Conference::notifyAlternativeAddressChanged(creationTime, isFullState, address);
+#ifdef HAVE_DB_STORAGE
+	if (mConfParams->chatEnabled()) {
+		if (auto db = getCore()->getDatabase()) db.value().get().addEvent(event);
+	}
+#endif // HAVE_DB_STORAGE
+	return event;
 }
 
 int ServerConference::inviteAddresses(const std::list<std::shared_ptr<Address>> &addresses,
                                       const LinphoneCallParams *params) {
 
 	const auto &coreCurrentCall = getCore()->getCurrentCall();
-	const bool startingConference = (getState() == ConferenceInterface::State::CreationPending);
+	bool startingConference = (getState() == ConferenceInterface::State::CreationPending);
 
 	const auto &outputDevice = (coreCurrentCall) ? coreCurrentCall->getOutputAudioDevice() : nullptr;
 	const auto &inputDevice = (coreCurrentCall) ? coreCurrentCall->getInputAudioDevice() : nullptr;
@@ -1645,13 +1659,23 @@ shared_ptr<CallSession> ServerConference::makeSession(const std::shared_ptr<Part
 			}
 		}
 
+		const auto &alternativeConferenceAddress = getAlternativeConferenceAddress();
+		const auto &assignedConferenceAddress = getAssignedConferenceAddress();
+		if (alternativeConferenceAddress) {
+			auto alternativeConferenceAddressUriString = alternativeConferenceAddress->toStringUriOnlyOrdered();
+			if (alternativeConferenceAddressUriString != assignedConferenceAddress->toStringUriOnlyOrdered()) {
+				currentParams->addCustomHeader(Conference::kXAlternativeAddressServerHeaderName,
+				                               alternativeConferenceAddressUriString);
+			}
+		}
+
 		currentParams->getPrivate()->disableRinging(!supportsMedia());
 		currentParams->getPrivate()->enableToneIndications(supportsMedia());
 		currentParams->getPrivate()->setInConference(TRUE);
 		session = participant->createSession(*this, currentParams, true);
 		session->addListener(getSharedFromThis());
 		delete currentParams;
-		session->configure(LinphoneCallOutgoing, nullptr, nullptr, conferenceAddress, device->getAddress());
+		session->configure(LinphoneCallOutgoing, nullptr, nullptr, assignedConferenceAddress, device->getAddress());
 		device->setSession(session);
 		session->initiateOutgoing();
 		session->getPrivate()->createOp();
@@ -1935,7 +1959,7 @@ shared_ptr<Participant> ServerConference::addParticipantToList(BCTBX_UNUSED(cons
 
 bool ServerConference::addParticipants(const std::list<std::shared_ptr<Call>> &calls) {
 	const auto &coreCurrentCall = getCore()->getCurrentCall();
-	const bool startingConference = (getState() == ConferenceInterface::State::CreationPending);
+	bool startingConference = (getState() == ConferenceInterface::State::CreationPending);
 	const auto &outputDevice = (coreCurrentCall) ? coreCurrentCall->getOutputAudioDevice() : nullptr;
 	const auto &inputDevice = (coreCurrentCall) ? coreCurrentCall->getInputAudioDevice() : nullptr;
 
@@ -2015,7 +2039,7 @@ bool ServerConference::addParticipant(const std::shared_ptr<Call> call) {
 	const string &callConfId = call->getConferenceId();
 
 	const auto &coreCurrentCall = getCore()->getCurrentCall();
-	const bool startingConference = (getState() == ConferenceInterface::State::CreationPending);
+	bool startingConference = (getState() == ConferenceInterface::State::CreationPending);
 
 	const auto &outputDevice = (coreCurrentCall) ? coreCurrentCall->getOutputAudioDevice() : nullptr;
 	const auto &inputDevice = (coreCurrentCall) ? coreCurrentCall->getInputAudioDevice() : nullptr;
@@ -2288,7 +2312,7 @@ bool ServerConference::addParticipant(const std::shared_ptr<ParticipantInfo> &in
 			const auto &chatRoom = getChatRoom();
 			auto serverGroupChatRoom = chatRoom ? dynamic_pointer_cast<ServerChatRoom>(chatRoom) : nullptr;
 			if (mConfParams->chatEnabled() && serverGroupChatRoom) {
-				if (participantAddress->hasUriParam("gr")) {
+				if (participantAddress->hasUriParam(Address::kGrParameter)) {
 					lInfo() << *this << ": Not adding participant '" << *participantAddress
 					        << "' because it is a gruu address.";
 					return false;
@@ -2484,7 +2508,7 @@ int ServerConference::removeParticipant(const std::shared_ptr<Address> &addr) {
 	return removeParticipant(participant) ? 0 : -1;
 }
 
-int ServerConference::removeParticipant(const std::shared_ptr<CallSession> &session, const bool preserveSession) {
+int ServerConference::removeParticipant(const std::shared_ptr<CallSession> &session, bool preserveSession) {
 	int err = 0;
 	const CallSession::State sessionState = session->getState();
 	auto sessionHasEnded = (sessionState == CallSession::State::Released) || (sessionState == CallSession::State::End);
@@ -2539,7 +2563,7 @@ int ServerConference::removeParticipant(const std::shared_ptr<CallSession> &sess
 		 */
 		if (!mConfParams->oneParticipantConferenceEnabled() && (mParticipants.size() == 1) && (!preserveSession)) {
 			std::shared_ptr<Participant> remainingParticipant = mParticipants.front();
-			const bool lastParticipantPreserveSession = remainingParticipant->getPreserveSession();
+			bool lastParticipantPreserveSession = remainingParticipant->getPreserveSession();
 			auto &devices = remainingParticipant->getDevices();
 			if (lastParticipantPreserveSession && (devices.size() == 1)) {
 
@@ -4218,6 +4242,38 @@ ServerConference::verifyVideoDirection(const std::shared_ptr<CallSession> &sessi
 		}
 	}
 	return videoDir;
+}
+
+void ServerConference::unifyConferenceAddress() {
+	const auto &conferenceAddress = getConferenceAddress();
+	if (!conferenceAddress->hasUriParam(Conference::kConfIdParameter)) {
+		lWarning() << "Migrating the address of " << *this << " to one following the pattern <focus>;"
+		           << Conference::kConfIdParameter << "=<random-string>";
+		// TODO: use unified conference address creation method once available
+		auto account = getAccount();
+		if (!account) {
+			account = getCore()->lookupKnownAccount(mOrganizer, true);
+		}
+		char *contactAddressStr = nullptr;
+		if (account && account->getOp()) {
+			contactAddressStr = sal_address_as_string(account->getOp()->getContactAddress());
+		} else {
+			LinphoneAddress *cAddress = mOrganizer->toC();
+			contactAddressStr = ms_strdup(
+			    linphone_core_find_best_identity(getCore()->getCCore(), const_cast<LinphoneAddress *>(cAddress)));
+		}
+		auto alternativeConferenceAddress = Address::create(contactAddressStr);
+		if (contactAddressStr) {
+			ms_free(contactAddressStr);
+		}
+		char confId[ServerConference::kConfIdLength];
+		belle_sip_random_token(confId, sizeof(confId));
+		alternativeConferenceAddress->setUriParam(Conference::kConfIdParameter, confId);
+		// No GRUU is needed for the alternative address
+		alternativeConferenceAddress->removeUriParam(Address::kGrParameter);
+		setAlternativeConferenceAddress(alternativeConferenceAddress);
+		notifyAlternativeAddressChanged(ms_time(NULL), false, alternativeConferenceAddress);
+	}
 }
 
 LINPHONE_END_NAMESPACE

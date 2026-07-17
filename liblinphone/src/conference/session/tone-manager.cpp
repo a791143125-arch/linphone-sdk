@@ -535,14 +535,12 @@ bool ToneManager::shouldPlayWaitingTone(const std::shared_ptr<CallSession> &sess
 }
 
 void ToneManager::notifyIncomingCall(const std::shared_ptr<CallSession> &session) {
-	shared_ptr<Call> currentCall = getCore().getCurrentCall();
-	LinphoneCore *lc = getCore().getCCore();
-	shared_ptr<MediaSession> mediaSession = dynamic_pointer_cast<MediaSession>(session);
 	if (mSessionRinging && mSessionRinging != session) {
 		// Already a session in ringing state.
 		return;
 	}
 
+	shared_ptr<MediaSession> mediaSession = dynamic_pointer_cast<MediaSession>(session);
 	if (shouldPlayWaitingTone(session)) {
 		/* already in a call or in a local conference. A tone indication will be used. */
 		if (mediaSession && mediaSession->toneIndicationsEnabled()) {
@@ -559,6 +557,7 @@ void ToneManager::notifyIncomingCall(const std::shared_ptr<CallSession> &session
 			 * current one.
 			 */
 			freeAudioResources();
+			LinphoneCore *lc = getCore().getCCore();
 			if (linphone_core_is_native_ringing_enabled(lc)) {
 				lInfo() << "Native (ie platform dependant) ringing is enabled, so not ringing from liblinphone.";
 				return;

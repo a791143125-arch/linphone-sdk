@@ -82,22 +82,27 @@ void ClientChatRoom::onChatRoomCreated(const std::shared_ptr<Address> &remoteCon
 	auto conference = dynamic_pointer_cast<ClientConference>(getConference());
 	conference->onConferenceCreated(remoteContact);
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	bool needToSubscribe = true;
-	auto &clientListHandler = getCore()->getPrivate()->clientListEventHandler;
-	auto handler = clientListHandler->findHandler(getConferenceId());
-	if (handler) {
-		if (handler->getSubscriptionState() == LinphoneSubscriptionError) {
-			lInfo() << "Detach " << *this << " from ClientConferenceListEventHandler [" << clientListHandler.get()
-			        << "] because the subscription errored out";
-			needToSubscribe = true;
-			clientListHandler->removeHandler(handler);
-		} else {
-			needToSubscribe = false;
+	try {
+		auto core = getCore();
+		bool needToSubscribe = true;
+		auto handler = conference->getEventHandler();
+		if (handler && handler->getManagedByListEventHandler()) {
+			if (handler->getSubscriptionState() == LinphoneSubscriptionError) {
+				auto &clientListEventHandler = getCore()->getPrivate()->clientListEventHandler;
+				lInfo() << "Detach " << *this << " from ClientConferenceListEventHandler ["
+				        << clientListEventHandler.get() << "] because the subscription errored out";
+				needToSubscribe = true;
+				clientListEventHandler->removeHandler(handler);
+			} else {
+				needToSubscribe = false;
+			}
 		}
-	}
-	if (needToSubscribe && remoteContact->hasParam(Conference::kIsFocusParameter)) {
-		mBgTask.start(getCore(), 32); // It will be stopped when receiving the first notify
-		conference->subscribe(false, false);
+		if (needToSubscribe && remoteContact->hasParam(Conference::kIsFocusParameter)) {
+			mBgTask.start(core, 32); // It will be stopped when receiving the first notify
+			conference->subscribe(false, false);
+		}
+	} catch (const bad_weak_ptr &) {
+		// Exception thrown by CoreAccessor::getCore()
 	}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 	sendPendingMessages();
@@ -344,7 +349,7 @@ void ClientChatRoom::exhume() {
 
 void ClientChatRoom::onExhumedConference(const ConferenceId &oldConfId, const ConferenceId &newConfId) {
 	const std::shared_ptr<Address> &addr = newConfId.getPeerAddress();
-	auto chatRoom = getCore()->findChatRoom(oldConfId, false);
+	auto chatRoom = getCore()->searchChatRoom(nullptr, oldConfId.getLocalAddress(), oldConfId.getPeerAddress(), {});
 	auto conference = getConference();
 	getCurrentParams()->setConferenceAddress(addr);
 	auto focus = static_pointer_cast<ClientConference>(conference)->mFocus;

@@ -30,6 +30,7 @@
 #include "linphone/utils/general.h"
 
 #include "client-conference-event-handler-base.h"
+#include "client-conference-event-handler.h"
 #include "conference/conference-id.h"
 #include "conference/conference.h"
 
@@ -59,7 +60,10 @@ public:
 	void addHandler(std::shared_ptr<ClientConferenceEventHandler> handler);
 	void removeHandler(std::shared_ptr<ClientConferenceEventHandler> handler);
 	void clearHandlers();
-	std::shared_ptr<ClientConferenceEventHandler> findHandler(const ConferenceId &conferenceId) const;
+	std::shared_ptr<ClientConferenceEventHandler>
+	findHandler(const std::shared_ptr<ClientConferenceEventHandler> &handler) const;
+	std::shared_ptr<ClientConferenceEventHandler> findHandler(const std::shared_ptr<Address> &local,
+	                                                          const std::shared_ptr<Address> &remote) const;
 	bool handlesEvent(const std::shared_ptr<Event> &eventSubscribe) const;
 
 	static void subscribeStateChangedCb(LinphoneEvent *lev, LinphoneSubscriptionState state);
@@ -79,11 +83,16 @@ private:
 	subscribe(const std::shared_ptr<Event> &eventSubscribe,
 	          const std::map<std::string, std::shared_ptr<Address>> &addresses);
 
-	typedef std::unordered_map<ConferenceId,
-	                           std::weak_ptr<ClientConferenceEventHandler>,
-	                           ConferenceId::WeakHash,
-	                           ConferenceId::WeakEqual>
-	    handlerMap;
+	struct ClientConferenceEventHandlerCompare {
+		bool operator()(const std::weak_ptr<ClientConferenceEventHandler> &handler1WeakPtr,
+		                const std::weak_ptr<ClientConferenceEventHandler> &handler2WeakPtr) const {
+			auto handler1 = handler1WeakPtr.lock();
+			auto handler2 = handler2WeakPtr.lock();
+			return ((handler1 < handler2) || ((handler1 == handler2) && (*handler1 < *handler2)));
+		}
+	};
+
+	typedef std::set<std::weak_ptr<ClientConferenceEventHandler>, ClientConferenceEventHandlerCompare> handlerMap;
 	handlerMap mHandlers;
 	handlerMap mLegacyChatRoomHandlers;
 

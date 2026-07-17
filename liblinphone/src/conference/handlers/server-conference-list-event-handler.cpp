@@ -124,7 +124,10 @@ void ServerConferenceListEventHandler::subscribeReceived(const std::shared_ptr<E
 			addr->removeUriParam("Last-Notify");
 			ConferenceId conferenceId(addr, addr, core->createConferenceIdParams());
 			std::shared_ptr<ServerConferenceEventHandler> handler = findHandler(conferenceId);
-			if (!handler) continue;
+			if (!handler) {
+				lWarning() << "Unable to find handler associated to " << conferenceId;
+				continue;
+			}
 
 			shared_ptr<AbstractChatRoom> chatRoom = core->findChatRoom(conferenceId, false);
 			if (!chatRoom) {
@@ -293,9 +296,28 @@ void ServerConferenceListEventHandler::removeHandler(std::shared_ptr<ServerConfe
 std::shared_ptr<ServerConferenceEventHandler>
 ServerConferenceListEventHandler::findHandler(const ConferenceId &conferenceId) const {
 	try {
-		auto &weakHandler = handlers.at(conferenceId);
-		std::shared_ptr<ServerConferenceEventHandler> handler(weakHandler);
-		return handler;
+		//		auto &weakHandler = handlers.at(conferenceId);
+		// std::shared_ptr<ServerConferenceEventHandler> handler(weakHandler);
+		auto it = std::find_if(
+		    handlers.begin(), handlers.end(), [&peerAddress = conferenceId.getPeerAddress()](const auto &p) {
+			    try {
+				    std::shared_ptr<ServerConferenceEventHandler> handler(p.second);
+				    auto conf = handler->getConference();
+				    auto peerAddressString = peerAddress->getUriWithoutGruu().asStringUriOnly();
+				    return (peerAddressString ==
+				            conf->getAssignedConferenceAddress()->getUriWithoutGruu().asStringUriOnly()) ||
+				           (conf->getAlternativeConferenceAddress() &&
+				            (peerAddressString ==
+				             conf->getAlternativeConferenceAddress()->getUriWithoutGruu().asStringUriOnly()));
+			    } catch (const bad_weak_ptr &) {
+			    }
+			    return false;
+		    });
+		if (it != handlers.end()) {
+			std::shared_ptr<ServerConferenceEventHandler> handler(it->second);
+			return handler;
+		}
+		return nullptr;
 	} catch (const bad_weak_ptr &) {
 	} catch (const out_of_range &) {
 		if (linphone_core_get_global_state(getCore()->getCCore()) == LinphoneGlobalStartup) {

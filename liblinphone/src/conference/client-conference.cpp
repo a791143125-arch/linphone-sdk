@@ -349,6 +349,16 @@ MediaSessionParams *ClientConference::createDefaultMediaParams() const {
 		msp->addCustomHeader(ChatRoom::kEphemeralNotReadLifeTimeHeader,
 		                     to_string(mConfParams->getChatParams()->getEphemeralLifetime()));
 	}
+
+	const auto &alternativeConferenceAddress = getAlternativeConferenceAddress();
+	if (alternativeConferenceAddress) {
+		auto alternativeConferenceAddressUriString = alternativeConferenceAddress->toStringUriOnlyOrdered();
+		if (alternativeConferenceAddressUriString != getAssignedConferenceAddress()->toStringUriOnlyOrdered()) {
+			msp->addCustomHeader(Conference::kXAlternativeAddressClientHeaderName,
+			                     alternativeConferenceAddressUriString);
+		}
+	}
+
 	if (!!linphone_core_get_add_admin_information_to_contact(getCore()->getCCore())) {
 		msp->addCustomContactParameter(Conference::kAdminParameter, Utils::toString(mMe->isAdmin()));
 	}
@@ -369,16 +379,19 @@ std::shared_ptr<CallSession> ClientConference::createSessionTo(const std::shared
 	delete msp;
 	session->addListener(getSharedFromThis());
 	std::shared_ptr<Address> meCleanedAddress = Address::create(getMe()->getAddress()->getUriWithoutGruu());
-
 	session->configure(LinphoneCallOutgoing, nullptr, nullptr, meCleanedAddress, sessionTo);
 	session->initiateOutgoing();
 	session->getPrivate()->createOp();
+	auto conferenceAddress = getConferenceAddress();
+	if (auto op = session->getOp(); op && conferenceAddress) {
+		op->setRequestUri(conferenceAddress->asStringUriOnly());
+	}
 
 	return session;
 }
 
 std::shared_ptr<CallSession> ClientConference::createSession() {
-	const std::shared_ptr<Address> &conferenceAddress = getConferenceAddress();
+	const std::shared_ptr<Address> &conferenceAddress = getAssignedConferenceAddress();
 	const std::shared_ptr<Address> sessionTo =
 	    (conferenceAddress && conferenceAddress->isValid()) ? conferenceAddress : mFocus->getAddress();
 	return createSessionTo(sessionTo);
@@ -617,16 +630,11 @@ LinphoneStatus ClientConference::setParticipantAdminStatus(const shared_ptr<Part
 		return -1;
 	}
 
-	LinphoneCore *cCore = getCore()->getCCore();
-	auto session = getMainSession();
-
-	const auto isChat = mConfParams->chatEnabled();
-	SalReferOp *referOp = new SalReferOp(cCore->sal.get());
-	const auto &account = getAccount();
-	linphone_configure_op_with_account(cCore, referOp, getConferenceAddress()->toC(), nullptr, true,
-	                                   account ? account->toC() : nullptr);
+	SalReferOp *referOp = createReferOp();
 	Address referToAddr(*participant->getAddress());
-	if (isChat) referToAddr.setParam(Conference::kTextParameter);
+	if (mConfParams->chatEnabled()) {
+		referToAddr.setParam(Conference::kTextParameter);
+	}
 	referToAddr.setParam(Conference::kAdminParameter, Utils::toString(isAdmin));
 	referOp->sendRefer(referToAddr.getImpl());
 	referOp->unref();
@@ -816,11 +824,7 @@ bool ClientConference::addParticipants(const list<std::shared_ptr<Address>> &add
 				session->startInvite(nullptr, getUtf8Subject(), content);
 			}
 		} else if (mState == ConferenceInterface::State::Created) {
-			SalReferOp *referOp = new SalReferOp(getCore()->getCCore()->sal.get());
-			LinphoneAddress *lAddr = getConferenceAddress()->toC();
-			const auto &account = getAccount();
-			linphone_configure_op_with_account(getCore()->getCCore(), referOp, lAddr, nullptr, true,
-			                                   account ? account->toC() : nullptr);
+			SalReferOp *referOp = createReferOp();
 			const auto &factoryAddress = mConfParams->getConferenceFactoryAddress();
 			std::list<std::string> addressParams;
 			if (supportsMedia() && !factoryAddress) {
@@ -831,11 +835,11 @@ bool ClientConference::addParticipants(const list<std::shared_ptr<Address>> &add
 			}
 
 			for (const auto &addr : addresses) {
-				std::shared_ptr<Address> referToAddr = addr->clone()->toSharedPtr();
+				Address referToAddr(*addr);
 				for (const auto &param : addressParams) {
-					referToAddr->setParam(param);
+					referToAddr.setParam(param);
 				}
-				referOp->sendRefer(referToAddr->getImpl());
+				referOp->sendRefer(referToAddr.getImpl());
 			}
 			referOp->unref();
 		}
@@ -871,11 +875,11 @@ bool ClientConference::focusIsReady() const {
 
 bool ClientConference::transferToFocus(std::shared_ptr<Call> call) {
 	auto session = getMainSession();
-	std::shared_ptr<Address> referToAddr(session->getRemoteContactAddress());
+	Address referToAddr(*session->getRemoteContactAddress());
 	const std::shared_ptr<Address> &remoteAddress = call->getRemoteAddress();
 	std::shared_ptr<Participant> participant = findInvitedParticipant(remoteAddress);
 	if (participant) {
-		referToAddr->setParam(Conference::kAdminParameter, Utils::toString(participant->isAdmin()));
+		referToAddr.setParam(Conference::kAdminParameter, Utils::toString(participant->isAdmin()));
 		// Add the participant to the list of the participants of the conference if the core does not support RFC4575
 		// (Conference Event Package) or the macro HAVE_ADVANCED_IM is not defined. In such a scenario, we make the best
 		// effort to ensure the client has a list of participant as up to date as possible
@@ -887,17 +891,17 @@ bool ClientConference::transferToFocus(std::shared_ptr<Call> call) {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 		}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-		lInfo() << *this << ": Transfering " << *call << " to focus " << *referToAddr;
+		lInfo() << *this << ": Transfering " << *call << " to focus " << referToAddr;
 		updateParticipantInConferenceInfo(participant);
-		if (call->transfer(referToAddr->toString()) == 0) {
+		if (call->transfer(referToAddr.toString()) == 0) {
 			mTransferingCalls.push_back(call);
 			return true;
 		} else {
-			lError() << *this << ": could not transfer " << *call << " to focus " << *referToAddr << " right now";
+			lError() << *this << ": could not transfer " << *call << " to focus " << referToAddr << " right now";
 			return false;
 		}
 	} else {
-		lError() << *this << ": could not transfer " << *call << " to focus " << *referToAddr
+		lError() << *this << ": could not transfer " << *call << " to focus " << referToAddr
 		         << " because participant with address " << *remoteAddress << " cannot be found";
 		return false;
 	}
@@ -1403,6 +1407,16 @@ void ClientConference::onStateChanged(ConferenceInterface::State state) {
 		case ConferenceInterface::State::Deleted:
 			reset();
 			break;
+	}
+}
+
+void ClientConference::onAlternativeAddressChanged(const std::shared_ptr<ConferenceAlternativeAddressEvent> &event,
+                                                   BCTBX_UNUSED(const std::shared_ptr<Address> &address)) {
+	const auto &chatRoom = getChatRoom();
+	if (mConfParams->chatEnabled() && chatRoom) {
+		if (event->getFullState()) return;
+		chatRoom->addEvent(event);
+		_linphone_chat_room_notify_alternative_address_changed(chatRoom->toC(), L_GET_C_BACK_PTR(event));
 	}
 }
 
@@ -2064,11 +2078,7 @@ void ClientConference::notifyLouderSpeaker(uint32_t ssrc) {
 
 std::shared_ptr<ClientConferenceEventHandler> ClientConference::getEventHandler() const {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	auto handler = getCore()->getPrivate()->clientListEventHandler->findHandler(getConferenceId());
-	if (!handler) {
-		handler = mEventHandler;
-	}
-	return handler;
+	return mEventHandler;
 #else
 	return nullptr;
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
@@ -2077,9 +2087,8 @@ std::shared_ptr<ClientConferenceEventHandler> ClientConference::getEventHandler(
 bool ClientConference::isSubscriptionUnderWay() const {
 	bool underWay = false;
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	auto handler = getEventHandler();
-	if (handler) {
-		underWay = handler->getInitialSubscriptionUnderWayFlag();
+	if (mEventHandler) {
+		underWay = mEventHandler->getInitialSubscriptionUnderWayFlag();
 	}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
 	return underWay;
@@ -2100,9 +2109,8 @@ void ClientConference::onSubscriptionUnderwayDone() {
 #endif // _MSC_VER
 void ClientConference::multipartNotifyReceived(const std::shared_ptr<Event> &notifyLev, const Content &content) {
 #if defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
-	auto handler = getEventHandler();
-	if (handler) {
-		handler->multipartNotifyReceived(notifyLev, content);
+	if (mEventHandler) {
+		mEventHandler->multipartNotifyReceived(notifyLev, content);
 		return;
 	}
 #endif // defined(HAVE_ADVANCED_IM) && defined(HAVE_XERCESC)
@@ -2128,9 +2136,8 @@ void ClientConference::notifyReceived(const std::shared_ptr<Event> &notifyLev, c
 		}
 	} else {
 #ifdef HAVE_XERCESC
-		auto handler = getEventHandler();
-		if (handler) {
-			handler->notifyReceived(notifyLev, content);
+		if (mEventHandler) {
+			mEventHandler->notifyReceived(notifyLev, content);
 			return;
 		}
 #endif // HAVE_XERCESC
@@ -2204,15 +2211,13 @@ int ClientConference::removeParticipant(const std::shared_ptr<Address> &addr) {
 						         << "\': not in the participants list";
 						return -1;
 					}
-					LinphoneCore *cCore = getCore()->getCCore();
-					SalReferOp *referOp = new SalReferOp(cCore->sal.get());
-					LinphoneAddress *lAddr = getConferenceAddress()->toC();
-					const auto &account = getAccount();
-					linphone_configure_op_with_account(cCore, referOp, lAddr, nullptr, true,
-					                                   account ? account->toC() : nullptr);
-					std::shared_ptr<Address> referToAddr = addr;
-					referToAddr->setMethodParam("BYE");
-					auto res = referOp->sendRefer(referToAddr->getImpl());
+					SalReferOp *referOp = createReferOp();
+					Address referToAddr(*addr);
+					if (mConfParams->chatEnabled()) {
+						referToAddr.setParam(Conference::kTextParameter);
+					}
+					referToAddr.setMethodParam("BYE");
+					auto res = referOp->sendRefer(referToAddr.getImpl());
 					referOp->unref();
 
 					if (res != 0) {
@@ -2258,16 +2263,13 @@ bool ClientConference::removeParticipant(const std::shared_ptr<Participant> &par
 		if (supportsMedia()) {
 			return (removeParticipant(participantAddress) == 0) ? true : false;
 		} else if (mConfParams->chatEnabled()) {
-			LinphoneCore *cCore = getCore()->getCCore();
 			// TODO handle one-on-one case ?
-			SalReferOp *referOp = new SalReferOp(cCore->sal.get());
-			LinphoneAddress *lAddr = getConferenceAddress()->toC();
-			const auto &account = getAccount();
-			linphone_configure_op_with_account(cCore, referOp, lAddr, nullptr, true,
-			                                   account ? account->toC() : nullptr);
+			SalReferOp *referOp = createReferOp();
 			Address referToAddr(*participantAddress);
-			referToAddr.setParam(Conference::kTextParameter);
-			referToAddr.setUriParam("method", "BYE");
+			if (mConfParams->chatEnabled()) {
+				referToAddr.setParam(Conference::kTextParameter);
+			}
+			referToAddr.setMethodParam("BYE");
 			referOp->sendRefer(referToAddr.getImpl());
 			referOp->unref();
 			return true;
@@ -2657,6 +2659,26 @@ AudioStream *ClientConference::getAudioStream() {
 	auto ms = static_pointer_cast<MediaSession>(session);
 	MS2AudioStream *stream = ms->getStreamsGroup().lookupMainStreamInterface<MS2AudioStream>(SalAudio);
 	return stream ? (AudioStream *)stream->getMediaStream() : nullptr;
+}
+
+SalReferOp *ClientConference::createReferOp() {
+	LinphoneCore *cCore = getCore()->getCCore();
+	SalReferOp *referOp = new SalReferOp(cCore->sal.get());
+	LinphoneAddress *lAddr = getAssignedConferenceAddress()->toC();
+	const auto &account = getAccount();
+	linphone_configure_op_with_account(cCore, referOp, lAddr, nullptr, true, account ? account->toC() : nullptr);
+	referOp->setRequestUri(getConferenceAddress()->asStringUriOnly());
+	const auto &alternativeConferenceAddress = getAlternativeConferenceAddress();
+	if (alternativeConferenceAddress) {
+		auto alternativeConferenceAddressUriString = alternativeConferenceAddress->toStringUriOnlyOrdered();
+		if (alternativeConferenceAddressUriString != getAssignedConferenceAddress()->toStringUriOnlyOrdered()) {
+			auto customHeaders =
+			    sal_custom_header_append(nullptr, Conference::kXAlternativeAddressClientHeaderName.c_str(),
+			                             alternativeConferenceAddressUriString.c_str());
+			referOp->setSentCustomHeaders(customHeaders);
+		}
+	}
+	return referOp;
 }
 
 void ClientConference::handleRefer(SalReferOp *op,

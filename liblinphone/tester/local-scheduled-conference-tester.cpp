@@ -1810,14 +1810,16 @@ static void create_simple_srtp_conference() {
 	                       FALSE, UNSET);
 }
 
-static void connected_conference_call_state_changed(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate, BCTBX_UNUSED(const char *msg)) {
+static void connected_conference_call_state_changed(LinphoneCore *lc,
+                                                    LinphoneCall *call,
+                                                    LinphoneCallState cstate,
+                                                    BCTBX_UNUSED(const char *msg)) {
 	if (cstate == LinphoneCallConnected) {
-			ms_message("%s is updating call %p to enable video capabilities", linphone_core_get_identity(lc), call);
-			LinphoneCallParams *new_params = linphone_core_create_call_params(lc, call);
-			linphone_call_params_enable_video(new_params, TRUE);
-			linphone_call_update(call, new_params);
-			linphone_call_params_unref(new_params);
-		
+		ms_message("%s is updating call %p to enable video capabilities", linphone_core_get_identity(lc), call);
+		LinphoneCallParams *new_params = linphone_core_create_call_params(lc, call);
+		linphone_call_params_enable_video(new_params, TRUE);
+		linphone_call_update(call, new_params);
+		linphone_call_params_unref(new_params);
 	}
 }
 
@@ -1871,7 +1873,9 @@ static void create_srtp_conference_with_encryption_mandatory_and_call_update_on_
 				linphone_core_set_media_encryption(mgr->lc, LinphoneMediaEncryptionSRTP);
 				linphone_config_set_int(linphone_core_get_config(mgr->lc), "rtp", "accept_any_encryption", 1);
 				linphone_core_set_media_encryption_mandatory(mgr->lc, TRUE);
-				participantList.insert(std::make_pair(mgr, add_participant_info_to_list(&participants_info, mgr->identity, LinphoneParticipantRoleSpeaker, -1)));
+				participantList.insert(
+				    std::make_pair(mgr, add_participant_info_to_list(&participants_info, mgr->identity,
+				                                                     LinphoneParticipantRoleSpeaker, -1)));
 				LinphoneCoreCbs *cbs = linphone_factory_create_core_cbs(linphone_factory_get());
 				linphone_core_cbs_set_call_state_changed(cbs, connected_conference_call_state_changed);
 				linphone_core_add_callbacks(mgr->lc, cbs);
@@ -1887,12 +1891,13 @@ static void create_srtp_conference_with_encryption_mandatory_and_call_update_on_
 		linphone_core_set_conference_participant_list_type(focus.getLc(), LinphoneConferenceParticipantListTypeOpen);
 
 		stats focus_stat = focus.getStats();
-		std::list<LinphoneCoreManager *> participants{pauline.getCMgr(), laure.getCMgr(), michelle.getCMgr(), berthe.getCMgr(),
-		                                              lise.getCMgr()};
-		std::list<LinphoneCoreManager *> conferenceMgrs{focus.getCMgr(), pauline.getCMgr(), laure.getCMgr(),  michelle.getCMgr(),
-		                                                marie.getCMgr(), berthe.getCMgr(), lise.getCMgr()};
-		std::list<LinphoneCoreManager *> members{pauline.getCMgr(), michelle.getCMgr(), lise.getCMgr(), laure.getCMgr(), marie.getCMgr(),
-		                                         berthe.getCMgr()};
+		std::list<LinphoneCoreManager *> participants{pauline.getCMgr(), laure.getCMgr(), michelle.getCMgr(),
+		                                              berthe.getCMgr(), lise.getCMgr()};
+		std::list<LinphoneCoreManager *> conferenceMgrs{focus.getCMgr(),    pauline.getCMgr(), laure.getCMgr(),
+		                                                michelle.getCMgr(), marie.getCMgr(),   berthe.getCMgr(),
+		                                                lise.getCMgr()};
+		std::list<LinphoneCoreManager *> members{pauline.getCMgr(), michelle.getCMgr(), lise.getCMgr(),
+		                                         laure.getCMgr(),   marie.getCMgr(),    berthe.getCMgr()};
 
 		LinphoneConferenceSecurityLevel security_level = LinphoneConferenceSecurityLevelNone;
 		time_t start_time(ms_time(NULL) - 3);
@@ -7497,7 +7502,7 @@ static void rejoining_conference_after_end(int cleanup_period, bool_t enable_cha
 			for (auto mgr : participants) {
 				// Try search in the databse removing the gr parameter
 				LinphoneAddress *confAddr2 = linphone_address_clone(confAddr);
-				linphone_address_remove_uri_param(confAddr2, "gr");
+				linphone_address_remove_uri_param(confAddr2, Address::kGrParameter.c_str());
 				check_conference_info_in_db(mgr, NULL, confAddr2, marie.getCMgr()->identity, participants_info,
 				                            start_time, duration, initialSubject, description, 0,
 				                            LinphoneConferenceInfoStateNew, security_level, FALSE, TRUE, TRUE,
@@ -9780,7 +9785,8 @@ static test_t local_conference_scheduled_conference_media_problem_tests[] = {
 
 static test_t local_conference_scheduled_conference_advanced_tests[] = {
     TEST_NO_TAG("Create simple SRTP conference", LinphoneTest::create_simple_srtp_conference),
-    TEST_NO_TAG("Create SRTP conference with encryption mandatory and call update on connection", LinphoneTest::create_srtp_conference_with_encryption_mandatory_and_call_update_on_connection),
+    TEST_NO_TAG("Create SRTP conference with encryption mandatory and call update on connection",
+                LinphoneTest::create_srtp_conference_with_encryption_mandatory_and_call_update_on_connection),
     TEST_NO_TAG("Create simple ZRTP conference", LinphoneTest::create_simple_zrtp_conference),
     TEST_NO_TAG("Create simple DTLS conference", LinphoneTest::create_simple_dtls_conference),
     TEST_NO_TAG("Create conference with server restart (participant first)",

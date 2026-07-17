@@ -51,6 +51,8 @@ ConferenceParams::ConferenceParams(const ConferenceParams &other)
 	mAllowOneParticipantConference = other.mAllowOneParticipantConference;
 	mParticipantListType = other.mParticipantListType;
 	mJoinMode = other.mJoinMode;
+	mAlternativeConferenceAddress =
+	    other.mAlternativeConferenceAddress ? other.mAlternativeConferenceAddress->clone()->toSharedPtr() : nullptr;
 	mConferenceAddress = other.mConferenceAddress ? other.mConferenceAddress->clone()->toSharedPtr() : nullptr;
 	mFactoryAddress = other.mFactoryAddress ? other.mFactoryAddress->clone()->toSharedPtr() : nullptr;
 	mSecurityLevel = other.mSecurityLevel;
@@ -150,14 +152,23 @@ void ConferenceParams::setUtf8Subject(const std::string &subject) {
 	mUtf8Subject = Utils::trim(subject);
 }
 
-void ConferenceParams::setConferenceAddress(const std::shared_ptr<Address> &conferenceAddress) {
+void ConferenceParams::updateConferenceAddress(std::shared_ptr<Address> &member,
+                                               const std::shared_ptr<Address> &conferenceAddress) {
 	auto cCore = getCore()->getCCore();
 	bool keepGruu = !!linphone_core_gruu_in_conference_address_enabled(cCore);
 	if (keepGruu) {
-		mConferenceAddress = Address::create(conferenceAddress->getUri());
+		member = Address::create(conferenceAddress->getUri());
 	} else {
-		mConferenceAddress = Address::create(conferenceAddress->getUriWithoutGruu());
+		member = Address::create(conferenceAddress->getUriWithoutGruu());
 	}
+};
+
+void ConferenceParams::setAlternativeConferenceAddress(const std::shared_ptr<Address> &conferenceAddress) {
+	updateConferenceAddress(mAlternativeConferenceAddress, conferenceAddress);
+};
+
+void ConferenceParams::setConferenceAddress(const std::shared_ptr<Address> &conferenceAddress) {
+	updateConferenceAddress(mConferenceAddress, conferenceAddress);
 };
 
 bool ConferenceParams::isGroup() const {

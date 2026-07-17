@@ -153,6 +153,8 @@ public:
 	std::shared_ptr<Participant> getMe() const override;
 
 	std::shared_ptr<Address> getConferenceAddress() const override;
+	std::shared_ptr<Address> getAssignedConferenceAddress() const override;
+	std::shared_ptr<Address> getAlternativeConferenceAddress() const override;
 	std::shared_ptr<Participant> findParticipant(const std::shared_ptr<Address> &address) const override;
 	std::list<std::shared_ptr<Participant>> getParticipants() const override;
 	std::list<std::shared_ptr<Address>> getParticipantAddresses() const override;
@@ -256,6 +258,8 @@ public:
 	};
 
 	long getLastMessageProcessingDurationMs() const override;
+
+	virtual void unifyConferenceAddress() override;
 
 	std::list<std::shared_ptr<ComposingParticipant>> composingParticipants;
 	std::list<std::shared_ptr<EventLog>> transientEvents;
