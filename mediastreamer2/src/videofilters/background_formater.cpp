@@ -123,19 +123,23 @@ public:
 				continue;
 			}
 
-			MSPicture src, dst;
-			ms_yuv_buf_init_from_mblk(&src, m);
-			mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
+			if (mMode != MSBackgroundSame){
+				MSPicture src, dst;
+				ms_yuv_buf_init_from_mblk(&src, m);
+				mblk_t *out = ms_yuv_buf_alloc(&dst, src.w, src.h);
 
-			for (int y = 0; y < src.h; ++y)
-				memcpy(dst.planes[0] + y * dst.strides[0], src.planes[0] + y * src.strides[0], src.w);
-			for (int y = 0; y < src.h / 2; ++y) {
-				memcpy(dst.planes[1] + y * dst.strides[1], src.planes[1] + y * src.strides[1], src.w / 2);
-				memcpy(dst.planes[2] + y * dst.strides[2], src.planes[2] + y * src.strides[2], src.w / 2);
+				for (int y = 0; y < src.h; ++y)
+					memcpy(dst.planes[0] + y * dst.strides[0], src.planes[0] + y * src.strides[0], src.w);
+				for (int y = 0; y < src.h / 2; ++y) {
+					memcpy(dst.planes[1] + y * dst.strides[1], src.planes[1] + y * src.strides[1], src.w / 2);
+					memcpy(dst.planes[2] + y * dst.strides[2], src.planes[2] + y * src.strides[2], src.w / 2);
+				}
+
+				freemsg(m);
+				ms_queue_put(f->outputs[0], out);
+			} else {
+				ms_queue_put(f->outputs[0], m);
 			}
-
-			freemsg(m);
-			ms_queue_put(f->outputs[0], out);
 		}
 	}
 	void setMode(int m) {

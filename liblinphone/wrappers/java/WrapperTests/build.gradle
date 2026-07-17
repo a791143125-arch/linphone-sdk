@@ -15,4 +15,10 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+        showStackTraces true
+        showCauses true
+    }
 }

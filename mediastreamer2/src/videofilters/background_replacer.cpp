@@ -26,7 +26,6 @@ namespace mediastreamer {
 
 class BackgroundReplacer {
 public:
-
 	BackgroundReplacer(MSFilter *f, bool bypass = true) : mFilter(f) {
 		mBypass = bypass;
 		if (!mBypass) ensureModelLoaded();
@@ -177,6 +176,7 @@ public:
 	bool getBypass() {
 		return mBypass;
 	}
+
 private:
 	// function designed to resize the given image to match the dimensions
 	// and format (RGBA) of the filter
@@ -236,7 +236,7 @@ private:
 	void inference_computer() {
 
 		while (mRunning) {
-
+			
 			std::vector<uint8_t> img;
 			int w, h;
 
@@ -256,7 +256,7 @@ private:
 			// Model setup for the frame
 			Ort::MemoryInfo memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 			Ort::Value inT =
-			    Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
+				Ort::Value::CreateTensor<float>(memInfo, input.data(), input.size(), inShape.data(), inShape.size());
 
 			// Inference processing
 			const char *insN[] = {mInName.c_str()};
@@ -297,6 +297,7 @@ private:
 				maskH_ = h;
 				mHasResult = true;
 			}
+			
 		}
 	}
 
