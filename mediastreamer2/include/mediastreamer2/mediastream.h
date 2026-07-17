@@ -1361,7 +1361,6 @@ struct _VideoStream {
 	bool_t background_vsize_capped;         /* TRUE if the resolution is capped for the background */
 	bool_t background_branch_active;        /* TRUE if the background production graph (source/formater) is on */
 
-
 	VideoStreamRecvBranch branches[VIDEO_STREAM_MAX_BRANCHES];
 	MSVideoSize sent_vsize;
 	MSVideoSize preview_vsize;

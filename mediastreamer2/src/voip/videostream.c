@@ -2253,7 +2253,6 @@ static MSFilter *_video_stream_stop(VideoStream *stream, bool_t keep_source) {
 					}
 				}
 
-
 				if (stream->itcsink) {
 					ms_filter_unlink(stream->tee, 3, stream->itcsink, 0);
 				}
@@ -2434,8 +2433,7 @@ void video_stream_set_background_type(VideoStream *stream, MSBackgroundType type
 	ms_filter_call_method(stream->background_replacer, MS_BACKGROUND_REPLACER_SET_BYPASS, &bypass);
 	if (bypass) video_stream_enable_background_branch(stream, FALSE);
 
-
-	// cap the resolution for android to prevent the automatic upscaling of resolution on low performance device
+		// cap the resolution for android to prevent the automatic upscaling of resolution on low performance device
 #ifdef __ANDROID__
 	{
 		MSVideoSize cap = MS_VIDEO_SIZE_VGA;
@@ -2762,9 +2760,6 @@ void video_preview_start(VideoPreview *stream, MSWebCam *device) {
 		MSFilter *bg_in = ch.last.filter;
 		ms_filter_link(bg_in, 0, stream->background_tee, 0);
 		ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
-		ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
-		ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
-		ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
 		ch.last.filter = stream->background_replacer;
 		ch.last.pin = 0;
 	}
@@ -2836,10 +2831,14 @@ static MSFilter *_video_preview_stop(VideoPreview *stream, bool_t keep_source) {
 	if (stream->background_replacer != NULL) {
 		ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
 		ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
-		ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
-		ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
-		ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+		if (stream->background_branch_active) {
+			ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+			ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+			ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+			stream->background_branch_active = FALSE;
+		}
 	}
+
 
 	if (stream->tee) {
 		ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
@@ -2895,10 +2894,13 @@ _video_preview_change_camera(VideoPreview *stream, MSWebCam *cam, MSFilter *new_
 		if (stream->background_replacer != NULL) {
 			ms_connection_helper_unlink(&ch, stream->background_tee, 0, 0);
 			ms_connection_helper_unlink(&ch, stream->background_replacer, 0, 0);
-			ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
-			ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
-			ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+			if (stream->background_branch_active) {
+				ms_filter_unlink(stream->background_tee, 1, stream->background_formater, 0);
+				ms_filter_unlink(stream->background_source, 0, stream->background_formater, 1);
+				ms_filter_unlink(stream->background_formater, 0, stream->background_replacer, 1);
+			}
 		}
+
 
 		if (stream->tee) {
 			ms_connection_helper_unlink(&ch, stream->tee, 0, 0);
@@ -2945,16 +2947,19 @@ _video_preview_change_camera(VideoPreview *stream, MSWebCam *cam, MSFilter *new_
 			ms_connection_helper_link(&ch, stream->qrcode, 0, 0);
 		}
 
-		if (stream->background_replacer != NULL) {
-			MSFilter *bg_in = ch.last.filter;
-			ms_filter_link(bg_in, 0, stream->background_tee, 0);
-			ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+			if (stream->background_replacer != NULL) {
+		MSFilter *bg_in = ch.last.filter;
+		ms_filter_link(bg_in, 0, stream->background_tee, 0);
+		ms_filter_link(stream->background_tee, 0, stream->background_replacer, 0);
+		if (stream->background_branch_active) {
 			ms_filter_link(stream->background_tee, 1, stream->background_formater, 0);
 			ms_filter_link(stream->background_source, 0, stream->background_formater, 1);
 			ms_filter_link(stream->background_formater, 0, stream->background_replacer, 1);
-			ch.last.filter = stream->background_replacer;
-			ch.last.pin = 0;
 		}
+		ch.last.filter = stream->background_replacer;
+		ch.last.pin = 0;
+	}
+
 
 		if (stream->tee) {
 			ms_connection_helper_link(&ch, stream->tee, 0, 0);
