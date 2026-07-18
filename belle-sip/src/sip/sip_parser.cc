@@ -484,7 +484,7 @@ void belle_sip_parser_context_add_extension_header(belle_sip_parser_context_t *c
 	    IS_HEADER(header, "Event") || IS_HEADER(header, "Subscription-State") || IS_HEADER(header, "Privacy") ||
 	    IS_HEADER(header, "P-Preferred-Identity") || IS_HEADER(header, "Reason") || IS_HEADER(header, "Refer-To") ||
 	    IS_HEADER(header, "Service-Route") || IS_HEADER(header, "Replaces") || IS_HEADER(header, "Referred-By") ||
-	    IS_HEADER(header, "Session-Expires") || IS_HEADER(header, "Diversion")) {
+	    IS_HEADER(header, "Session-Expires")) {
 		belle_sip_object_unref(header);
 		return;
 	}

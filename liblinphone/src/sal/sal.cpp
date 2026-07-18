@@ -255,18 +255,22 @@ void Sal::processRequestEventCb(void *userCtx, const belle_sip_request_event_t *
 	}
 
 	if (!op->mDiversionAddress) {
-		auto diversionHeader =
-		    belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(request), belle_sip_header_diversion_t);
-		if (diversionHeader) {
+		auto diversionHeader = belle_sip_message_get_header(BELLE_SIP_MESSAGE(request), "Diversion");
+		belle_sip_header_address_t* parsedAddress = NULL;
+		if ( diversionHeader ) {
+			const char* raw_value = belle_sip_header_get_unparsed_value(diversionHeader);
+			parsedAddress = belle_sip_header_address_parse(raw_value);
+		}
+		if (parsedAddress) {
 			belle_sip_header_address_t *addressHeader = nullptr;
-			auto uri = belle_sip_header_address_get_uri(BELLE_SIP_HEADER_ADDRESS(diversionHeader));
-			auto absoluteUri = belle_sip_header_address_get_absolute_uri(BELLE_SIP_HEADER_ADDRESS(diversionHeader));
+			auto uri = belle_sip_header_address_get_uri(parsedAddress);
+			auto absoluteUri = belle_sip_header_address_get_absolute_uri(parsedAddress);
 			if (uri) {
 				addressHeader = belle_sip_header_address_create(
-				    belle_sip_header_address_get_displayname(BELLE_SIP_HEADER_ADDRESS(diversionHeader)), uri);
+					belle_sip_header_address_get_displayname(parsedAddress), uri);
 			} else if (absoluteUri) {
 				addressHeader = belle_sip_header_address_create2(
-				    belle_sip_header_address_get_displayname(BELLE_SIP_HEADER_ADDRESS(diversionHeader)), absoluteUri);
+					belle_sip_header_address_get_displayname(parsedAddress), absoluteUri);
 			} else {
 				lWarning() << "Cannot not find diversion header from request [" << request << "]";
 			}
@@ -274,6 +278,7 @@ void Sal::processRequestEventCb(void *userCtx, const belle_sip_request_event_t *
 				op->setDiversionAddress(reinterpret_cast<SalAddress *>(addressHeader));
 				belle_sip_object_unref(addressHeader);
 			}
+			belle_sip_object_unref(parsedAddress);
 		}
 	}
 
